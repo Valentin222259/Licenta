@@ -8,7 +8,6 @@ const navLinks = [
   { to: "/", labelKey: "nav.home" },
   { to: "/rooms", labelKey: "nav.rooms" },
   { to: "/contact", labelKey: "nav.contact" },
-  { to: "/login", labelKey: "nav.login" },
   { to: "/about", labelKey: "nav.about" },
 ];
 

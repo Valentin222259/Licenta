@@ -22,6 +22,7 @@ import AdminImages from "./pages/admin/AdminImages";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminSettings from "./pages/admin/AdminSettings";
 import About from "./pages/About";
+import AdminLogin from "./pages/admin/AdminLogin";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,8 @@ const App = () => (
               </>
             }
           />
+
+          <Route path="/admin/login" element={<AdminLogin />} />
 
           {/* Protected Admin */}
           <Route
