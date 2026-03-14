@@ -16,8 +16,19 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
-// Date mock — vor fi înlocuite cu API call real
-const mockBookings = [
+type BookingStatus = "confirmed" | "pending" | "completed" | "cancelled";
+
+interface Booking {
+  id: string;
+  room: string;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  total: number;
+  status: BookingStatus;
+}
+
+const mockBookings: Booking[] = [
   {
     id: "RZ-2024-001",
     room: "Camera 2 — Balcon & Belvedere",
@@ -25,7 +36,7 @@ const mockBookings = [
     checkOut: "2026-05-13",
     nights: 3,
     total: 750,
-    status: "confirmed" as const,
+    status: "confirmed",
   },
   {
     id: "RZ-2024-002",
@@ -34,7 +45,7 @@ const mockBookings = [
     checkOut: "2026-06-22",
     nights: 2,
     total: 600,
-    status: "pending" as const,
+    status: "pending",
   },
   {
     id: "RZ-2023-018",
@@ -43,29 +54,41 @@ const mockBookings = [
     checkOut: "2025-12-29",
     nights: 3,
     total: 750,
-    status: "completed" as const,
+    status: "completed",
   },
 ];
 
 const statusConfig = {
   confirmed: {
     label: "Confirmat",
-    color: "bg-emerald-100 text-emerald-700",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+    dot: "bg-emerald-500",
     icon: CheckCircle,
   },
   pending: {
     label: "În așteptare",
-    color: "bg-amber-100 text-amber-700",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-200",
+    dot: "bg-amber-500",
     icon: Clock,
   },
   completed: {
     label: "Finalizat",
-    color: "bg-muted text-muted-foreground",
+    bg: "bg-slate-50",
+    text: "text-slate-500",
+    border: "border-slate-200",
+    dot: "bg-slate-400",
     icon: CheckCircle,
   },
   cancelled: {
     label: "Anulat",
-    color: "bg-red-100 text-red-700",
+    bg: "bg-red-50",
+    text: "text-red-700",
+    border: "border-red-200",
+    dot: "bg-red-500",
     icon: XCircle,
   },
 };
@@ -118,20 +141,95 @@ const Account = () => {
     (b) => b.status === "completed" || b.status === "cancelled",
   );
 
+  const BookingCard = ({ b, past = false }: { b: Booking; past?: boolean }) => {
+    const cfg = statusConfig[b.status];
+    return (
+      <div
+        className={`bg-card border border-border rounded-xl overflow-hidden transition-all ${past ? "opacity-70 hover:opacity-100" : "hover:shadow-sm"}`}
+      >
+        {/* Rândul 1: nume cameră + status + preț */}
+        <div className="flex items-center gap-3 px-5 py-3.5">
+          <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
+            <span className="font-heading text-sm font-semibold text-foreground">
+              {b.room}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.text} ${cfg.border}`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`}
+              />
+              {cfg.label}
+            </span>
+          </div>
+          <span
+            className={`shrink-0 font-heading text-base font-bold ${past ? "text-muted-foreground" : "text-accent"}`}
+          >
+            {b.total} RON
+          </span>
+        </div>
+
+        {/* Separator */}
+        <div className="mx-5 h-px bg-border/60" />
+
+        {/* Rândul 2: date + id + acțiune */}
+        <div className="flex items-center justify-between gap-3 px-5 py-3">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+            <span>
+              <span className="font-medium">Check-in:</span> {b.checkIn}
+            </span>
+            <span className="text-border">|</span>
+            <span>
+              <span className="font-medium">Check-out:</span> {b.checkOut}
+            </span>
+            <span className="text-border">|</span>
+            <span>
+              {b.nights} {b.nights === 1 ? "noapte" : "nopți"}
+            </span>
+            <span className="text-border hidden sm:inline">|</span>
+            <span className="text-muted-foreground/50 hidden sm:inline">
+              #{b.id}
+            </span>
+          </div>
+          {!past ? (
+            <button
+              onClick={() => handleCancelBooking(b.id)}
+              className="shrink-0 text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              {t("account.cancel")}
+            </button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 h-7 text-xs px-3"
+              asChild
+            >
+              <Link to="/booking">{t("account.bookAgain")}</Link>
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="pt-24 pb-20 px-4 min-h-screen">
-      <div className="container mx-auto max-w-3xl">
+    <div className="min-h-screen bg-muted/30 pt-24 pb-20">
+      <div className="container mx-auto max-w-3xl px-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="bg-card border border-border rounded-2xl px-6 py-5 mb-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-              <User size={24} className="text-primary" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <User size={22} className="text-primary" />
             </div>
             <div>
-              <h1 className="font-heading text-2xl">
-                {t("account.hello")}, {profile.name}!
+              <h1 className="font-heading text-lg leading-tight">
+                {t("account.hello")},{" "}
+                <span className="text-primary font-semibold">
+                  {profile.name}
+                </span>
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {t("account.subtitle")}
               </p>
             </div>
@@ -140,174 +238,104 @@ const Account = () => {
             variant="outline"
             size="sm"
             onClick={handleLogout}
-            className="gap-2 text-muted-foreground"
+            className="gap-2 text-muted-foreground hover:text-destructive hover:border-destructive shrink-0"
           >
-            <LogOut size={15} />
-            {t("account.logout")}
+            <LogOut size={14} />
+            <span className="hidden sm:inline">{t("account.logout")}</span>
           </Button>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-muted rounded-lg p-1 mb-8">
-          <button
-            onClick={() => setTab("bookings")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-md transition-all ${
-              tab === "bookings"
-                ? "bg-card shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <CalendarCheck size={15} />
-            {t("account.myBookings")}
-          </button>
-          <button
-            onClick={() => setTab("profile")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-md transition-all ${
-              tab === "profile"
-                ? "bg-card shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Settings size={15} />
-            {t("account.myProfile")}
-          </button>
+        <div className="flex bg-card border border-border rounded-xl p-1 mb-5 gap-1">
+          {[
+            {
+              key: "bookings" as TabType,
+              icon: CalendarCheck,
+              label: t("account.myBookings"),
+            },
+            {
+              key: "profile" as TabType,
+              icon: Settings,
+              label: t("account.myProfile"),
+            },
+          ].map((item) => (
+            <button
+              key={item.key}
+              onClick={() => setTab(item.key)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                tab === item.key
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <item.icon size={15} />
+              {item.label}
+            </button>
+          ))}
         </div>
 
-        {/* ── BOOKINGS TAB ── */}
+        {/* TAB REZERVĂRI */}
         {tab === "bookings" && (
-          <div className="space-y-8">
-            {/* Rezervări viitoare */}
+          <div className="space-y-5">
+            {/* Viitoare */}
             <div>
-              <h2 className="font-heading text-lg mb-4">
-                {t("account.upcomingBookings")}
-              </h2>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-1 h-4 bg-primary rounded-full" />
+                <h2 className="text-sm font-semibold text-foreground">
+                  {t("account.upcomingBookings")}
+                </h2>
+                {upcomingBookings.length > 0 && (
+                  <span className="ml-auto text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-semibold">
+                    {upcomingBookings.length}
+                  </span>
+                )}
+              </div>
               {upcomingBookings.length === 0 ? (
-                <div className="bg-card border border-border rounded-lg p-8 text-center text-muted-foreground">
+                <div className="bg-card border border-dashed border-border rounded-xl p-10 text-center">
                   <CalendarCheck
                     size={32}
-                    className="mx-auto mb-3 opacity-40"
+                    className="mx-auto mb-3 text-muted-foreground/30"
                   />
-                  <p className="text-sm">{t("account.noUpcoming")}</p>
-                  <Button variant="hero" size="sm" className="mt-4" asChild>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {t("account.noUpcoming")}
+                  </p>
+                  <Button variant="hero" size="sm" asChild>
                     <Link to="/rooms">{t("account.bookNow")}</Link>
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {upcomingBookings.map((b) => {
-                    const cfg = statusConfig[b.status];
-                    const StatusIcon = cfg.icon;
-                    return (
-                      <div
-                        key={b.id}
-                        className="bg-card border border-border rounded-lg p-5"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="font-heading text-base">
-                                {b.room}
-                              </span>
-                              <span
-                                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}
-                              >
-                                <StatusIcon size={11} />
-                                {cfg.label}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {b.checkIn} → {b.checkOut} · {b.nights}{" "}
-                              {b.nights === 1 ? "noapte" : "nopți"}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              #{b.id}
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-heading text-lg text-accent">
-                              {b.total} RON
-                            </p>
-                            {b.status !== "completed" && (
-                              <button
-                                onClick={() => handleCancelBooking(b.id)}
-                                className="text-xs text-destructive hover:underline mt-1"
-                              >
-                                {t("account.cancel")}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="space-y-2">
+                  {upcomingBookings.map((b) => (
+                    <BookingCard key={b.id} b={b} />
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Rezervări trecute */}
+            {/* Anterioare */}
             {pastBookings.length > 0 && (
               <div>
-                <h2 className="font-heading text-lg mb-4 text-muted-foreground">
-                  {t("account.pastBookings")}
-                </h2>
-                <div className="space-y-3">
-                  {pastBookings.map((b) => {
-                    const cfg = statusConfig[b.status];
-                    return (
-                      <div
-                        key={b.id}
-                        className="bg-card border border-border rounded-lg p-5 opacity-70"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="font-heading text-base">
-                                {b.room}
-                              </span>
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}
-                              >
-                                {cfg.label}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {b.checkIn} → {b.checkOut} · {b.nights}{" "}
-                              {b.nights === 1 ? "noapte" : "nopți"}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              #{b.id}
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-heading text-base text-muted-foreground">
-                              {b.total} RON
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-2 text-xs"
-                              asChild
-                            >
-                              <Link to="/booking">
-                                {t("account.bookAgain")}
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-1 h-4 bg-muted-foreground/25 rounded-full" />
+                  <h2 className="text-sm font-semibold text-muted-foreground">
+                    {t("account.pastBookings")}
+                  </h2>
+                </div>
+                <div className="space-y-2">
+                  {pastBookings.map((b) => (
+                    <BookingCard key={b.id} b={b} past />
+                  ))}
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* ── PROFILE TAB ── */}
+        {/* TAB PROFIL */}
         {tab === "profile" && (
-          <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-heading text-lg">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-sm font-semibold">
                 {t("account.personalData")}
               </h2>
               {!editMode ? (
@@ -318,30 +346,26 @@ const Account = () => {
                   }}
                   className="flex items-center gap-1.5 text-sm text-primary hover:underline"
                 >
-                  <Edit2 size={14} />
-                  {t("account.edit")}
+                  <Edit2 size={13} /> {t("account.edit")}
                 </button>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button
                     onClick={handleSaveProfile}
-                    className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                    className="flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
                   >
-                    <Save size={14} />
-                    {t("account.save")}
+                    <Save size={13} /> {t("account.save")}
                   </button>
                   <button
                     onClick={() => setEditMode(false)}
                     className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
                   >
-                    <X size={14} />
-                    {t("account.cancelEdit")}
+                    <X size={13} /> {t("account.cancelEdit")}
                   </button>
                 </div>
               )}
             </div>
-
-            <div className="space-y-5">
+            <div className="divide-y divide-border">
               {[
                 {
                   label: t("booking.fullName"),
@@ -362,10 +386,13 @@ const Account = () => {
                   placeholder: "+40 7xx xxx xxx",
                 },
               ].map((f) => (
-                <div key={f.field}>
-                  <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                <div
+                  key={f.field}
+                  className="flex items-center gap-4 px-6 py-4"
+                >
+                  <p className="w-24 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {f.label}
-                  </label>
+                  </p>
                   {editMode ? (
                     <input
                       type={f.type}
@@ -377,10 +404,10 @@ const Account = () => {
                         })
                       }
                       placeholder={f.placeholder}
-                      className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                      className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                     />
                   ) : (
-                    <p className="text-sm text-foreground py-2.5 px-4 bg-muted/50 rounded-md border border-border/50">
+                    <p className="flex-1 text-sm text-foreground">
                       {profile[f.field] || (
                         <span className="text-muted-foreground italic">
                           {t("account.notSet")}
@@ -391,17 +418,15 @@ const Account = () => {
                 </div>
               ))}
             </div>
-
-            <div className="mt-8 pt-6 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-3">
+            <div className="px-6 py-4 bg-muted/30 border-t border-border flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
                 {t("account.dangerZone")}
               </p>
               <button
                 onClick={handleLogout}
                 className="text-sm text-destructive hover:underline flex items-center gap-1.5"
               >
-                <LogOut size={14} />
-                {t("account.logout")}
+                <LogOut size={13} /> {t("account.logout")}
               </button>
             </div>
           </div>

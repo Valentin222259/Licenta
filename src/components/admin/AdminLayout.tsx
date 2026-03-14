@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   ChevronLeft,
+  Mountain,
 } from "lucide-react";
 
 const navItems = [
@@ -36,50 +37,77 @@ const AdminLayout = () => {
 
   const handleLogout = () => {
     sessionStorage.removeItem("isAdmin");
-    navigate("/login");
+    navigate("/admin/login");
   };
 
-  const SidebarContent = () => (
+  const currentPage = navItems.find((n) => isActive(n.to));
+
+  const SidebarContent = ({ onClose }: { onClose?: () => void }) => (
     <div className="flex flex-col h-full">
-      <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
+      {/* Logo */}
+      <div
+        className={`h-16 flex items-center border-b border-sidebar-border shrink-0 ${collapsed ? "justify-center px-3" : "px-5 gap-3"}`}
+      >
+        <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+          <Mountain size={16} className="text-sidebar-foreground" />
+        </div>
         {!collapsed && (
-          <span className="font-heading text-lg text-sidebar-foreground tracking-wide truncate">
-            MB Admin
-          </span>
-        )}
-        {collapsed && (
-          <span className="font-heading text-lg text-sidebar-foreground mx-auto">
-            MB
-          </span>
+          <div className="min-w-0">
+            <p className="font-heading text-sm text-sidebar-foreground font-semibold leading-tight truncate">
+              MB Admin
+            </p>
+            <p className="text-xs text-sidebar-foreground/50 truncate">
+              Belvedere
+            </p>
+          </div>
         )}
       </div>
 
-      <nav className="flex-1 py-4 px-2 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
-              isActive(item.to)
-                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            } ${collapsed ? "justify-center" : ""}`}
-          >
-            <item.icon size={18} />
-            {!collapsed && <span>{t(item.labelKey)}</span>}
-          </Link>
-        ))}
+      {/* Nav */}
+      <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
+        {navItems.map((item) => {
+          const active = isActive(item.to);
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={onClose}
+              title={collapsed ? t(item.labelKey) : undefined}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${
+                active
+                  ? "bg-white/15 text-sidebar-foreground font-medium"
+                  : "text-sidebar-foreground/60 hover:bg-white/8 hover:text-sidebar-foreground"
+              } ${collapsed ? "justify-center" : ""}`}
+            >
+              <item.icon
+                size={17}
+                className={
+                  active
+                    ? "text-sidebar-foreground"
+                    : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"
+                }
+              />
+              {!collapsed && (
+                <span className="truncate">{t(item.labelKey)}</span>
+              )}
+              {!collapsed && active && (
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-foreground/60" />
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="p-2 border-t border-sidebar-border">
+      {/* Footer */}
+      <div className="p-2 border-t border-sidebar-border shrink-0">
         <button
           onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors ${
+          title={collapsed ? t("admin.logout") : undefined}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground/60 hover:bg-white/8 hover:text-sidebar-foreground transition-all ${
             collapsed ? "justify-center" : ""
           }`}
         >
-          <LogOut size={18} />
+          <LogOut size={17} />
           {!collapsed && <span>{t("admin.logout")}</span>}
         </button>
       </div>
@@ -88,51 +116,79 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen flex bg-background">
+      {/* Sidebar desktop */}
       <aside
-        className={`hidden lg:flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ${
-          collapsed ? "w-16" : "w-60"
+        className={`hidden lg:flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 shrink-0 ${
+          collapsed ? "w-16" : "w-56"
         }`}
       >
         <SidebarContent />
       </aside>
 
+      {/* Sidebar mobil */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-foreground/40"
+            className="fixed inset-0 bg-foreground/40 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative w-60 bg-sidebar z-50">
-            <SidebarContent />
+          <aside className="relative w-56 bg-sidebar z-50 flex flex-col">
+            <SidebarContent onClose={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0">
+      {/* Conținut principal */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Header */}
+        <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0 sticky top-0 z-30">
+          {/* Hamburger mobil */}
           <button
-            className="lg:hidden text-foreground"
+            className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setMobileOpen(true)}
           >
             <Menu size={20} />
           </button>
+
+          {/* Collapse desktop */}
           <button
-            className="hidden lg:flex items-center text-muted-foreground hover:text-foreground transition-colors"
+            className="hidden lg:flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? "Extinde sidebar" : "Restrânge sidebar"}
           >
             <ChevronLeft
-              size={18}
-              className={`transition-transform ${collapsed ? "rotate-180" : ""}`}
+              size={16}
+              className={`transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`}
             />
           </button>
-          <h2 className="font-heading text-lg">
-            {navItems.find((n) => isActive(n.to))
-              ? t(navItems.find((n) => isActive(n.to))!.labelKey)
-              : "Admin"}
-          </h2>
+
+          {/* Separator */}
+          <div className="hidden lg:block w-px h-5 bg-border" />
+
+          {/* Titlu pagină */}
+          <div className="flex items-center gap-2">
+            {currentPage && (
+              <currentPage.icon size={16} className="text-muted-foreground" />
+            )}
+            <h2 className="font-heading text-base font-semibold text-foreground">
+              {currentPage ? t(currentPage.labelKey) : "Admin"}
+            </h2>
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Info user */}
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-primary font-semibold text-xs">A</span>
+            </div>
+            <span>Administrator</span>
+          </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+        {/* Pagina curentă */}
+        <main className="flex-1 p-5 md:p-6 overflow-auto">
           <Outlet />
         </main>
       </div>

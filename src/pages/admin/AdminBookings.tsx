@@ -4,10 +4,20 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-const statusColor: Record<string, string> = {
-  confirmed: "bg-emerald-100 text-emerald-700",
-  pending: "bg-amber-100 text-amber-700",
-  cancelled: "bg-red-100 text-red-700",
+const statusStyle: Record<string, { bg: string; text: string; dot: string }> = {
+  confirmed: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  pending: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
+  cancelled: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
+};
+
+const getStatusLabel = (status: string, t: (key: string) => string): string => {
+  if (status === "confirmed") return t("admin.confirmed");
+  if (status === "pending") return t("admin.pending");
+  return t("admin.cancelled");
 };
 
 const AdminBookings = () => {
@@ -15,82 +25,196 @@ const AdminBookings = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selected, setSelected] = useState<BookingData | null>(null);
 
-  const filtered = bookings.filter((b) => statusFilter === "all" || b.status === statusFilter);
-
+  const filtered = bookings.filter(
+    (b) => statusFilter === "all" || b.status === statusFilter,
+  );
   const filterKeys = ["all", "confirmed", "pending", "cancelled"] as const;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-3 items-center">
-        <span className="text-xs uppercase tracking-wider text-muted-foreground">{t("admin.status")}:</span>
+    <div className="space-y-5">
+      {/* Filtre */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
+          {t("admin.status")}:
+        </span>
         {filterKeys.map((s) => (
-          <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-md text-xs capitalize transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
+              statusFilter === s
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+            }`}
+          >
             {t(`admin.${s}`)}
           </button>
         ))}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {filtered.length} rezultate
+        </span>
       </div>
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      {/* Tabel */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full">
             <thead>
-              <tr className="border-b border-border bg-muted/50 text-left">
-                <th className="p-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">ID</th>
-                <th className="p-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">{t("admin.guest")}</th>
-                <th className="p-4 text-xs uppercase tracking-wider text-muted-foreground font-medium hidden md:table-cell">{t("admin.room")}</th>
-                <th className="p-4 text-xs uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">{t("admin.checkIn")}</th>
-                <th className="p-4 text-xs uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">{t("admin.checkOut")}</th>
-                <th className="p-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">{t("admin.total")}</th>
-                <th className="p-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">{t("admin.status")}</th>
+              <tr className="bg-muted/40 border-b border-border">
+                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[8%]">
+                  ID
+                </th>
+                <th className="text-left   px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%]">
+                  {t("admin.guest")}
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%] hidden md:table-cell">
+                  {t("admin.room")}
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%] hidden sm:table-cell">
+                  {t("admin.checkIn")}
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%] hidden sm:table-cell">
+                  {t("admin.checkOut")}
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">
+                  {t("admin.total")}
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[16%]">
+                  {t("admin.status")}
+                </th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((b) => (
-                <tr key={b.id} onClick={() => setSelected(b)} className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors">
-                  <td className="p-4 text-muted-foreground">{b.id}</td>
-                  <td className="p-4 font-medium">{b.guest}</td>
-                  <td className="p-4 text-muted-foreground hidden md:table-cell">{b.room}</td>
-                  <td className="p-4 text-muted-foreground hidden sm:table-cell">{b.checkIn}</td>
-                  <td className="p-4 text-muted-foreground hidden sm:table-cell">{b.checkOut}</td>
-                  <td className="p-4">€{b.total}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${statusColor[b.status]}`}>{b.status}</span>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-border">
+              {filtered.map((b) => {
+                const s = statusStyle[b.status] ?? {
+                  bg: "bg-muted",
+                  text: "text-muted-foreground",
+                  dot: "bg-muted-foreground",
+                };
+                return (
+                  <tr
+                    key={b.id}
+                    onClick={() => setSelected(b)}
+                    className="hover:bg-muted/20 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3.5 text-center text-xs text-muted-foreground font-mono">
+                      {b.id}
+                    </td>
+                    <td className="px-4 py-3.5 text-left">
+                      <p className="text-sm font-medium text-foreground">
+                        {b.guest}
+                      </p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">
+                        {b.email}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3.5 text-center text-sm text-muted-foreground hidden md:table-cell">
+                      {b.room}
+                    </td>
+                    <td className="px-4 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
+                      {b.checkIn}
+                    </td>
+                    <td className="px-4 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
+                      {b.checkOut}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="text-sm font-semibold text-foreground">
+                        €{b.total}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`}
+                        />
+                        {getStatusLabel(b.status, t)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Modal detalii rezervare */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-foreground/40" onClick={() => setSelected(null)} />
-          <div className="relative bg-card border border-border rounded-lg p-6 w-full max-w-md z-50 animate-fade-in-up">
-            <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"><X size={18} /></button>
-            <h3 className="font-heading text-xl mb-4">{t("admin.booking")} {selected.id}</h3>
-            <div className="space-y-3 text-sm">
+          <div
+            className="fixed inset-0 bg-foreground/40 backdrop-blur-sm"
+            onClick={() => setSelected(null)}
+          />
+          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-md z-50 shadow-2xl animate-fade-in-up">
+            <button
+              onClick={() => setSelected(null)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="font-heading text-lg font-semibold mb-1">
+              {t("admin.booking")} {selected.id}
+            </h3>
+            <p className="text-xs text-muted-foreground mb-5">
+              Detalii complete rezervare
+            </p>
+
+            <div className="divide-y divide-border">
               {[
                 [t("admin.guest"), selected.guest],
-                [t("contact.email"), selected.email],
+                ["Email", selected.email],
                 [t("admin.room"), selected.room],
                 [t("admin.checkIn"), selected.checkIn],
                 [t("admin.checkOut"), selected.checkOut],
                 [t("admin.total"), `€${selected.total}`],
               ].map(([label, value]) => (
-                <div key={label} className="flex justify-between">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium">{value}</span>
+                <div
+                  key={label}
+                  className="flex items-center justify-between py-3"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {label}
+                  </span>
+                  <span className="text-sm font-medium text-foreground">
+                    {value}
+                  </span>
                 </div>
               ))}
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">{t("admin.status")}</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${statusColor[selected.status]}`}>{selected.status}</span>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("admin.status")}
+                </span>
+                {(() => {
+                  const s = statusStyle[selected.status] ?? {
+                    bg: "bg-muted",
+                    text: "text-muted-foreground",
+                    dot: "bg-muted-foreground",
+                  };
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                      {getStatusLabel(selected.status, t)}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
-            <div className="flex gap-2 mt-6">
-              <Button size="sm" className="flex-1">{t("admin.confirm")}</Button>
-              <Button size="sm" variant="outline" className="flex-1">{t("admin.cancelBooking")}</Button>
+
+            <div className="flex gap-2 mt-5">
+              <Button size="sm" className="flex-1">
+                {t("admin.confirm")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-destructive hover:bg-destructive hover:text-white"
+              >
+                {t("admin.cancelBooking")}
+              </Button>
             </div>
           </div>
         </div>
