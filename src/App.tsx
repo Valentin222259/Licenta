@@ -27,6 +27,7 @@ import Account from "./pages/Account";
 
 const queryClient = new QueryClient();
 
+// Wrapper pentru paginile publice (cu Navbar + Footer + ChatBot)
 const PublicPage = ({ children }: { children: React.ReactNode }) => (
   <>
     <Navbar />
@@ -43,6 +44,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* ─── PAGINI PUBLICE (cu Navbar + Footer) ─────────────────────── */}
           <Route
             path="/"
             element={
@@ -94,14 +96,11 @@ const App = () => (
           <Route
             path="/login"
             element={
-              <>
-                <Navbar />
+              <PublicPage>
                 <Login />
-                <Footer />
-              </>
+              </PublicPage>
             }
           />
-
           <Route
             path="/account"
             element={
@@ -111,9 +110,10 @@ const App = () => (
             }
           />
 
+          {/* ─── ADMIN LOGIN (fără Navbar, fără Footer, complet izolat) ───── */}
           <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* Protected Admin */}
+          {/* ─── ADMIN PANEL (fără Navbar, fără Footer — doar sidebar admin) */}
           <Route
             path="/admin"
             element={
