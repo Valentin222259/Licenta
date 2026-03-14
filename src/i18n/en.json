@@ -4,7 +4,8 @@
     "rooms": "Rooms",
     "contact": "Contact",
     "login": "Login",
-    "bookNow": "Book Now"
+    "bookNow": "Book Now",
+    "about": "About"
   },
   "hero": {
     "title": "Maramureș Belvedere",
@@ -133,6 +134,38 @@
     "message": "Oops! Page not found",
     "backHome": "Return to Home"
   },
+  "about": {
+  "heroTitle": "About Us",
+  "heroSubtitle": "Our story, our location and everything we offer",
+  "storyTitle": "Our Story",
+  "storyP1": "Maramureș Belvedere is located on a hilltop at the entrance to Petrova from Sighetu Marmației, near the Dealul Hera forest. The hilltop location offers a breathtaking view of the Maramureș Mountains, Izvorul Tămăduirii Monastery and, on clear days, Pietrosul Peak and Creasta Cocoșului.",
+  "storyP2": "Access is easy — just 100 m off DN 18, the road connecting Sighetu Marmației and Vișeu, with the guesthouse located approximately halfway between the two towns.",
+  "storyP3": "The nearest neighbors are 500–700 m away, making the guesthouse a perfect retreat from city bustle, in an exceptional natural setting.",
+  "distancesTitle": "Distances to tourist attractions",
+  "facilitiesTitle": "Facilities",
+  "facilitiesSubtitle": "Everything we've prepared to make your stay as pleasant as possible",
+  "photoPlaceholder": "Photo coming soon",
+  "photoGuesthouse": "Guesthouse photo",
+  "kidsTitle": "Children's Policy",
+  "kidsP1": "We welcome children of all ages. Children up to 6 years old sleeping in their parents' bed stay for <strong>free</strong>.",
+  "kidsP2": "Children between 6 and 13 years old (inclusive) stay at a rate of <strong>50 RON/night</strong>.",
+  "jacuzziTitle": "Jacuzzi / Ciubăr",
+  "jacuzziDesc": "Hot tub with jacuzzi system and ambient lighting. Can be reserved for an extra fee for a relaxing experience under the open sky.",
+  "bikesTitle": "Free Bicycles",
+  "bikesDesc": "8 bicycles available free of charge for guests. Explore the surrounding trails at your own pace.",
+  "pingPongTitle": "Ping Pong Table",
+  "pingPongDesc": "Ping pong table available free of charge for fun and relaxation outdoors.",
+  "sledsTitle": "Sleds (Winter)",
+  "sledsDesc": "Free sleds for guests and a sledding hill right in the guesthouse yard — guaranteed fun in winter.",
+  "grillTitle": "Grill & Cauldron",
+  "grillDesc": "Outdoor area equipped for grilling and cooking in a cauldron. Enjoy a traditional meal in nature.",
+  "parkingTitle": "Free Parking",
+  "parkingDesc": "Free private parking available for all guesthouse guests.",
+  "playgroundTitle": "Children's Playground",
+  "playgroundDesc": "Playground with trampoline, swing and slide. Kids will have a wonderful time!",
+  "traditionalTitle": "Traditional Costume",
+  "traditionalDesc": "Opportunity to wear the traditional costume specific to Historic Maramureș — a unique cultural experience."
+},
   "admin": {
     "logout": "Logout",
     "dashboard": "Dashboard",

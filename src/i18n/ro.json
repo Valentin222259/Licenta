@@ -4,7 +4,8 @@
     "rooms": "Camere",
     "contact": "Contact",
     "login": "Autentificare",
-    "bookNow": "Rezervă Acum"
+    "bookNow": "Rezervă Acum",
+    "about": "Despre Noi"
   },
   "hero": {
     "title": "Maramureș Belvedere",
@@ -133,6 +134,38 @@
     "message": "Ups! Pagina nu a fost găsită",
     "backHome": "Înapoi la Pagina Principală"
   },
+  "about": {
+  "heroTitle": "Despre Noi",
+  "heroSubtitle": "Povestea, locul și tot ce vă oferim",
+  "storyTitle": "Povestea Pensiunii",
+  "storyP1": "Pensiunea Maramureș Belvedere este situată pe un vârf de deal, la intrarea în Petrova dinspre Sighetu Marmației, lângă pădurea de pe Dealul Hera. Localizarea pe deal asigură o priveliște de vis spre Munții Maramureșului, Mănăstirea Izvorul Tămăduirii și, pe vreme senină, Vârful Pietrosul și Creasta Cocoșului.",
+  "storyP2": "Accesul este facil — la doar 100 m de pe DN 18, drumul care leagă Sighetu Marmației de Vișeu, pensiunea aflându-se aproximativ la jumătatea distanței dintre cele două orașe.",
+  "storyP3": "Primii vecini se află la 500–700 m distanță, ceea ce face din pensiune un refugiu perfect pentru relaxare, departe de agitația orașului, într-un cadru natural de excepție.",
+  "distancesTitle": "Distanțe față de obiective turistice",
+  "facilitiesTitle": "Facilități",
+  "facilitiesSubtitle": "Tot ce am pregătit pentru a vă face șederea cât mai plăcută",
+  "photoPlaceholder": "Fotografie în curând",
+  "photoGuesthouse": "Fotografie pensiune",
+  "kidsTitle": "Politica pentru copii",
+  "kidsP1": "Acceptăm copii de toate vârstele cu drag. Copiii până la 6 ani care dorm în pat cu părinții beneficiază de <strong>gratuitate</strong>.",
+  "kidsP2": "Copiii între 6 și 13 ani (inclusiv) beneficiază de cazare la tariful de <strong>50 RON/noapte</strong>.",
+  "jacuzziTitle": "Jacuzzi / Ciubăr",
+  "jacuzziDesc": "Ciubăr cu sistem de jacuzzi și iluminat ambiental. Poate fi rezervat contra cost pentru o experiență relaxantă sub cerul liber.",
+  "bikesTitle": "Biciclete Gratuite",
+  "bikesDesc": "8 biciclete disponibile gratuit pentru oaspeți. Explorați traseele din împrejurimi în propriul ritm.",
+  "pingPongTitle": "Masă de Ping Pong",
+  "pingPongDesc": "Masă de ping pong disponibilă gratuit pentru distracție și relaxare în aer liber.",
+  "sledsTitle": "Săniuțe (Iarnă)",
+  "sledsDesc": "Săniuțe gratuite pentru oaspeți și un derdeluș amenajat chiar în curtea pensiunii — distracție garantată iarna.",
+  "grillTitle": "Grătar & Ceaun",
+  "grillDesc": "Zonă amenajată pentru grătar și gătit la ceaun în aer liber. Savurați o masă tradițională în natură.",
+  "parkingTitle": "Parcare Gratuită",
+  "parkingDesc": "Parcare privată gratuită disponibilă pentru toți oaspeții pensiunii.",
+  "playgroundTitle": "Loc de Joacă Copii",
+  "playgroundDesc": "Loc de joacă amenajat cu trambulină, leagăn și tobogan. Copiii se vor simți minunat!",
+  "traditionalTitle": "Port Tradițional",
+  "traditionalDesc": "Posibilitate de a îmbrăca portul tradițional specific zonei Maramureșului Istoric — o experiență culturală unică."
+},
   "admin": {
     "logout": "Deconectare",
     "dashboard": "Panou de Control",

@@ -21,6 +21,7 @@ import AdminRooms from "./pages/admin/AdminRooms";
 import AdminImages from "./pages/admin/AdminImages";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminSettings from "./pages/admin/AdminSettings";
+import About from "./pages/About";
 
 const queryClient = new QueryClient();
 
@@ -40,15 +41,74 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<PublicPage><Index /></PublicPage>} />
-          <Route path="/rooms" element={<PublicPage><Rooms /></PublicPage>} />
-          <Route path="/rooms/:id" element={<PublicPage><RoomDetail /></PublicPage>} />
-          <Route path="/booking" element={<PublicPage><Booking /></PublicPage>} />
-          <Route path="/contact" element={<PublicPage><Contact /></PublicPage>} />
-          <Route path="/login" element={<><Navbar /><Login /><Footer /></>} />
+          <Route
+            path="/"
+            element={
+              <PublicPage>
+                <Index />
+              </PublicPage>
+            }
+          />
+          <Route
+            path="/rooms"
+            element={
+              <PublicPage>
+                <Rooms />
+              </PublicPage>
+            }
+          />
+          <Route
+            path="/rooms/:id"
+            element={
+              <PublicPage>
+                <RoomDetail />
+              </PublicPage>
+            }
+          />
+          <Route
+            path="/booking"
+            element={
+              <PublicPage>
+                <Booking />
+              </PublicPage>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <PublicPage>
+                <Contact />
+              </PublicPage>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <PublicPage>
+                <About />
+              </PublicPage>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <>
+                <Navbar />
+                <Login />
+                <Footer />
+              </>
+            }
+          />
 
           {/* Protected Admin */}
-          <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
             <Route index element={<AdminDashboard />} />
             <Route path="bookings" element={<AdminBookings />} />
             <Route path="rooms" element={<AdminRooms />} />

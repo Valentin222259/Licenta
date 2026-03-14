@@ -9,6 +9,7 @@ const navLinks = [
   { to: "/rooms", labelKey: "nav.rooms" },
   { to: "/contact", labelKey: "nav.contact" },
   { to: "/login", labelKey: "nav.login" },
+  { to: "/about", labelKey: "nav.about" },
 ];
 
 const isActive = (pathname: string, to: string) => {
@@ -30,7 +31,10 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
-        <Link to="/" className="font-heading text-xl font-semibold tracking-wide text-foreground">
+        <Link
+          to="/"
+          className="font-heading text-xl font-semibold tracking-wide text-foreground"
+        >
           Maramureș Belvedere
         </Link>
 
@@ -61,7 +65,10 @@ const Navbar = () => {
         </div>
 
         {/* Mobile toggle */}
-        <button className="md:hidden text-foreground" onClick={() => setOpen(!open)}>
+        <button
+          className="md:hidden text-foreground"
+          onClick={() => setOpen(!open)}
+        >
           {open ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -91,7 +98,9 @@ const Navbar = () => {
               {i18n.language === "en" ? "RO" : "EN"}
             </button>
             <Button variant="hero" size="sm" asChild>
-              <Link to="/booking" onClick={() => setOpen(false)}>{t("nav.bookNow")}</Link>
+              <Link to="/booking" onClick={() => setOpen(false)}>
+                {t("nav.bookNow")}
+              </Link>
             </Button>
           </div>
         </div>
