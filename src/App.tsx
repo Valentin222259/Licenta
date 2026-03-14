@@ -23,6 +23,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminSettings from "./pages/admin/AdminSettings";
 import About from "./pages/About";
 import AdminLogin from "./pages/admin/AdminLogin";
+import Account from "./pages/Account";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,15 @@ const App = () => (
                 <Login />
                 <Footer />
               </>
+            }
+          />
+
+          <Route
+            path="/account"
+            element={
+              <PublicPage>
+                <Account />
+              </PublicPage>
             }
           />
 

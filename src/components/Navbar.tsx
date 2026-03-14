@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { useTranslation } from "react-i18next";
 
@@ -18,13 +18,29 @@ const isActive = (pathname: string, to: string) => {
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const [clientName, setClientName] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+
+  useEffect(() => {
+    const loggedIn = sessionStorage.getItem("isClient") === "true";
+    const name = sessionStorage.getItem("clientName") || "";
+    setIsClient(loggedIn);
+    setClientName(name);
+  }, [location.pathname]);
 
   const toggleLang = () => {
     const next = i18n.language === "en" ? "ro" : "en";
     i18n.changeLanguage(next);
     localStorage.setItem("lang", next);
+  };
+
+  const handleAccountClick = () => {
+    if (isClient) navigate("/account");
+    else navigate("/login");
+    setOpen(false);
   };
 
   return (
@@ -52,18 +68,32 @@ const Navbar = () => {
               {t(l.labelKey)}
             </Link>
           ))}
+
           <button
             onClick={toggleLang}
             className="text-xs font-semibold uppercase tracking-wider border border-border rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
           >
             {i18n.language === "en" ? "RO" : "EN"}
           </button>
+
+          <button
+            onClick={handleAccountClick}
+            className={`flex items-center gap-1.5 text-sm tracking-wide uppercase transition-colors hover:text-primary ${
+              isActive(location.pathname, "/login") ||
+              isActive(location.pathname, "/account")
+                ? "text-primary font-semibold"
+                : "text-muted-foreground"
+            }`}
+          >
+            <User size={15} />
+            {isClient ? clientName || t("account.myAccount") : t("nav.login")}
+          </button>
+
           <Button variant="hero" size="sm" asChild>
             <Link to="/booking">{t("nav.bookNow")}</Link>
           </Button>
         </div>
 
-        {/* Mobile toggle */}
         <button
           className="md:hidden text-foreground"
           onClick={() => setOpen(!open)}
@@ -72,7 +102,6 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile menu */}
       {open && (
         <div className="md:hidden bg-background border-b border-border animate-fade-in">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-4">
@@ -90,12 +119,27 @@ const Navbar = () => {
                 {t(l.labelKey)}
               </Link>
             ))}
+
+            <button
+              onClick={handleAccountClick}
+              className={`flex items-center gap-2 text-sm tracking-wide uppercase py-1 border-l-2 pl-3 transition-colors text-left ${
+                isActive(location.pathname, "/login") ||
+                isActive(location.pathname, "/account")
+                  ? "text-primary font-semibold border-primary"
+                  : "text-muted-foreground border-transparent"
+              }`}
+            >
+              <User size={14} />
+              {isClient ? clientName || t("account.myAccount") : t("nav.login")}
+            </button>
+
             <button
               onClick={toggleLang}
               className="text-xs font-semibold uppercase tracking-wider border border-border rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground w-fit"
             >
               {i18n.language === "en" ? "RO" : "EN"}
             </button>
+
             <Button variant="hero" size="sm" asChild>
               <Link to="/booking" onClick={() => setOpen(false)}>
                 {t("nav.bookNow")}

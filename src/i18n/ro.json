@@ -144,8 +144,37 @@
     "confirmPassword": "Confirmă Parola",
     "createAccount": "Creează Cont",
     "registerToast": "Cont creat",
-    "registerToastDesc": "Funcționalitatea de înregistrare vine în curând."
+    "registerToastDesc": "Funcționalitatea de înregistrare vine în curând.",
+    "continueWith": "Continuă cu",
+    "orEmail": "sau cu email",
+    "oauthComingSoon": "Integrare OAuth disponibilă după configurarea backend-ului."
   },
+
+  "account": {
+  "hello": "Bună ziua",
+  "subtitle": "Gestionează rezervările și profilul tău",
+  "myBookings": "Rezervările mele",
+  "myProfile": "Profilul meu",
+  "myAccount": "Contul meu",
+  "logout": "Deconectare",
+  "loggedOut": "Ai fost deconectat",
+  "upcomingBookings": "Rezervări viitoare",
+  "pastBookings": "Rezervări anterioare",
+  "noUpcoming": "Nu ai rezervări viitoare.",
+  "bookNow": "Rezervă acum",
+  "cancel": "Anulează",
+  "cancelRequest": "Cerere de anulare trimisă",
+  "cancelRequestDesc": "Vom procesa anularea rezervării {{id}} și te vom contacta.",
+  "bookAgain": "Rezervă din nou",
+  "personalData": "Date personale",
+  "edit": "Editează",
+  "save": "Salvează",
+  "cancelEdit": "Anulează",
+  "profileSaved": "Profil salvat",
+  "notSet": "Necompletat",
+  "dangerZone": "Sesiune"
+},
+
   "notFound": {
     "title": "404",
     "message": "Ups! Pagina nu a fost găsită",
