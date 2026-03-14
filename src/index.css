@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 96%;
+    --foreground: 150 25% 15%;
+
+    --card: 40 30% 98%;
+    --card-foreground: 150 25% 15%;
+
+    --popover: 40 30% 98%;
+    --popover-foreground: 150 25% 15%;
+
+    --primary: 152 35% 25%;
+    --primary-foreground: 40 33% 96%;
+
+    --secondary: 33 30% 88%;
+    --secondary-foreground: 150 25% 15%;
+
+    --muted: 40 20% 92%;
+    --muted-foreground: 150 10% 45%;
+
+    --accent: 30 40% 45%;
+    --accent-foreground: 40 33% 96%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 33 20% 85%;
+    --input: 33 20% 85%;
+    --ring: 152 35% 25%;
+
+    --radius: 0.5rem;
+
+    --forest: 152 35% 25%;
+    --forest-light: 152 25% 35%;
+    --cream: 40 33% 96%;
+    --cream-dark: 40 25% 90%;
+    --wood: 30 40% 45%;
+    --wood-light: 30 30% 60%;
+    --gold: 38 60% 55%;
+
+    --sidebar-background: 152 35% 20%;
+    --sidebar-foreground: 40 33% 96%;
+    --sidebar-primary: 40 33% 96%;
+    --sidebar-primary-foreground: 152 35% 20%;
+    --sidebar-accent: 152 25% 30%;
+    --sidebar-accent-foreground: 40 33% 96%;
+    --sidebar-border: 152 25% 30%;
+    --sidebar-ring: 38 60% 55%;
+  }
+
+  .dark {
+    --background: 150 25% 8%;
+    --foreground: 40 33% 96%;
+    --card: 150 25% 10%;
+    --card-foreground: 40 33% 96%;
+    --popover: 150 25% 10%;
+    --popover-foreground: 40 33% 96%;
+    --primary: 40 33% 90%;
+    --primary-foreground: 150 25% 10%;
+    --secondary: 150 20% 18%;
+    --secondary-foreground: 40 33% 96%;
+    --muted: 150 20% 18%;
+    --muted-foreground: 40 15% 65%;
+    --accent: 30 40% 55%;
+    --accent-foreground: 40 33% 96%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 150 20% 18%;
+    --input: 150 20% 18%;
+    --ring: 40 33% 90%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
