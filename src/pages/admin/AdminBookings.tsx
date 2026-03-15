@@ -33,7 +33,7 @@ const AdminBookings = () => {
   return (
     <div className="space-y-5">
       {/* Filtre */}
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 items-start sm:items-center">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
           {t("admin.status")}:
         </span>
@@ -61,25 +61,25 @@ const AdminBookings = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
-                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[8%]">
+                <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[8%]">
                   ID
                 </th>
-                <th className="text-left   px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%]">
+                <th className="text-left   px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%]">
                   {t("admin.guest")}
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%] hidden md:table-cell">
+                <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%] hidden md:table-cell">
                   {t("admin.room")}
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%] hidden sm:table-cell">
+                <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%] hidden sm:table-cell">
                   {t("admin.checkIn")}
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%] hidden sm:table-cell">
+                <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%] hidden sm:table-cell">
                   {t("admin.checkOut")}
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">
+                <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">
                   {t("admin.total")}
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[16%]">
+                <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[16%]">
                   {t("admin.status")}
                 </th>
               </tr>
@@ -97,10 +97,10 @@ const AdminBookings = () => {
                     onClick={() => setSelected(b)}
                     className="hover:bg-muted/20 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3.5 text-center text-xs text-muted-foreground font-mono">
+                    <td className="px-3 sm:px-4 py-3.5 text-center text-xs text-muted-foreground font-mono">
                       {b.id}
                     </td>
-                    <td className="px-4 py-3.5 text-left">
+                    <td className="px-3 sm:px-4 py-3.5 text-left">
                       <p className="text-sm font-medium text-foreground">
                         {b.guest}
                       </p>
@@ -108,21 +108,21 @@ const AdminBookings = () => {
                         {b.email}
                       </p>
                     </td>
-                    <td className="px-4 py-3.5 text-center text-sm text-muted-foreground hidden md:table-cell">
+                    <td className="px-3 sm:px-4 py-3.5 text-center text-sm text-muted-foreground hidden md:table-cell">
                       {b.room}
                     </td>
-                    <td className="px-4 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
+                    <td className="px-3 sm:px-4 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
                       {b.checkIn}
                     </td>
-                    <td className="px-4 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
+                    <td className="px-3 sm:px-4 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
                       {b.checkOut}
                     </td>
-                    <td className="px-4 py-3.5 text-center">
+                    <td className="px-3 sm:px-4 py-3.5 text-center">
                       <span className="text-sm font-semibold text-foreground">
                         €{b.total}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-center">
+                    <td className="px-3 sm:px-4 py-3.5 text-center">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
                       >
@@ -147,17 +147,17 @@ const AdminBookings = () => {
             className="fixed inset-0 bg-foreground/40 backdrop-blur-sm"
             onClick={() => setSelected(null)}
           />
-          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-md z-50 shadow-2xl animate-fade-in-up">
+          <div className="relative bg-card border border-border rounded-2xl p-4 sm:p-6 w-full max-w-md z-50 shadow-2xl animate-fade-in-up">
             <button
               onClick={() => setSelected(null)}
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X size={18} />
             </button>
-            <h3 className="font-heading text-lg font-semibold mb-1">
+            <h3 className="font-heading text-lg font-semibold mb-1 pr-8">
               {t("admin.booking")} {selected.id}
             </h3>
-            <p className="text-xs text-muted-foreground mb-5">
+            <p className="text-xs text-muted-foreground mb-4 sm:mb-5">
               Detalii complete rezervare
             </p>
 
@@ -172,17 +172,17 @@ const AdminBookings = () => {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="flex items-center justify-between py-3"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-1 sm:gap-0"
                 >
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {label}
                   </span>
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-sm font-medium text-foreground break-all sm:break-normal">
                     {value}
                   </span>
                 </div>
               ))}
-              <div className="flex items-center justify-between py-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-1 sm:gap-0">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("admin.status")}
                 </span>
@@ -194,7 +194,7 @@ const AdminBookings = () => {
                   };
                   return (
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text} w-fit`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                       {getStatusLabel(selected.status, t)}
@@ -204,7 +204,7 @@ const AdminBookings = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-5">
+            <div className="flex flex-col sm:flex-row gap-2 mt-5">
               <Button size="sm" className="flex-1">
                 {t("admin.confirm")}
               </Button>

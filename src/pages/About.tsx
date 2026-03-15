@@ -63,10 +63,10 @@ const About = () => {
         />
         <div className="absolute inset-0 bg-foreground/50" />
         <div className="relative z-10 text-center px-4">
-          <h1 className="font-heading text-4xl md:text-5xl text-background font-semibold mb-3">
+          <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl text-background font-semibold mb-3">
             {t("about.heroTitle")}
           </h1>
-          <p className="text-background/90 text-lg max-w-xl mx-auto">
+          <p className="text-background/90 text-base sm:text-lg max-w-xl mx-auto">
             {t("about.heroSubtitle")}
           </p>
         </div>

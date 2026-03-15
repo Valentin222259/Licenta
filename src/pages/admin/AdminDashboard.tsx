@@ -96,7 +96,7 @@ const AdminDashboard = () => {
         {stats.map((s) => (
           <div
             key={s.labelKey}
-            className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3"
+            className="bg-card border border-border rounded-xl p-4 sm:p-5 flex flex-col gap-3"
           >
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -131,8 +131,8 @@ const AdminDashboard = () => {
       </div>
 
       {/* ── Grafice ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-foreground">
               {t("admin.revenueByMonth")}
@@ -141,7 +141,7 @@ const AdminDashboard = () => {
               Ultimele 6 luni
             </p>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={250}>
             <LineChart
               data={revenueByMonth}
               margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
@@ -175,7 +175,7 @@ const AdminDashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-foreground">
               {t("admin.occupancyPerRoom")}
@@ -184,7 +184,7 @@ const AdminDashboard = () => {
               Ocupare medie (%)
             </p>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={250}>
             <BarChart
               data={occupancyByRoom}
               margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
@@ -221,7 +221,7 @@ const AdminDashboard = () => {
       {/* ── Tabel rezervări recente ── */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {/* Header tabel */}
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-4 sm:px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
               {t("admin.recentBookings")}
@@ -242,22 +242,22 @@ const AdminDashboard = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
-                <th className="text-left   px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[25%]">
+                <th className="text-left   px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[25%]">
                   {t("admin.guest")}
                 </th>
-                <th className="text-center px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%] hidden md:table-cell">
+                <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%] hidden md:table-cell">
                   {t("admin.room")}
                 </th>
-                <th className="text-center px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[15%] hidden sm:table-cell">
+                <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[15%] hidden sm:table-cell">
                   {t("admin.checkIn")}
                 </th>
-                <th className="text-center px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[15%] hidden sm:table-cell">
+                <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[15%] hidden sm:table-cell">
                   {t("admin.checkOut")}
                 </th>
-                <th className="text-center px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[12%]">
+                <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[12%]">
                   {t("admin.total")}
                 </th>
-                <th className="text-center px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%]">
+                <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%]">
                   {t("admin.status")}
                 </th>
               </tr>
@@ -275,32 +275,32 @@ const AdminDashboard = () => {
                     className="hover:bg-muted/20 transition-colors"
                   >
                     {/* Oaspete — aliniat stânga */}
-                    <td className="px-5 py-3.5 text-left">
+                    <td className="px-4 sm:px-5 py-3.5 text-left">
                       <p className="text-sm font-medium text-foreground">
                         {b.guest}
                       </p>
                       <p className="text-xs text-muted-foreground">{b.email}</p>
                     </td>
                     {/* Cameră — centrat */}
-                    <td className="px-5 py-3.5 text-center text-sm text-muted-foreground hidden md:table-cell">
+                    <td className="px-4 sm:px-5 py-3.5 text-center text-sm text-muted-foreground hidden md:table-cell">
                       {b.room}
                     </td>
                     {/* Check-in — centrat */}
-                    <td className="px-5 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
+                    <td className="px-4 sm:px-5 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
                       {b.checkIn}
                     </td>
                     {/* Check-out — centrat */}
-                    <td className="px-5 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
+                    <td className="px-4 sm:px-5 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
                       {b.checkOut}
                     </td>
                     {/* Total — centrat */}
-                    <td className="px-5 py-3.5 text-center">
+                    <td className="px-4 sm:px-5 py-3.5 text-center">
                       <span className="text-sm font-semibold text-foreground">
                         €{b.total}
                       </span>
                     </td>
                     {/* Status — centrat */}
-                    <td className="px-5 py-3.5 text-center">
+                    <td className="px-4 sm:px-5 py-3.5 text-center">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
                       >

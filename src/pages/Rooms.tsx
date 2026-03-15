@@ -11,24 +11,45 @@ const Rooms = () => {
   const [capacity, setCapacity] = useState(0);
 
   const filtered = rooms.filter(
-    (r) => r.price <= maxPrice && (capacity === 0 || r.capacity >= capacity)
+    (r) => r.price <= maxPrice && (capacity === 0 || r.capacity >= capacity),
   );
 
   return (
     <div className="pt-24 pb-20 px-4">
       <div className="container mx-auto max-w-6xl">
-        <h1 className="font-heading text-4xl md:text-5xl text-center mb-4">{t("roomsPage.title")}</h1>
-        <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto">{t("roomsPage.subtitle")}</p>
+        <h1 className="font-heading text-4xl md:text-5xl text-center mb-4">
+          {t("roomsPage.title")}
+        </h1>
+        <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto">
+          {t("roomsPage.subtitle")}
+        </p>
 
-        <div className="flex flex-wrap gap-6 items-end mb-12 bg-card border border-border rounded-lg p-6">
-          <div className="flex flex-col gap-1">
-    <label className="text-xs uppercase tracking-wider text-muted-foreground">{t("roomsPage.maxPrice")}</label>
-            <input type="range" min={50} max={500} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} className="w-40 accent-primary" />
-            <span className="text-sm text-foreground">{t("roomsPage.upTo", { price: maxPrice })} RON</span>
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-6 items-start sm:items-end mb-12 bg-card border border-border rounded-lg p-4 sm:p-6">
+          <div className="flex flex-col gap-1 min-w-0 flex-1 sm:flex-initial">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              {t("roomsPage.maxPrice")}
+            </label>
+            <input
+              type="range"
+              min={50}
+              max={500}
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+            <span className="text-sm text-foreground">
+              {t("roomsPage.upTo", { price: maxPrice })} RON
+            </span>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">{t("roomsPage.minGuests")}</label>
-            <select value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="bg-muted border border-border rounded-md px-3 py-2 text-sm text-foreground">
+          <div className="flex flex-col gap-1 min-w-0">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              {t("roomsPage.minGuests")}
+            </label>
+            <select
+              value={capacity}
+              onChange={(e) => setCapacity(Number(e.target.value))}
+              className="bg-muted border border-border rounded-md px-3 py-2 text-sm text-foreground min-w-[120px]"
+            >
               <option value={0}>{t("roomsPage.any")}</option>
               <option value={1}>1+</option>
               <option value={2}>2+</option>
@@ -39,26 +60,46 @@ const Rooms = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filtered.map((room) => (
-            <div key={room.id} className="bg-card rounded-lg overflow-hidden border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col">
-              <img src={room.image} alt={room.name} className="w-full h-56 object-cover" />
+            <div
+              key={room.id}
+              className="bg-card rounded-lg overflow-hidden border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col"
+            >
+              <img
+                src={room.image}
+                alt={room.name}
+                className="w-full h-56 object-cover"
+              />
               <div className="p-6 flex flex-col flex-1">
                 <h3 className="font-heading text-xl mb-2">{room.name}</h3>
-                <p className="text-muted-foreground text-sm mb-3 flex-1">{room.shortDescription}</p>
+                <p className="text-muted-foreground text-sm mb-3 flex-1">
+                  {room.shortDescription}
+                </p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                   <Users size={14} />
-                  <span>{t("roomsPage.upToGuests", { count: room.capacity })}</span>
+                  <span>
+                    {t("roomsPage.upToGuests", { count: room.capacity })}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-heading text-lg text-accent">{room.price} RON<span className="text-sm text-muted-foreground font-body">{t("ourRooms.perNight")}</span></span>
+                  <span className="font-heading text-lg text-accent">
+                    {room.price} RON
+                    <span className="text-sm text-muted-foreground font-body">
+                      {t("ourRooms.perNight")}
+                    </span>
+                  </span>
                   <Button size="sm" asChild>
-                    <Link to={`/rooms/${room.id}`}>{t("ourRooms.viewRoom")}</Link>
+                    <Link to={`/rooms/${room.id}`}>
+                      {t("ourRooms.viewRoom")}
+                    </Link>
                   </Button>
                 </div>
               </div>
             </div>
           ))}
           {filtered.length === 0 && (
-            <p className="col-span-full text-center text-muted-foreground py-12">{t("roomsPage.noResults")}</p>
+            <p className="col-span-full text-center text-muted-foreground py-12">
+              {t("roomsPage.noResults")}
+            </p>
           )}
         </div>
       </div>
