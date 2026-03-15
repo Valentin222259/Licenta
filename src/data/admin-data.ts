@@ -24,7 +24,7 @@ export const revenueByMonth = [
   { month: "Oct", revenue: 4200 },
   { month: "Nov", revenue: 5800 },
   { month: "Dec", revenue: 8200 },
-  { month: "Jan", revenue: 6100 },
+  { month: "Ian", revenue: 6100 },
   { month: "Feb", revenue: 7400 },
   { month: "Mar", revenue: 9200 },
 ];
@@ -36,10 +36,11 @@ export const occupancyByRoom = [
 ];
 
 export const bookingSources = [
-  { source: "Website", value: 45 },
-  { source: "Booking.com", value: 28 },
-  { source: "Airbnb", value: 18 },
-  { source: "Direct", value: 9 },
+  { source: "Website",     value: 40 },
+  { source: "Booking.com", value: 25 },
+  { source: "Travelminit", value: 16 },
+  { source: "TuristInfo",  value:  9 },
+  { source: "Direct",      value: 10 },
 ];
 
 export const adminRooms = [

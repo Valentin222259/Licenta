@@ -17,9 +17,9 @@ import {
   CartesianGrid,
   LineChart,
   Line,
+  TooltipProps,
 } from "recharts";
 import { bookings, revenueByMonth, occupancyByRoom } from "@/data/admin-data";
-import { useTranslation } from "react-i18next";
 
 const statusStyle: Record<string, { bg: string; text: string; dot: string }> = {
   confirmed: {
@@ -31,19 +31,23 @@ const statusStyle: Record<string, { bg: string; text: string; dot: string }> = {
   cancelled: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
 };
 
-const getStatusLabel = (status: string, t: (key: string) => string): string => {
-  if (status === "confirmed") return t("admin.confirmed");
-  if (status === "pending") return t("admin.pending");
-  return t("admin.cancelled");
+const statusLabel: Record<string, string> = {
+  confirmed: "Confirmat",
+  pending: "În așteptare",
+  cancelled: "Anulat",
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: TooltipProps<number, string>) => {
+  if (active && payload?.length) {
     return (
       <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-md text-xs">
         <p className="font-medium text-foreground mb-1">{label}</p>
         <p className="text-primary font-semibold">
-          {payload[0].value.toLocaleString()}
+          {payload[0]?.value?.toLocaleString()}
         </p>
       </div>
     );
@@ -52,11 +56,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const AdminDashboard = () => {
-  const { t } = useTranslation();
-
   const stats = [
     {
-      labelKey: "admin.totalRevenue",
+      label: "Venit Total",
       value: "41.900 RON",
       icon: DollarSign,
       change: "+12%",
@@ -64,7 +66,7 @@ const AdminDashboard = () => {
       desc: "față de luna trecută",
     },
     {
-      labelKey: "admin.occupancyRate",
+      label: "Rata de Ocupare",
       value: "75%",
       icon: BedDouble,
       change: "+5%",
@@ -72,7 +74,7 @@ const AdminDashboard = () => {
       desc: "față de luna trecută",
     },
     {
-      labelKey: "admin.bookingsThisMonth",
+      label: "Rezervări Luna Aceasta",
       value: "14",
       icon: CalendarCheck,
       change: "+3",
@@ -80,7 +82,7 @@ const AdminDashboard = () => {
       desc: "față de luna trecută",
     },
     {
-      labelKey: "admin.pendingBookings",
+      label: "Rezervări în Așteptare",
       value: String(bookings.filter((b) => b.status === "pending").length),
       icon: Clock,
       change: null,
@@ -91,16 +93,15 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-5">
-      {/* ── Carduri statistici ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {stats.map((s) => (
           <div
-            key={s.labelKey}
+            key={s.label}
             className="bg-card border border-border rounded-xl p-4 sm:p-5 flex flex-col gap-3"
           >
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t(s.labelKey)}
+                {s.label}
               </p>
               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <s.icon size={17} className="text-primary" />
@@ -130,12 +131,11 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      {/* ── Grafice ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-foreground">
-              {t("admin.revenueByMonth")}
+              Venit pe Lună
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Ultimele 6 luni
@@ -178,7 +178,7 @@ const AdminDashboard = () => {
         <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-foreground">
-              {t("admin.occupancyPerRoom")}
+              Ocupare pe Cameră
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Ocupare medie (%)
@@ -218,13 +218,11 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* ── Tabel rezervări recente ── */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        {/* Header tabel */}
         <div className="px-4 sm:px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              {t("admin.recentBookings")}
+              Rezervări Recente
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Ultimele 5 rezervări
@@ -237,28 +235,27 @@ const AdminDashboard = () => {
             Vezi toate →
           </Link>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
                 <th className="text-left   px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[25%]">
-                  {t("admin.guest")}
+                  Oaspete
                 </th>
                 <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[20%] hidden md:table-cell">
-                  {t("admin.room")}
+                  Cameră
                 </th>
                 <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[15%] hidden sm:table-cell">
-                  {t("admin.checkIn")}
+                  Check-in
                 </th>
                 <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[15%] hidden sm:table-cell">
-                  {t("admin.checkOut")}
+                  Check-out
                 </th>
                 <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[12%]">
-                  {t("admin.total")}
+                  Total
                 </th>
                 <th className="text-center px-4 sm:px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[13%]">
-                  {t("admin.status")}
+                  Status
                 </th>
               </tr>
             </thead>
@@ -274,32 +271,26 @@ const AdminDashboard = () => {
                     key={b.id}
                     className="hover:bg-muted/20 transition-colors"
                   >
-                    {/* Oaspete — aliniat stânga */}
                     <td className="px-4 sm:px-5 py-3.5 text-left">
                       <p className="text-sm font-medium text-foreground">
                         {b.guest}
                       </p>
                       <p className="text-xs text-muted-foreground">{b.email}</p>
                     </td>
-                    {/* Cameră — centrat */}
                     <td className="px-4 sm:px-5 py-3.5 text-center text-sm text-muted-foreground hidden md:table-cell">
                       {b.room}
                     </td>
-                    {/* Check-in — centrat */}
                     <td className="px-4 sm:px-5 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
                       {b.checkIn}
                     </td>
-                    {/* Check-out — centrat */}
                     <td className="px-4 sm:px-5 py-3.5 text-center text-sm text-muted-foreground hidden sm:table-cell">
                       {b.checkOut}
                     </td>
-                    {/* Total — centrat */}
                     <td className="px-4 sm:px-5 py-3.5 text-center">
                       <span className="text-sm font-semibold text-foreground">
                         €{b.total}
                       </span>
                     </td>
-                    {/* Status — centrat */}
                     <td className="px-4 sm:px-5 py-3.5 text-center">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
@@ -307,7 +298,7 @@ const AdminDashboard = () => {
                         <span
                           className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`}
                         />
-                        {getStatusLabel(b.status, t)}
+                        {statusLabel[b.status] ?? b.status}
                       </span>
                     </td>
                   </tr>
