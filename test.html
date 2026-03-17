@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Extract Buletin</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      button {
+        background: #2563eb;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      pre {
+        background: #f1f5f9;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin-top: 20px;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>🪪 Test Scanare Buletin</h2>
+
+    <input
+      type="file"
+      id="fileInput"
+      accept="image/jpeg,image/png,image/webp"
+    />
+    <br /><br />
+    <button onclick="testExtract()">Trimite la API</button>
+
+    <div id="result"></div>
+
+    <script>
+      async function testExtract() {
+        const file = document.getElementById("fileInput").files[0];
+        if (!file) {
+          alert("Selectează o imagine mai întâi!");
+          return;
+        }
+
+        document.getElementById("result").innerHTML =
+          "<p>⏳ Se procesează...</p>";
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const response = await fetch("http://localhost:3001/api/extract", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            document.getElementById("result").innerHTML = `
+            <p class="success">✅ Succes!</p>
+            <pre>${JSON.stringify(data.data, null, 2)}</pre>
+          `;
+          } else {
+            document.getElementById("result").innerHTML = `
+            <p class="error">❌ Eroare: ${data.error}</p>
+          `;
+          }
+        } catch (err) {
+          document.getElementById("result").innerHTML = `
+          <p class="error">❌ Nu s-a putut conecta la server: ${err.message}</p>
+        `;
+        }
+      }
+    </script>
+  </body>
+</html>
