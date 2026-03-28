@@ -17,6 +17,7 @@ const extractRouter = require("./routes/extract");
 const roomsRouter = require("./routes/rooms");
 const bookingsRouter = require("./routes/bookings");
 const imagesRouter = require("./routes/images");
+const authRouter = require("./routes/auth");
 
 const app = express();
 
@@ -91,6 +92,8 @@ app.use("/api/bookings", bookingsRouter);
 
 // /api/images   — upload/delete imagini (S3 + PostgreSQL pentru URL-uri)
 app.use("/api/images", imagesRouter);
+
+app.use("/api/auth", authRouter);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GESTIONARE ERORI

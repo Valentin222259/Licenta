@@ -1,18 +1,39 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { rooms } from "@/data/rooms";
-import { Users } from "lucide-react";
+import { Users, Loader2, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useRooms } from "@/lib/hooks";
+import roomPlaceholder from "@/assets/hero-mountains.jpg";
 
 const Rooms = () => {
   const { t } = useTranslation();
+  const { rooms, loading, error } = useRooms();
   const [maxPrice, setMaxPrice] = useState(500);
   const [capacity, setCapacity] = useState(0);
 
   const filtered = rooms.filter(
     (r) => r.price <= maxPrice && (capacity === 0 || r.capacity >= capacity),
   );
+
+  if (loading) {
+    return (
+      <div className="pt-24 pb-20 flex items-center justify-center min-h-screen">
+        <Loader2 size={32} className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="pt-24 pb-20 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertCircle size={32} className="text-destructive mx-auto mb-3" />
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 pb-20 px-4">
@@ -24,6 +45,7 @@ const Rooms = () => {
           {t("roomsPage.subtitle")}
         </p>
 
+        {/* Filtre */}
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-6 items-start sm:items-end mb-12 bg-card border border-border rounded-lg p-4 sm:p-6">
           <div className="flex flex-col gap-1 min-w-0 flex-1 sm:flex-initial">
             <label className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -58,6 +80,7 @@ const Rooms = () => {
           </div>
         </div>
 
+        {/* Grid camere */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filtered.map((room) => (
             <div
@@ -65,14 +88,14 @@ const Rooms = () => {
               className="bg-card rounded-lg overflow-hidden border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col"
             >
               <img
-                src={room.image}
+                src={room.primary_image || roomPlaceholder}
                 alt={room.name}
                 className="w-full h-56 object-cover"
               />
               <div className="p-6 flex flex-col flex-1">
                 <h3 className="font-heading text-xl mb-2">{room.name}</h3>
                 <p className="text-muted-foreground text-sm mb-3 flex-1">
-                  {room.shortDescription}
+                  {room.short_description}
                 </p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                   <Users size={14} />
@@ -88,7 +111,7 @@ const Rooms = () => {
                     </span>
                   </span>
                   <Button size="sm" asChild>
-                    <Link to={`/rooms/${room.id}`}>
+                    <Link to={`/rooms/${room.slug}`}>
                       {t("ourRooms.viewRoom")}
                     </Link>
                   </Button>
