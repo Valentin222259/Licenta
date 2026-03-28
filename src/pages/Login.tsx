@@ -4,6 +4,18 @@ import { Button } from "@/components/ui/button";
 import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { apiPost } from "@/lib/api";
+
+interface AuthResponse {
+  success: boolean;
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: "client" | "admin";
+  };
+}
 
 const GoogleIcon = () => (
   <svg
@@ -30,35 +42,13 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const AppleIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    className="w-5 h-5 fill-foreground"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-  </svg>
-);
-
-const FacebookIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    className="w-5 h-5"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
-      fill="#1877F2"
-    />
-  </svg>
-);
-
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({
@@ -70,64 +60,94 @@ const Login = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateLogin = () => {
-    const e: Record<string, string> = {};
-    if (!loginForm.email) e.email = t("loginPage.emailRequired");
-    if (!loginForm.password) e.password = t("loginPage.passwordRequired");
-    return e;
+  // ─── Login ────────────────────────────────────────────────────────────────
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs: Record<string, string> = {};
+    if (!loginForm.email) errs.email = t("loginPage.emailRequired");
+    if (!loginForm.password) errs.password = t("loginPage.passwordRequired");
+    if (Object.keys(errs).length > 0) return setErrors(errs);
+    setErrors({});
+    setLoading(true);
+
+    try {
+      const res = await apiPost<AuthResponse>("/api/auth/login", {
+        email: loginForm.email,
+        password: loginForm.password,
+      });
+
+      // Salvează token și date user
+      sessionStorage.setItem("token", res.token);
+      sessionStorage.setItem("userId", res.user.id);
+      sessionStorage.setItem("userEmail", res.user.email);
+      sessionStorage.setItem("clientName", res.user.name);
+
+      if (res.user.role === "admin") {
+        sessionStorage.setItem("isAdmin", "true");
+        navigate("/admin");
+      } else {
+        sessionStorage.setItem("isClient", "true");
+        navigate("/account");
+      }
+    } catch (err) {
+      setErrors({
+        general:
+          err instanceof Error
+            ? err.message
+            : t("loginPage.invalidCredentials"),
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const validateRegister = () => {
-    const e: Record<string, string> = {};
-    if (!registerForm.name.trim()) e.name = t("loginPage.nameRequired");
-    if (!registerForm.email) e.email = t("loginPage.emailRequired");
-    if (!registerForm.phone) e.phone = t("loginPage.phoneRequired");
+  // ─── Register ─────────────────────────────────────────────────────────────
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs: Record<string, string> = {};
+    if (!registerForm.name.trim()) errs.name = t("loginPage.nameRequired");
+    if (!registerForm.email) errs.email = t("loginPage.emailRequired");
+    if (!registerForm.phone) errs.phone = t("loginPage.phoneRequired");
     if (registerForm.password.length < 6)
-      e.password = t("loginPage.passwordTooShort");
+      errs.password = t("loginPage.passwordTooShort");
     if (registerForm.password !== registerForm.confirm)
-      e.confirm = t("loginPage.passwordMismatch");
-    return e;
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validateLogin();
+      errs.confirm = t("loginPage.passwordMismatch");
     if (Object.keys(errs).length > 0) return setErrors(errs);
     setErrors({});
-    // TODO: înlocuit cu backend real
-    sessionStorage.setItem("isClient", "true");
-    sessionStorage.setItem("clientName", loginForm.email.split("@")[0]);
-    navigate("/account");
-  };
+    setLoading(true);
 
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validateRegister();
-    if (Object.keys(errs).length > 0) return setErrors(errs);
-    setErrors({});
-    // TODO: înlocuit cu backend real
-    sessionStorage.setItem("isClient", "true");
-    sessionStorage.setItem("clientName", registerForm.name.split(" ")[0]);
-    navigate("/account");
-  };
+    try {
+      const res = await apiPost<AuthResponse>("/api/auth/register", {
+        name: registerForm.name,
+        email: registerForm.email,
+        phone: registerForm.phone,
+        password: registerForm.password,
+      });
 
-  const handleOAuth = (provider: string) => {
-    toast({
-      title: `${provider} Login`,
-      description: t("loginPage.oauthComingSoon"),
-    });
+      sessionStorage.setItem("token", res.token);
+      sessionStorage.setItem("userId", res.user.id);
+      sessionStorage.setItem("userEmail", res.user.email);
+      sessionStorage.setItem("clientName", res.user.name);
+      sessionStorage.setItem("isClient", "true");
+
+      toast({
+        title: "Cont creat cu succes!",
+        description: `Bun venit, ${res.user.name}!`,
+      });
+      navigate("/account");
+    } catch (err) {
+      setErrors({
+        general: err instanceof Error ? err.message : "Eroare la înregistrare",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputCls = (field: string) =>
     `w-full bg-muted border rounded-md pl-10 pr-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring transition-colors ${
       errors[field] ? "border-destructive" : "border-border"
     }`;
-
-  const oauthProviders = [
-    { name: "Google", icon: <GoogleIcon /> },
-    { name: "Apple", icon: <AppleIcon /> },
-    { name: "Facebook", icon: <FacebookIcon /> },
-  ];
 
   return (
     <div className="pt-24 pb-20 px-4 min-h-screen flex items-center justify-center">
@@ -143,18 +163,20 @@ const Login = () => {
           </p>
         </div>
 
-        {/* OAuth Buttons */}
+        {/* OAuth — doar UI, fără funcționalitate */}
         <div className="space-y-2.5 mb-6">
-          {oauthProviders.map((p) => (
-            <button
-              key={p.name}
-              onClick={() => handleOAuth(p.name)}
-              className="w-full flex items-center justify-center gap-3 bg-card border border-border rounded-md py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              {p.icon}
-              {t("loginPage.continueWith")} {p.name}
-            </button>
-          ))}
+          <button
+            onClick={() =>
+              toast({
+                title: "Google Login",
+                description: t("loginPage.oauthComingSoon"),
+              })
+            }
+            className="w-full flex items-center justify-center gap-3 bg-card border border-border rounded-md py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            <GoogleIcon />
+            {t("loginPage.continueWith")} Google
+          </button>
         </div>
 
         {/* Separator */}
@@ -168,35 +190,34 @@ const Login = () => {
 
         {/* Tabs */}
         <div className="flex bg-muted rounded-lg p-1 mb-6">
-          <button
-            onClick={() => {
-              setTab("login");
-              setErrors({});
-            }}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-              tab === "login"
-                ? "bg-card shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t("loginPage.loginTab")}
-          </button>
-          <button
-            onClick={() => {
-              setTab("register");
-              setErrors({});
-            }}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-              tab === "register"
-                ? "bg-card shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t("loginPage.registerTab")}
-          </button>
+          {(["login", "register"] as const).map((t_) => (
+            <button
+              key={t_}
+              onClick={() => {
+                setTab(t_);
+                setErrors({});
+              }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+                tab === t_
+                  ? "bg-card shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t_ === "login"
+                ? t("loginPage.loginTab")
+                : t("loginPage.registerTab")}
+            </button>
+          ))}
         </div>
 
-        {/* Login Form */}
+        {/* Eroare generală */}
+        {errors.general && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3 mb-4">
+            <p className="text-sm text-destructive">{errors.general}</p>
+          </div>
+        )}
+
+        {/* ─── LOGIN FORM ─────────────────────────────────────────────────── */}
         {tab === "login" && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -256,23 +277,13 @@ const Login = () => {
               )}
             </div>
 
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  toast({
-                    title: t("loginPage.forgotToast"),
-                    description: t("loginPage.forgotToastDesc"),
-                  })
-                }
-                className="text-xs text-primary hover:underline"
-              >
-                {t("loginPage.forgotPassword")}
-              </button>
-            </div>
-
-            <Button type="submit" variant="hero" className="w-full">
-              {t("loginPage.signIn")}
+            <Button
+              type="submit"
+              variant="hero"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? "Se autentifică..." : t("loginPage.signIn")}
             </Button>
 
             <p className="text-center text-xs text-muted-foreground pt-2">
@@ -291,80 +302,61 @@ const Login = () => {
           </form>
         )}
 
-        {/* Register Form */}
+        {/* ─── REGISTER FORM ──────────────────────────────────────────────── */}
         {tab === "register" && (
           <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                {t("booking.fullName")}
-              </label>
-              <div className="relative">
-                <User
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-                <input
-                  type="text"
-                  value={registerForm.name}
-                  onChange={(e) =>
-                    setRegisterForm({ ...registerForm, name: e.target.value })
-                  }
-                  placeholder="Ion Popescu"
-                  className={inputCls("name")}
-                />
+            {[
+              {
+                field: "name",
+                label: t("booking.fullName"),
+                type: "text",
+                icon: User,
+                placeholder: "Ion Popescu",
+              },
+              {
+                field: "email",
+                label: t("loginPage.emailLabel"),
+                type: "email",
+                icon: Mail,
+                placeholder: "you@example.com",
+              },
+              {
+                field: "phone",
+                label: t("booking.phone"),
+                type: "tel",
+                icon: Phone,
+                placeholder: "+40 7xx xxx xxx",
+              },
+            ].map(({ field, label, type, icon: Icon, placeholder }) => (
+              <div key={field}>
+                <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                  {label}
+                </label>
+                <div className="relative">
+                  <Icon
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <input
+                    type={type}
+                    value={(registerForm as any)[field]}
+                    onChange={(e) =>
+                      setRegisterForm({
+                        ...registerForm,
+                        [field]: e.target.value,
+                      })
+                    }
+                    placeholder={placeholder}
+                    className={inputCls(field)}
+                  />
+                </div>
+                {errors[field] && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors[field]}
+                  </p>
+                )}
               </div>
-              {errors.name && (
-                <p className="text-xs text-destructive mt-1">{errors.name}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                {t("loginPage.emailLabel")}
-              </label>
-              <div className="relative">
-                <Mail
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-                <input
-                  type="email"
-                  value={registerForm.email}
-                  onChange={(e) =>
-                    setRegisterForm({ ...registerForm, email: e.target.value })
-                  }
-                  placeholder="you@example.com"
-                  className={inputCls("email")}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-xs text-destructive mt-1">{errors.email}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                {t("booking.phone")}
-              </label>
-              <div className="relative">
-                <Phone
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-                <input
-                  type="tel"
-                  value={registerForm.phone}
-                  onChange={(e) =>
-                    setRegisterForm({ ...registerForm, phone: e.target.value })
-                  }
-                  placeholder="+40 7xx xxx xxx"
-                  className={inputCls("phone")}
-                />
-              </div>
-              {errors.phone && (
-                <p className="text-xs text-destructive mt-1">{errors.phone}</p>
-              )}
-            </div>
+            ))}
 
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
@@ -390,7 +382,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -426,7 +418,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 >
                   {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -438,8 +430,13 @@ const Login = () => {
               )}
             </div>
 
-            <Button type="submit" variant="hero" className="w-full mt-2">
-              {t("loginPage.createAccount")}
+            <Button
+              type="submit"
+              variant="hero"
+              className="w-full mt-2"
+              disabled={loading}
+            >
+              {loading ? "Se creează contul..." : t("loginPage.createAccount")}
             </Button>
 
             <p className="text-center text-xs text-muted-foreground pt-2">

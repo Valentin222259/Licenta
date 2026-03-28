@@ -1,55 +1,78 @@
-import { useState } from "react";
-import { adminRooms } from "@/data/admin-data";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import roomDeluxe from "@/assets/room-deluxe.jpg";
-import roomSuite from "@/assets/room-suite.jpg";
-import roomStandard from "@/assets/room-standard.jpg";
-
-const imageMap: Record<string, string> = {
-  "room-deluxe": roomDeluxe,
-  "room-suite": roomSuite,
-  "room-standard": roomStandard,
-};
+import { apiGet, apiPost } from "@/lib/api";
+import type { ApiResponse, Room } from "@/lib/types";
+import heroImage from "@/assets/hero-mountains.jpg";
 
 const statusLabel: Record<string, string> = {
   active: "activă",
   inactive: "inactivă",
+  maintenance: "mentenanță",
 };
 
 const AdminRooms = () => {
-  const [rooms, setRooms] = useState<
-    {
-      id: string;
-      name: string;
-      price: number;
-      status: "active" | "inactive";
-      image: string;
-    }[]
-  >(adminRooms);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const toggleStatus = (id: string) => {
-    setRooms((r) =>
-      r.map((room) =>
-        room.id === id
-          ? {
-              ...room,
-              status:
-                room.status === "active"
-                  ? ("inactive" as const)
-                  : ("active" as const),
-            }
-          : room,
-      ),
+  const fetchRooms = async () => {
+    setLoading(true);
+    try {
+      const res = await apiGet<ApiResponse<Room[]>>("/api/rooms/admin");
+      setRooms(res.data);
+    } catch (err) {
+      console.error("Eroare la încărcarea camerelor:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRooms();
+  }, []);
+
+  const toggleStatus = async (room: Room) => {
+    const newStatus = room.status === "active" ? "inactive" : "active";
+    try {
+      await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/rooms/${room.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        },
+      );
+      await fetchRooms();
+      toast({ title: `Camera setată ca ${statusLabel[newStatus]}` });
+    } catch {
+      toast({
+        title: "Eroare la actualizarea statusului",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteRoom = async (id: string) => {
+    try {
+      await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/rooms/${id}`,
+        { method: "DELETE" },
+      );
+      await fetchRooms();
+      toast({ title: "Cameră dezactivată" });
+    } catch {
+      toast({ title: "Eroare la ștergere", variant: "destructive" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={28} className="animate-spin text-primary" />
+      </div>
     );
-    toast({ title: "Statusul camerei actualizat" });
-  };
-
-  const deleteRoom = (id: string) => {
-    setRooms((r) => r.filter((room) => room.id !== id));
-    toast({ title: "Cameră ștearsă" });
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -73,26 +96,33 @@ const AdminRooms = () => {
             className="bg-card border border-border rounded-lg overflow-hidden"
           >
             <img
-              src={imageMap[room.image]}
+              src={room.primary_image || heroImage}
               alt={room.name}
               className="w-full h-40 object-cover"
             />
             <div className="p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-heading text-base">{room.name}</h3>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="font-heading text-base truncate">
+                    {room.name}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     {room.price} RON/noapte
                   </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    👥 {room.capacity}{" "}
+                    {room.capacity === 1 ? "persoană" : "persoane"}
+                    {room.image_count > 0 && ` · 📷 ${room.image_count} poze`}
+                  </p>
                 </div>
                 <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                  className={`shrink-0 px-2 py-1 rounded-full text-xs font-medium ${
                     room.status === "active"
                       ? "bg-emerald-100 text-emerald-700"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {statusLabel[room.status]}
+                  {statusLabel[room.status] || room.status}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -100,10 +130,10 @@ const AdminRooms = () => {
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => toggleStatus(room.id)}
+                  onClick={() => toggleStatus(room)}
                 >
                   <Pencil size={14} />
-                  Editează
+                  {room.status === "active" ? "Dezactivează" : "Activează"}
                 </Button>
                 <Button
                   size="sm"

@@ -12,53 +12,27 @@ import {
   Edit2,
   Save,
   X,
+  Loader2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useMyBookings } from "@/lib/hooks";
+import { apiGet } from "@/lib/api";
+import type { ApiResponse, User as UserType } from "@/lib/types";
 
 type BookingStatus = "confirmed" | "pending" | "completed" | "cancelled";
 
-interface Booking {
-  id: string;
-  room: string;
-  checkIn: string;
-  checkOut: string;
-  nights: number;
-  total: number;
-  status: BookingStatus;
-}
-
-const mockBookings: Booking[] = [
+const statusConfig: Record<
+  BookingStatus,
   {
-    id: "RZ-2024-001",
-    room: "Camera 2 — Balcon & Belvedere",
-    checkIn: "2026-05-10",
-    checkOut: "2026-05-13",
-    nights: 3,
-    total: 750,
-    status: "confirmed",
-  },
-  {
-    id: "RZ-2024-002",
-    room: "Camera 5 — Suite cu Cadă",
-    checkIn: "2026-06-20",
-    checkOut: "2026-06-22",
-    nights: 2,
-    total: 600,
-    status: "pending",
-  },
-  {
-    id: "RZ-2023-018",
-    room: "Camera 1 — Comfort",
-    checkIn: "2025-12-26",
-    checkOut: "2025-12-29",
-    nights: 3,
-    total: 750,
-    status: "completed",
-  },
-];
-
-const statusConfig = {
+    label: string;
+    bg: string;
+    text: string;
+    border: string;
+    dot: string;
+    icon: any;
+  }
+> = {
   confirmed: {
     label: "Confirmat",
     bg: "bg-emerald-50",
@@ -100,23 +74,44 @@ const Account = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabType>("bookings");
   const [editMode, setEditMode] = useState(false);
-  const clientName = sessionStorage.getItem("clientName") || "Oaspete";
+
+  const userEmail = sessionStorage.getItem("userEmail");
+  const { bookings, loading: bookingsLoading } = useMyBookings(userEmail);
 
   const [profile, setProfile] = useState({
-    name: clientName,
-    email: "",
+    name: sessionStorage.getItem("clientName") || "",
+    email: userEmail || "",
     phone: "",
   });
   const [profileDraft, setProfileDraft] = useState(profile);
 
+  // Încarcă datele reale ale userului
   useEffect(() => {
     const isClient = sessionStorage.getItem("isClient") === "true";
-    if (!isClient) navigate("/login");
+    if (!isClient) {
+      navigate("/login");
+      return;
+    }
+
+    const token = sessionStorage.getItem("token");
+    if (token) {
+      apiGet<ApiResponse<UserType>>("/api/auth/me")
+        .then((res) => {
+          const u = res.user;
+          const p = {
+            name: u.name,
+            email: u.email,
+            phone: u.phone || "",
+          };
+          setProfile(p);
+          setProfileDraft(p);
+        })
+        .catch(() => {});
+    }
   }, [navigate]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("isClient");
-    sessionStorage.removeItem("clientName");
+    sessionStorage.clear();
     navigate("/");
     toast({ title: t("account.loggedOut") });
   };
@@ -134,24 +129,29 @@ const Account = () => {
     });
   };
 
-  const upcomingBookings = mockBookings.filter(
-    (b) => b.status === "confirmed" || b.status === "pending",
+  const today = new Date().toISOString().split("T")[0];
+  const upcomingBookings = bookings.filter(
+    (b) =>
+      (b.status === "confirmed" || b.status === "pending") &&
+      b.check_out >= today,
   );
-  const pastBookings = mockBookings.filter(
-    (b) => b.status === "completed" || b.status === "cancelled",
+  const pastBookings = bookings.filter(
+    (b) =>
+      b.status === "completed" ||
+      b.status === "cancelled" ||
+      b.check_out < today,
   );
 
-  const BookingCard = ({ b, past = false }: { b: Booking; past?: boolean }) => {
-    const cfg = statusConfig[b.status];
+  const BookingCard = ({ b, past = false }: { b: any; past?: boolean }) => {
+    const cfg = statusConfig[b.status as BookingStatus] || statusConfig.pending;
     return (
       <div
         className={`bg-card border border-border rounded-xl overflow-hidden transition-all ${past ? "opacity-70 hover:opacity-100" : "hover:shadow-sm"}`}
       >
-        {/* Rândul 1: nume cameră + status + preț */}
         <div className="flex items-center gap-3 px-5 py-3.5">
           <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
             <span className="font-heading text-sm font-semibold text-foreground">
-              {b.room}
+              {b.room_name}
             </span>
             <span
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.text} ${cfg.border}`}
@@ -165,22 +165,20 @@ const Account = () => {
           <span
             className={`shrink-0 font-heading text-base font-bold ${past ? "text-muted-foreground" : "text-accent"}`}
           >
-            {b.total} RON
+            {b.total_price} RON
           </span>
         </div>
-
-        {/* Separator */}
         <div className="mx-5 h-px bg-border/60" />
-
-        {/* Rândul 2: date + id + acțiune */}
         <div className="flex items-center justify-between gap-3 px-5 py-3">
           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
             <span>
-              <span className="font-medium">Check-in:</span> {b.checkIn}
+              <span className="font-medium">Check-in:</span>{" "}
+              {b.check_in?.split("T")[0] || b.check_in}
             </span>
             <span className="text-border">|</span>
             <span>
-              <span className="font-medium">Check-out:</span> {b.checkOut}
+              <span className="font-medium">Check-out:</span>{" "}
+              {b.check_out?.split("T")[0] || b.check_out}
             </span>
             <span className="text-border">|</span>
             <span>
@@ -188,12 +186,12 @@ const Account = () => {
             </span>
             <span className="text-border hidden sm:inline">|</span>
             <span className="text-muted-foreground/50 hidden sm:inline">
-              #{b.id}
+              #{b.booking_ref}
             </span>
           </div>
           {!past ? (
             <button
-              onClick={() => handleCancelBooking(b.id)}
+              onClick={() => handleCancelBooking(b.booking_ref)}
               className="shrink-0 text-xs text-muted-foreground hover:text-destructive transition-colors"
             >
               {t("account.cancel")}
@@ -205,7 +203,9 @@ const Account = () => {
               className="shrink-0 h-7 text-xs px-3"
               asChild
             >
-              <Link to="/booking">{t("account.bookAgain")}</Link>
+              <Link to={`/booking?room=${b.room_slug}`}>
+                {t("account.bookAgain")}
+              </Link>
             </Button>
           )}
         </div>
@@ -277,7 +277,6 @@ const Account = () => {
         {/* TAB REZERVĂRI */}
         {tab === "bookings" && (
           <div className="space-y-5">
-            {/* Viitoare */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-1 h-4 bg-primary rounded-full" />
@@ -290,7 +289,12 @@ const Account = () => {
                   </span>
                 )}
               </div>
-              {upcomingBookings.length === 0 ? (
+
+              {bookingsLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 size={24} className="animate-spin text-primary" />
+                </div>
+              ) : upcomingBookings.length === 0 ? (
                 <div className="bg-card border border-dashed border-border rounded-xl p-10 text-center">
                   <CalendarCheck
                     size={32}
@@ -312,7 +316,6 @@ const Account = () => {
               )}
             </div>
 
-            {/* Anterioare */}
             {pastBookings.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -404,7 +407,7 @@ const Account = () => {
                         })
                       }
                       placeholder={f.placeholder}
-                      className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                      className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                     />
                   ) : (
                     <p className="flex-1 text-sm text-foreground">
