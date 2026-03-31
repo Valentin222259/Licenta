@@ -207,6 +207,40 @@ router.post("/facility", upload.single("image"), async (req, res) => {
   }
 });
 
+router.post("/about", upload.single("image"), async (req, res) => {
+  try {
+    const { caption } = req.body;
+
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Niciun fișier uploadat" });
+    }
+
+    const { url, key } = await uploadToS3(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      "about",
+    );
+
+    const { rows } = await query(
+      `
+      INSERT INTO images (url, s3_key, category, caption)
+      VALUES ($1, $2, 'about', $3)
+      RETURNING *
+    `,
+      [url, key, caption || null],
+    );
+
+    console.log(`🖼️  Imagine despre-noi uploadată: ${key}`);
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (err) {
+    console.error("❌ POST /api/images/about:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── PATCH /api/images/:id/primary ──────────────────────────────────────────
 // Setează o imagine ca primară pentru camera ei
 router.patch("/:id/primary", async (req, res) => {

@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Star, Mountain, TreePine, Landmark, Users } from "lucide-react";
-import heroImage from "@/assets/hero-mountains.jpg";
-import { rooms } from "@/data/rooms";
+import heroImageFallback from "@/assets/hero-mountains.jpg";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useTranslation } from "react-i18next";
+import { useRooms } from "@/lib/hooks";
+import { useHeroImages } from "@/lib/useImages";
+import roomPlaceholder from "@/assets/hero-mountains.jpg";
 
 const reviews = [
   {
@@ -33,6 +35,12 @@ const Index = () => {
   const storyRef = useScrollReveal();
   const reviewsRef = useScrollReveal();
   const activitiesRef = useScrollReveal();
+
+  // Imagini din API
+  const { primary: heroImage } = useHeroImages();
+  const { rooms } = useRooms();
+
+  const heroSrc = heroImage?.url || heroImageFallback;
 
   const activities = [
     {
@@ -66,7 +74,7 @@ const Index = () => {
       {/* Hero */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <img
-          src={heroImage}
+          src={heroSrc}
           alt="Maramureș mountains at sunrise with traditional guesthouse"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -84,7 +92,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Rooms */}
+      {/* Featured Rooms — imagini din API */}
       <section className="py-20 px-4" ref={roomsRef}>
         <div className="container mx-auto max-w-6xl">
           <h2 className="font-heading text-3xl md:text-4xl text-center mb-4">
@@ -94,20 +102,20 @@ const Index = () => {
             {t("ourRooms.subtitle")}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {rooms.map((room) => (
+            {rooms.slice(0, 3).map((room) => (
               <div
                 key={room.id}
                 className="bg-card rounded-lg overflow-hidden border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col"
               >
                 <img
-                  src={room.image}
+                  src={room.primary_image || roomPlaceholder}
                   alt={room.name}
                   className="w-full h-56 object-cover"
                 />
                 <div className="p-6 flex flex-col flex-1">
                   <h3 className="font-heading text-xl mb-2">{room.name}</h3>
                   <p className="text-muted-foreground text-sm mb-4 flex-1">
-                    {room.shortDescription}
+                    {room.short_description}
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="font-heading text-lg text-accent">
@@ -117,7 +125,7 @@ const Index = () => {
                       </span>
                     </span>
                     <Button size="sm" asChild>
-                      <Link to={`/rooms/${room.id}`}>
+                      <Link to={`/rooms/${room.slug}`}>
                         {t("ourRooms.viewRoom")}
                       </Link>
                     </Button>
@@ -149,8 +157,8 @@ const Index = () => {
             </div>
             <div className="relative">
               <img
-                src={heroImage}
-                alt="Maramureș Belvedere guesthouse surrounded by mountains"
+                src={heroSrc}
+                alt="Maramureș Belvedere guesthouse"
                 className="w-full h-[28rem] lg:h-[32rem] object-cover rounded-lg shadow-lg"
               />
               <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-foreground/10" />
