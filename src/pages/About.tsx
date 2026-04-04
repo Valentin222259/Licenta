@@ -12,55 +12,48 @@ import heroImageFallback from "@/assets/hero-mountains.jpg";
 import { useTranslation } from "react-i18next";
 import { useFacilityImages, useAboutImages } from "@/lib/useImages";
 
+// IMPORTANT: Ordinea TREBUIE să fie identică cu FACILITIES din AdminImages.tsx
+const facilities = [
+  { icon: Waves, titleKey: "about.jacuzziTitle", descKey: "about.jacuzziDesc" },
+  { icon: Bike, titleKey: "about.bikesTitle", descKey: "about.bikesDesc" },
+  {
+    icon: Gamepad2,
+    titleKey: "about.pingPongTitle",
+    descKey: "about.pingPongDesc",
+  },
+  { icon: Snowflake, titleKey: "about.sledsTitle", descKey: "about.sledsDesc" },
+  { icon: Utensils, titleKey: "about.grillTitle", descKey: "about.grillDesc" },
+  {
+    icon: ParkingCircle,
+    titleKey: "about.parkingTitle",
+    descKey: "about.parkingDesc",
+  },
+  {
+    icon: Baby,
+    titleKey: "about.playgroundTitle",
+    descKey: "about.playgroundDesc",
+  },
+  {
+    icon: Shirt,
+    titleKey: "about.traditionalTitle",
+    descKey: "about.traditionalDesc",
+  },
+];
+
 const About = () => {
   const { t } = useTranslation();
+
+  // 1 singură imagine pentru secțiunea poveste
+  const { primary: aboutPrimary } = useAboutImages();
+
+  // Imaginile facilităților — sortate după sort_order, asociate în ordine cu facilitățile
   const { images: facilityImages } = useFacilityImages();
-  const { images: aboutImages, primary: aboutPrimary } = useAboutImages();
 
   const heroSrc = aboutPrimary?.url || heroImageFallback;
 
-  const facilities = [
-    {
-      icon: Waves,
-      titleKey: "about.jacuzziTitle",
-      descKey: "about.jacuzziDesc",
-    },
-    { icon: Bike, titleKey: "about.bikesTitle", descKey: "about.bikesDesc" },
-    {
-      icon: Gamepad2,
-      titleKey: "about.pingPongTitle",
-      descKey: "about.pingPongDesc",
-    },
-    {
-      icon: Snowflake,
-      titleKey: "about.sledsTitle",
-      descKey: "about.sledsDesc",
-    },
-    {
-      icon: Utensils,
-      titleKey: "about.grillTitle",
-      descKey: "about.grillDesc",
-    },
-    {
-      icon: ParkingCircle,
-      titleKey: "about.parkingTitle",
-      descKey: "about.parkingDesc",
-    },
-    {
-      icon: Baby,
-      titleKey: "about.playgroundTitle",
-      descKey: "about.playgroundDesc",
-    },
-    {
-      icon: Shirt,
-      titleKey: "about.traditionalTitle",
-      descKey: "about.traditionalDesc",
-    },
-  ];
-
   return (
     <div>
-      {/* Hero */}
+      {/* Hero banner */}
       <section className="relative h-72 md:h-96 flex items-center justify-center overflow-hidden">
         <img
           src={heroSrc}
@@ -97,28 +90,19 @@ const About = () => {
               </p>
             </div>
             <div className="relative">
-              {/* Dacă există poze about uploadate, le afișăm, altfel placeholder */}
-              {aboutImages.length > 0 ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {aboutImages.slice(0, 4).map((img, i) => (
-                    <img
-                      key={img.id}
-                      src={img.url}
-                      alt={img.caption || "Pensiune"}
-                      className={`w-full object-cover rounded-lg ${
-                        i === 0 && aboutImages.length === 1
-                          ? "col-span-2 h-80"
-                          : "h-40"
-                      }`}
-                    />
-                  ))}
-                </div>
+              {/* 1 singură poză pentru poveste */}
+              {aboutPrimary ? (
+                <img
+                  src={aboutPrimary.url}
+                  alt="Pensiunea Maramureș Belvedere"
+                  className="w-full h-80 object-cover rounded-xl shadow-lg"
+                />
               ) : (
-                <div className="w-full h-80 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-border">
+                <div className="w-full h-80 bg-muted rounded-xl flex items-center justify-center border-2 border-dashed border-border">
                   <div className="text-center text-muted-foreground">
                     <div className="text-4xl mb-2">📷</div>
                     <p className="text-sm">{t("about.photoGuesthouse")}</p>
-                    <p className="text-xs mt-1">
+                    <p className="text-xs mt-1 opacity-60">
                       ({t("about.photoPlaceholder")})
                     </p>
                   </div>
@@ -175,7 +159,7 @@ const About = () => {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {facilities.map((facility, index) => {
-              // Asociem imaginile uploadate cu facilitățile în ordine
+              // Imaginea pentru această facilitate — index corespunde poziției din admin
               const facilityImg = facilityImages[index] || null;
 
               return (
@@ -183,7 +167,6 @@ const About = () => {
                   key={index}
                   className="bg-card border border-border rounded-lg overflow-hidden"
                 >
-                  {/* Imagine: din API dacă există, altfel placeholder */}
                   {facilityImg ? (
                     <img
                       src={facilityImg.url}
