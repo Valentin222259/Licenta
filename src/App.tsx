@@ -24,6 +24,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import About from "./pages/About";
 import AdminLogin from "./pages/admin/AdminLogin";
 import Account from "./pages/Account";
+import BookingSuccess from "./pages/BookingSuccess";
 
 const queryClient = new QueryClient();
 
@@ -106,6 +107,15 @@ const App = () => (
             element={
               <PublicPage>
                 <Account />
+              </PublicPage>
+            }
+          />
+
+          <Route
+            path="/booking/success"
+            element={
+              <PublicPage>
+                <BookingSuccess />
               </PublicPage>
             }
           />

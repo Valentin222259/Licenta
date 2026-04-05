@@ -71,7 +71,8 @@ const Booking = () => {
     try {
       const userId = sessionStorage.getItem("userId") || undefined;
 
-      await apiPost("/api/bookings", {
+      // Pasul 1: salvează rezervarea în DB
+      const booking = await apiPost<{ data: { id: number } }>("/api/bookings", {
         room_id: room.id,
         user_id: userId,
         guest_name: form.name,
@@ -84,17 +85,13 @@ const Booking = () => {
         source: "website",
       });
 
-      toast({
-        title: t("booking.submitted"),
-        description: t("booking.submittedDesc"),
-      });
+      // Pasul 2: creează sesiunea Stripe și mergi la plată
+      const { checkout_url } = await apiPost<{ checkout_url: string }>(
+        "/api/payments/create-checkout",
+        { booking_id: booking.data.id },
+      );
 
-      // Dacă e logat, îl trimitem la cont să vadă rezervarea
-      if (sessionStorage.getItem("isClient")) {
-        navigate("/account");
-      } else {
-        navigate("/");
-      }
+      window.location.href = checkout_url;
     } catch (err) {
       toast({
         title: "Eroare",
