@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
+import ChatBot from "@/components/ChatBot";
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -182,6 +183,7 @@ const AdminLayout = () => {
           <Outlet />
         </main>
       </div>
+      <ChatBot />
     </div>
   );
 };

@@ -20,6 +20,7 @@ const imagesRouter = require("./routes/images");
 const authRouter = require("./routes/auth");
 const paymentsRouter = require("./routes/stripe");
 const aiRouter = require("./routes/ai");
+const analyticsRouter = require("./routes/analytics");
 
 const app = express();
 
@@ -100,6 +101,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use("/api/payments", paymentsRouter);
 app.use("/api/ai", aiRouter);
+
+app.use("/api/analytics", analyticsRouter);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GESTIONARE ERORI

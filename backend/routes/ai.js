@@ -409,4 +409,269 @@ function generateStaticPricing(rooms) {
   });
 }
 
+// ─── POST /api/ai/chat ────────────────────────────────────────────────────────
+/**
+ * Endpoint principal pentru chatbot-ul pensiunii Belvedere.
+ *
+ * Flux de date:
+ *  1. Frontend trimite { messages: [...], isAdmin: bool, lang: "ro"|"en" }
+ *  2. Backend încarcă context live din DB (camere, prețuri, disponibilitate)
+ *  3. Se construiește systemPrompt cu datele pensiunii + context DB
+ *  4. Se apelează Azure OpenAI cu istoricul complet al conversației
+ *  5. Se detectează intenția și se atașează quick_actions relevante
+ *  6. Se returnează { reply, quick_actions } către frontend
+ *
+ * Managementul stării conversației:
+ *  - Istoricul (messages[]) este păstrat în state-ul React (frontend)
+ *  - La fiecare mesaj nou, frontend-ul trimite ÎNTREGUL istoric
+ *  - Backend-ul este STATELESS — nu salvează conversații în DB
+ *  - Avantaj: simplitate; Dezavantaj: conversații se pierd la refresh
+ */
+router.post("/chat", async (req, res) => {
+  try {
+    const {
+      messages = [], // istoricul conversației de la frontend
+      isAdmin = false, // mod admin — răspunsuri cu date din DB
+      lang = "ro", // limba detectată de frontend
+    } = req.body;
+
+    // ── Pasul 1: Validare input ────────────────────────────────────────────
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, error: "messages[] este obligatoriu" });
+    }
+
+    // Limităm istoricul la ultimele 20 mesaje pentru a controla costul de tokeni
+    const recentHistory = messages.slice(-20);
+
+    // ── Pasul 2: Context live din DB ──────────────────────────────────────
+    // Încărcăm datele actuale pentru ca AI-ul să răspundă cu informații reale
+    let dbContext = "";
+    try {
+      // Camere active cu prețuri
+      const roomsResult = await query(
+        `SELECT name, price, capacity, description FROM rooms WHERE status = 'active' ORDER BY sort_order`,
+      );
+
+      // Disponibilitate generală (camere ocupate azi)
+      const occupiedResult = await query(
+        `SELECT COUNT(*) AS occupied FROM bookings
+         WHERE status NOT IN ('cancelled')
+           AND check_in <= CURRENT_DATE AND check_out > CURRENT_DATE`,
+      );
+
+      const totalRooms = roomsResult.rows.length;
+      const occupiedRooms = parseInt(occupiedResult.rows[0]?.occupied || 0);
+      const freeRooms = totalRooms - occupiedRooms;
+
+      // Construim contextul ca text structurat pentru prompt
+      dbContext = `
+DATE LIVE DIN SISTEM (${new Date().toLocaleDateString("ro-RO")}):
+Camere disponibile azi: ${freeRooms} din ${totalRooms}
+Lista camere și prețuri:
+${roomsResult.rows.map((r) => `  - ${r.name}: ${r.price} RON/noapte, capacitate ${r.capacity} persoane`).join("\n")}
+      `.trim();
+
+      // Context suplimentar pentru admin — date rezervări
+      if (isAdmin) {
+        const bookingsResult = await query(
+          `SELECT COUNT(*) AS total,
+                  COUNT(CASE WHEN status = 'confirmed' THEN 1 END) AS confirmed,
+                  COUNT(CASE WHEN status = 'pending'   THEN 1 END) AS pending,
+                  COALESCE(SUM(CASE WHEN status = 'confirmed' AND check_in >= DATE_TRUNC('month', NOW()) THEN total_price END), 0) AS revenue_month
+           FROM bookings`,
+        );
+        const b = bookingsResult.rows[0];
+        dbContext += `\n\nSTATISTICI REZERVĂRI (pentru admin):
+  Total rezervări: ${b.total} | Confirmate: ${b.confirmed} | În așteptare: ${b.pending}
+  Venituri luna curentă: ${b.revenue_month} RON`;
+      }
+    } catch (dbErr) {
+      // Dacă DB-ul nu răspunde, continuăm cu datele hardcoded din systemPrompt
+      console.warn(
+        "⚠️  Chat: Nu s-a putut încărca contextul din DB:",
+        dbErr.message,
+      );
+    }
+
+    // ── Pasul 3: System Prompt ─────────────────────────────────────────────
+    /**
+     * System prompt-ul definește PERSONALITATEA și LIMITELE chatbot-ului.
+     * Este trimis la fiecare request ca mesaj cu role: "system".
+     * Datele hardcoded (check-in/out, facilități) sunt stabile în timp.
+     * Datele din DB (prețuri, disponibilitate) sunt injectate dinamic.
+     */
+    const systemPrompt = isAdmin
+      ? buildAdminSystemPrompt(dbContext, lang)
+      : buildGuestSystemPrompt(dbContext, lang);
+
+    // ── Pasul 4: Apel Azure OpenAI ─────────────────────────────────────────
+    /**
+     * Structura mesajelor trimise la Azure OpenAI:
+     *  [system_prompt, ...istoricConversatie]
+     *
+     * TODO (dacă schimbi provider-ul):
+     *  - Pentru OpenAI direct: același format, altă URL + cheie
+     *  - Pentru Gemini: convertește la { role: "user"/"model", parts: [{ text }] }
+     *  - Pentru Anthropic Claude: system separat, messages fără role:system
+     */
+    let replyText;
+
+    if (azureReady) {
+      // ✅ Apel real la Azure OpenAI
+      replyText = await callAzureWithRetry(
+        [{ role: "system", content: systemPrompt }, ...recentHistory],
+        400, // max tokeni pentru răspuns — chatbot-ul trebuie să fie concis
+      );
+    } else {
+      // 🔧 Mock response — pentru development fără cheie Azure
+      replyText =
+        lang === "ro"
+          ? "Bună ziua! Sunt asistentul virtual al Pensiunii Belvedere. Cum vă pot ajuta?"
+          : "Hello! I'm the virtual assistant of Belvedere Guesthouse. How can I help you?";
+    }
+
+    // ── Pasul 5: Detectare intenție → Quick Actions ────────────────────────
+    /**
+     * Analizăm ultimul mesaj al utilizatorului pentru a sugera
+     * butoane de acțiune rapidă relevante contextului conversației.
+     */
+    const lastUserMessage =
+      recentHistory
+        .filter((m) => m.role === "user")
+        .pop()
+        ?.content?.toLowerCase() || "";
+
+    const quickActions = detectQuickActions(
+      lastUserMessage,
+      replyText,
+      isAdmin,
+      lang,
+    );
+
+    // ── Pasul 6: Răspuns către frontend ───────────────────────────────────
+    res.json({
+      success: true,
+      reply: replyText.trim(),
+      quick_actions: quickActions, // butoane sugerate de afișat sub mesaj
+    });
+  } catch (err) {
+    console.error("❌ POST /api/ai/chat:", err.message);
+    res.status(500).json({
+      success: false,
+      error: "Asistentul nu este disponibil momentan. Vă rugăm reveniți.",
+    });
+  }
+});
+
+// ─── Helper: System Prompt pentru oaspeți ─────────────────────────────────────
+function buildGuestSystemPrompt(dbContext, lang) {
+  const isRo = lang === "ro";
+  return `${isRo ? "Ești asistentul virtual" : "You are the virtual assistant"} al Pensiunii Maramureș Belvedere${isRo ? ", o pensiune boutique din Petrova, Maramureș, România" : ", a boutique guesthouse in Petrova, Maramureș, Romania"}.
+
+${isRo ? "PERSONALITATE" : "PERSONALITY"}:
+- ${isRo ? "Cald, prietenos, profesionist — ca un concierge de lux" : "Warm, friendly, professional — like a luxury concierge"}
+- ${isRo ? "Răspunsuri SCURTE (2-4 propoziții maxim)" : "SHORT answers (2-4 sentences max)"}
+- ${isRo ? "Folosești emoji-uri cu moderație (1-2 per mesaj)" : "Use emojis with moderation (1-2 per message)"}
+- ${isRo ? "Răspunzi DOAR în română sau engleză, în funcție de limba utilizatorului" : "Reply ONLY in Romanian or English, matching the user's language"}
+
+${isRo ? "INFORMAȚII PENSIUNE (hardcoded — stabile)" : "GUESTHOUSE INFO (hardcoded — stable)"}:
+- Adresă: Strada Principală 42, Petrova, Maramureș, România
+- Check-in: 14:00 | Check-out: 11:00
+- Contact: +40 755 123 456 | contact@belvedere-maramures.ro
+- WiFi: gratuit în toată pensiunea
+- Parcare: gratuită, supravegheată
+- Facilități: ciubăr cu apă termală, grătar, loc de joacă copii, închiriere biciclete, săniuțe iarna, port tradițional maramureșean
+- Mic dejun: inclus în tarif, tradițional românesc
+- Animale de companie: nu sunt acceptate
+- Plată: card sau numerar la recepție, sau online prin site
+
+${isRo ? "ZONA MARAMUREȘ" : "MARAMUREȘ AREA"}:
+- ${isRo ? "Mănăstiri celebre: Bârsana, Moisei, Sapânța (Cimitirul Vesel — 30 km)" : "Famous monasteries: Bârsana, Moisei, Sapânța (Merry Cemetery — 30 km)"}
+- ${isRo ? "Activități: drumeții în Munții Maramureșului, schi la Borșa (25 km), rafting pe Vaser" : "Activities: hiking in Maramureș Mountains, skiing at Borșa (25 km), rafting on Vaser river"}
+- ${isRo ? "Atracții: Muzeul Satului, Centrul Vechi Sighetu Marmației (15 km)" : "Attractions: Village Museum, Old Town Sighetu Marmației (15 km)"}
+
+${dbContext ? `${isRo ? "DATE ACTUALE DIN SISTEM" : "LIVE SYSTEM DATA"}:\n${dbContext}` : ""}
+
+${isRo ? "LIMITE IMPORTANTE" : "IMPORTANT LIMITS"}:
+- ${isRo ? "Nu confirmi rezervări direct din chat — trimiți utilizatorul la formularul de rezervare" : "Don't confirm bookings directly from chat — redirect to the booking form"}
+- ${isRo ? "Nu inventa prețuri sau disponibilități dacă nu le ai în date" : "Don't invent prices or availability if not in your data"}
+- ${isRo ? "Dacă nu știi ceva, spune sincer și oferă datele de contact" : "If you don't know something, say so honestly and provide contact info"}`;
+}
+
+// ─── Helper: System Prompt pentru admin ──────────────────────────────────────
+function buildAdminSystemPrompt(dbContext, lang) {
+  return `Ești un asistent inteligent pentru administratorul Pensiunii Maramureș Belvedere.
+
+ROL: Ajuți administratorul cu informații operative despre pensiune — rezervări, ocupare, venituri, camere.
+TON: Direct, concis, profesionist. Răspunsuri scurte cu date concrete.
+LIMBĂ: Română (administratorul e român).
+
+${dbContext ? `DATE LIVE DIN SISTEM:\n${dbContext}` : ""}
+
+CAPABILITĂȚI:
+- Raportezi statistici din datele de mai sus
+- Explici tendințe și dai recomandări simple
+- Răspunzi la întrebări despre operațiunile pensiunii
+
+LIMITE:
+- Nu modifici date în sistem direct din chat
+- Dacă datele nu sunt disponibile, spui că trebuie verificate în panoul admin`;
+}
+
+// ─── Helper: Detectare intenție → Quick Actions ───────────────────────────────
+/**
+ * Analizează mesajul utilizatorului și răspunsul bot-ului pentru a sugera
+ * butoane de navigare rapide relevante contextului curent al conversației.
+ *
+ * @returns Array de obiecte { label, action, url? }
+ */
+function detectQuickActions(userMsg, botReply, isAdmin, lang) {
+  const isRo = lang === "ro";
+  const text = (userMsg + " " + botReply).toLowerCase();
+
+  // Admin nu primește quick actions de navigare publică
+  if (isAdmin) return [];
+
+  // Potrivire după cuvinte cheie în mesaj + răspuns
+  if (text.match(/rezerv|book|disponibil|liber|cazare/)) {
+    return [
+      { label: isRo ? "🛏 Rezervă Acum" : "🛏 Book Now", url: "/booking" },
+      { label: isRo ? "🏠 Vezi Camere" : "🏠 View Rooms", url: "/rooms" },
+    ];
+  }
+  if (text.match(/camer|room|suite|confort|comfort|preț|pret|price|tarif/)) {
+    return [
+      { label: isRo ? "🏠 Vezi Camere" : "🏠 View Rooms", url: "/rooms" },
+      { label: isRo ? "🛏 Rezervă Acum" : "🛏 Book Now", url: "/booking" },
+    ];
+  }
+  if (text.match(/contact|telefon|email|adres|map|harta/)) {
+    return [
+      { label: isRo ? "📞 Contactează-ne" : "📞 Contact Us", url: "/contact" },
+    ];
+  }
+  if (
+    text.match(/despre|about|facilit|wifi|parcare|ciubăr|mic dejun|breakfast/)
+  ) {
+    return [
+      { label: isRo ? "ℹ️ Despre Noi" : "ℹ️ About Us", url: "/about" },
+      { label: isRo ? "🏠 Vezi Camere" : "🏠 View Rooms", url: "/rooms" },
+    ];
+  }
+  if (text.match(/rezervar|booking|cont|account|modific|anulez|cancel/)) {
+    return [
+      { label: isRo ? "👤 Contul Meu" : "👤 My Account", url: "/account" },
+      { label: isRo ? "📞 Contactează-ne" : "📞 Contact Us", url: "/contact" },
+    ];
+  }
+
+  // Default — butoane generale
+  return [
+    { label: isRo ? "🏠 Vezi Camere" : "🏠 View Rooms", url: "/rooms" },
+    { label: isRo ? "📞 Contact" : "📞 Contact", url: "/contact" },
+  ];
+}
+
 module.exports = router;
