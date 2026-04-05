@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { query } = require("../config/db");
+const { sendWelcomeEmail } = require("../services/email");
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "belvedere-jwt-secret-2025-upt-licenta";
@@ -34,7 +35,6 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
-    // Suportă parola plaintext din seed (doar dev) și bcrypt
     let passwordOk = false;
     if (user.password?.endsWith("_hashed")) {
       passwordOk = password === user.password.replace("_hashed", "");
@@ -110,6 +110,16 @@ router.post("/register", async (req, res) => {
     );
 
     const user = rows[0];
+
+    // ── Email bun venit (non-blocking) ────────────────────────────────────
+    // Trimitem DUPĂ ce răspunsul e pregătit — contul e creat indiferent de email
+    sendWelcomeEmail(user.email, user.name).catch((err) =>
+      console.error(
+        "⚠️  Welcome email eșuat (contul e creat OK):",
+        err.message,
+      ),
+    );
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, name: user.name },
       JWT_SECRET,

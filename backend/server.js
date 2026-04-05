@@ -21,7 +21,9 @@ const authRouter = require("./routes/auth");
 const paymentsRouter = require("./routes/stripe");
 const aiRouter = require("./routes/ai");
 const analyticsRouter = require("./routes/analytics");
-
+const { startReminderJob } = require("./jobs/reminderJob");
+const { verifyConnection } = require("./services/email");
+const contactRouter = require("./routes/contact");
 const app = express();
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
@@ -52,6 +54,8 @@ app.use(
 );
 
 // ─── Middleware global ───────────────────────────────────────────────────────
+// IMPORTANT: webhook raw ÎNAINTE de express.json()
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
@@ -98,11 +102,12 @@ app.use("/api/images", imagesRouter);
 
 app.use("/api/auth", authRouter);
 
-app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use("/api/payments", paymentsRouter);
 app.use("/api/ai", aiRouter);
 
 app.use("/api/analytics", analyticsRouter);
+
+app.use("/api/contact", contactRouter);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GESTIONARE ERORI
@@ -158,10 +163,15 @@ async function startServer() {
 
   await testConnection();
   checkS3Config();
+  await testConnection();
+  checkS3Config();
+  await verifyConnection(); // ← adaugă asta
 
   app.listen(PORT, () => {
     console.log(`\nServer pornit pe http://localhost:${PORT}`);
     console.log(`Health: http://localhost:${PORT}/health\n`);
+
+    startReminderJob();
   });
 }
 

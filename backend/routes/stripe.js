@@ -2,9 +2,12 @@ require("dotenv").config();
 const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
+const {
+  sendClientBookingConfirmation,
+  sendAdminNewBookingAlert,
+} = require("../services/email");
 
 // ─── Inițializare Stripe ──────────────────────────────────────────────────────
-// Stripe se inițializează doar dacă există cheia în .env
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -16,7 +19,6 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 
 // ─── POST /api/payments/create-checkout ──────────────────────────────────────
-// Creează o sesiune Stripe Checkout pentru o rezervare
 router.post("/create-checkout", async (req, res) => {
   if (!stripe) {
     return res.status(503).json({
@@ -62,7 +64,6 @@ router.post("/create-checkout", async (req, res) => {
     const FRONTEND_URL =
       process.env.FRONTEND_URL?.split(",")[0] || "http://localhost:5173";
 
-    // Creăm sesiunea Stripe Checkout
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -73,7 +74,7 @@ router.post("/create-checkout", async (req, res) => {
         {
           price_data: {
             currency: "ron",
-            unit_amount: booking.total_price * 100, // Stripe folosește bani (cea mai mică unitate)
+            unit_amount: booking.total_price * 100,
             product_data: {
               name: `Cazare — ${booking.room_name}`,
               description: `Check-in: ${String(booking.check_in).substring(0, 10)} | Check-out: ${String(booking.check_out).substring(0, 10)} | ${booking.nights} nopți | Ref: ${booking.booking_ref}`,
@@ -110,9 +111,6 @@ router.post("/create-checkout", async (req, res) => {
 });
 
 // ─── POST /api/payments/webhook ──────────────────────────────────────────────
-// Stripe trimite evenimentele de plată la acest endpoint
-// IMPORTANT: trebuie să fie înregistrat ÎNAINTE de express.json() în server.js
-// și să folosească express.raw() pentru a verifica semnătura
 router.post(
   "/webhook",
   express.raw({ type: "application/json" }),
@@ -127,22 +125,12 @@ router.post(
     let event;
 
     try {
-      if (webhookSecret) {
-        // Verificăm semnătura pentru securitate
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-      } else {
-        // În development fără webhook secret, parsăm direct
-        event = JSON.parse(req.body.toString());
-        console.warn(
-          "⚠️  Webhook fără verificare semnătură (STRIPE_WEBHOOK_SECRET lipsește)",
-        );
-      }
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
     } catch (err) {
-      console.error("❌ Webhook signature invalid:", err.message);
-      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+      console.error("❌ Webhook signature error:", err.message);
+      return res.status(400).json({ error: err.message });
     }
 
-    // Procesăm evenimentele Stripe
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
@@ -150,21 +138,58 @@ router.post(
 
         if (bookingId) {
           try {
-            // Actualizăm statusul rezervării la "confirmed"
+            // Actualizăm statusul și returnăm datele pentru email
             const result = await query(
               `UPDATE bookings SET status = 'confirmed', updated_at = NOW()
-               WHERE id = $1 RETURNING booking_ref, guest_name, guest_email`,
+               WHERE id = $1
+               RETURNING booking_ref, guest_name, guest_email, guest_phone,
+                         check_in, check_out, nights, total_price, room_id`,
               [bookingId],
             );
 
             if (result.rows.length > 0) {
               const booking = result.rows[0];
+
+              // Luăm numele camerei
+              const roomResult = await query(
+                `SELECT name FROM rooms WHERE id = $1`,
+                [booking.room_id],
+              );
+              const roomName = roomResult.rows[0]?.name || "cameră";
+
               console.log(
                 `✅ Plată confirmată: ${booking.booking_ref} (${booking.guest_name})`,
               );
 
-              // Mock email — în producție înlocuiești cu Nodemailer
-              sendConfirmationEmail(booking, session);
+              const bookingData = {
+                guestName: booking.guest_name,
+                guestEmail: booking.guest_email,
+                guestPhone: booking.guest_phone || null,
+                roomName,
+                checkIn: String(booking.check_in).substring(0, 10),
+                checkOut: String(booking.check_out).substring(0, 10),
+                nights: booking.nights,
+                totalPrice: (session.amount_total / 100).toFixed(0),
+                bookingRef: booking.booking_ref,
+              };
+
+              // Trimitem ambele emailuri simultan (non-blocking)
+              Promise.allSettled([
+                sendClientBookingConfirmation(booking.guest_email, bookingData),
+                sendAdminNewBookingAlert(
+                  process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+                  bookingData,
+                ),
+              ]).then((results) => {
+                results.forEach((r, i) => {
+                  if (r.status === "rejected") {
+                    console.error(
+                      `⚠️  Email ${i === 0 ? "client" : "admin"} eșuat:`,
+                      r.reason?.message,
+                    );
+                  }
+                });
+              });
             }
           } catch (err) {
             console.error("❌ Eroare la confirmarea rezervării:", err.message);
@@ -197,7 +222,6 @@ router.post(
 );
 
 // ─── GET /api/payments/verify/:sessionId ─────────────────────────────────────
-// Frontend-ul verifică statusul plății după redirect
 router.get("/verify/:sessionId", async (req, res) => {
   if (!stripe) {
     return res
@@ -235,35 +259,31 @@ router.get("/verify/:sessionId", async (req, res) => {
   }
 });
 
-// ─── Mock Email Service ───────────────────────────────────────────────────────
-// În producție: înlocuiește cu Nodemailer + Gmail / SendGrid
-function sendConfirmationEmail(booking, session) {
-  console.log("\n📧 ══════════════════════════════════════════");
-  console.log("   EMAIL DE CONFIRMARE REZERVARE (MOCK)");
-  console.log("═══════════════════════════════════════════");
-  console.log(`   Către:    ${booking.guest_email}`);
-  console.log(`   Ref:      ${booking.booking_ref}`);
-  console.log(`   Oaspete:  ${booking.guest_name}`);
-  console.log(`   Sumă:     ${(session.amount_total / 100).toFixed(2)} RON`);
-  console.log(`   Status:   CONFIRMAT ✅`);
-  console.log("═══════════════════════════════════════════\n");
+// ─── TEST EMAIL (doar development) ───────────────────────────────────────────
+if (process.env.NODE_ENV !== "production") {
+  router.get("/test-emails", async (req, res) => {
+    const bookingData = {
+      guestName: "Ion Popescu",
+      guestEmail: "ardeleanvalentin737@yahoo.com",
+      guestPhone: "+40 700 000 000",
+      roomName: "Camera 1 — Comfort",
+      checkIn: "2026-11-01",
+      checkOut: "2026-11-03",
+      nights: 2,
+      totalPrice: 500,
+      bookingRef: "BLV-2026-TEST",
+    };
 
-  // TODO: Înlocuiește cu cod Nodemailer real:
-  //
-  // const transporter = nodemailer.createTransport({
-  //   service: 'gmail',
-  //   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASSWORD }
-  // });
-  //
-  // await transporter.sendMail({
-  //   from: `"Maramureș Belvedere" <${process.env.EMAIL_USER}>`,
-  //   to: booking.guest_email,
-  //   subject: `Confirmare rezervare ${booking.booking_ref}`,
-  //   html: `<h2>Rezervarea ta a fost confirmată!</h2>
-  //          <p>Ref: <strong>${booking.booking_ref}</strong></p>
-  //          <p>Check-in: ${booking.check_in}</p>
-  //          <p>Check-out: ${booking.check_out}</p>`
-  // });
+    await Promise.allSettled([
+      sendClientBookingConfirmation(
+        "ardeleanvalentin737@yahoo.com",
+        bookingData,
+      ),
+      sendAdminNewBookingAlert(process.env.ADMIN_EMAIL, bookingData),
+    ]);
+
+    res.json({ success: true, message: "Emailuri trimise!" });
+  });
 }
 
 module.exports = router;
