@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react";
+import {
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Phone,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { apiPost } from "@/lib/api";
@@ -9,13 +18,17 @@ import { apiPost } from "@/lib/api";
 interface AuthResponse {
   success: boolean;
   token: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: "client" | "admin";
-  };
+  user: { id: string; name: string; email: string; role: "client" | "admin" };
 }
+
+// ─── Reguli complexitate parolă ───────────────────────────────────────────────
+const PASSWORD_RULES = [
+  { label: "Minim 8 caractere", test: (p: string) => p.length >= 8 },
+  { label: "O literă mare (A-Z)", test: (p: string) => /[A-Z]/.test(p) },
+  { label: "O literă mică (a-z)", test: (p: string) => /[a-z]/.test(p) },
+  { label: "O cifră (0-9)", test: (p: string) => /\d/.test(p) },
+];
+const isStrongPassword = (p: string) => PASSWORD_RULES.every((r) => r.test(p));
 
 const GoogleIcon = () => (
   <svg
@@ -49,7 +62,6 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({
     name: "",
@@ -60,28 +72,30 @@ const Login = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const inputCls = (field: string) =>
+    `w-full bg-muted border rounded-md pl-10 pr-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring transition-colors ${errors[field] ? "border-destructive" : "border-border"}`;
+
   // ─── Login ────────────────────────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!loginForm.email) errs.email = t("loginPage.emailRequired");
     if (!loginForm.password) errs.password = t("loginPage.passwordRequired");
-    if (Object.keys(errs).length > 0) return setErrors(errs);
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      return;
+    }
     setErrors({});
     setLoading(true);
-
     try {
       const res = await apiPost<AuthResponse>("/api/auth/login", {
         email: loginForm.email,
         password: loginForm.password,
       });
-
-      // Salvează token și date user
       sessionStorage.setItem("token", res.token);
       sessionStorage.setItem("userId", res.user.id);
       sessionStorage.setItem("userEmail", res.user.email);
       sessionStorage.setItem("clientName", res.user.name);
-
       if (res.user.role === "admin") {
         sessionStorage.setItem("isAdmin", "true");
         navigate("/admin");
@@ -108,14 +122,16 @@ const Login = () => {
     if (!registerForm.name.trim()) errs.name = t("loginPage.nameRequired");
     if (!registerForm.email) errs.email = t("loginPage.emailRequired");
     if (!registerForm.phone) errs.phone = t("loginPage.phoneRequired");
-    if (registerForm.password.length < 6)
-      errs.password = t("loginPage.passwordTooShort");
+    if (!isStrongPassword(registerForm.password))
+      errs.password = "Parola nu îndeplinește cerințele de securitate";
     if (registerForm.password !== registerForm.confirm)
       errs.confirm = t("loginPage.passwordMismatch");
-    if (Object.keys(errs).length > 0) return setErrors(errs);
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      return;
+    }
     setErrors({});
     setLoading(true);
-
     try {
       const res = await apiPost<AuthResponse>("/api/auth/register", {
         name: registerForm.name,
@@ -123,31 +139,31 @@ const Login = () => {
         phone: registerForm.phone,
         password: registerForm.password,
       });
-
       sessionStorage.setItem("token", res.token);
       sessionStorage.setItem("userId", res.user.id);
       sessionStorage.setItem("userEmail", res.user.email);
       sessionStorage.setItem("clientName", res.user.name);
       sessionStorage.setItem("isClient", "true");
-
       toast({
         title: "Cont creat cu succes!",
         description: `Bun venit, ${res.user.name}!`,
       });
       navigate("/account");
     } catch (err) {
-      setErrors({
-        general: err instanceof Error ? err.message : "Eroare la înregistrare",
-      });
+      const msg = err instanceof Error ? err.message : "Eroare la înregistrare";
+      // Email duplicat — mesaj specific
+      if (msg.includes("deja un cont") || msg.includes("409")) {
+        setErrors({ email: "Există deja un cont cu această adresă de email" });
+      } else {
+        setErrors({ general: msg });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const inputCls = (field: string) =>
-    `w-full bg-muted border rounded-md pl-10 pr-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring transition-colors ${
-      errors[field] ? "border-destructive" : "border-border"
-    }`;
+  const showPasswordRules =
+    tab === "register" && registerForm.password.length > 0;
 
   return (
     <div className="pt-24 pb-20 px-4 min-h-screen flex items-center justify-center">
@@ -163,8 +179,8 @@ const Login = () => {
           </p>
         </div>
 
-        {/* OAuth — doar UI, fără funcționalitate */}
-        <div className="space-y-2.5 mb-6">
+        {/* Google OAuth — UI only */}
+        <div className="mb-6">
           <button
             onClick={() =>
               toast({
@@ -197,11 +213,7 @@ const Login = () => {
                 setTab(t_);
                 setErrors({});
               }}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                tab === t_
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${tab === t_ ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               {t_ === "login"
                 ? t("loginPage.loginTab")
@@ -212,12 +224,13 @@ const Login = () => {
 
         {/* Eroare generală */}
         {errors.general && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3 mb-4">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3 mb-4 flex items-center gap-2">
+            <XCircle size={15} className="text-destructive shrink-0" />
             <p className="text-sm text-destructive">{errors.general}</p>
           </div>
         )}
 
-        {/* ─── LOGIN FORM ─────────────────────────────────────────────────── */}
+        {/* ── LOGIN ─────────────────────────────────────────────────────── */}
         {tab === "login" && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -302,7 +315,7 @@ const Login = () => {
           </form>
         )}
 
-        {/* ─── REGISTER FORM ──────────────────────────────────────────────── */}
+        {/* ── REGISTER ──────────────────────────────────────────────────── */}
         {tab === "register" && (
           <form onSubmit={handleRegister} className="space-y-4">
             {[
@@ -358,6 +371,7 @@ const Login = () => {
               </div>
             ))}
 
+            {/* Parolă cu indicator complexitate */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("loginPage.passwordLabel")}
@@ -376,7 +390,7 @@ const Login = () => {
                       password: e.target.value,
                     })
                   }
-                  placeholder="Minim 6 caractere"
+                  placeholder="Minim 8 caractere"
                   className={`${inputCls("password")} pr-10`}
                 />
                 <button
@@ -392,8 +406,37 @@ const Login = () => {
                   {errors.password}
                 </p>
               )}
+
+              {/* Indicator complexitate */}
+              {showPasswordRules && (
+                <div className="mt-2 grid grid-cols-2 gap-1">
+                  {PASSWORD_RULES.map((rule) => {
+                    const ok = rule.test(registerForm.password);
+                    return (
+                      <div
+                        key={rule.label}
+                        className={`flex items-center gap-1.5 text-xs ${ok ? "text-emerald-600" : "text-muted-foreground"}`}
+                      >
+                        {ok ? (
+                          <CheckCircle
+                            size={12}
+                            className="text-emerald-500 shrink-0"
+                          />
+                        ) : (
+                          <XCircle
+                            size={12}
+                            className="text-muted-foreground/50 shrink-0"
+                          />
+                        )}
+                        {rule.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
+            {/* Confirmare parolă */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("loginPage.confirmPassword")}
@@ -428,13 +471,29 @@ const Login = () => {
                   {errors.confirm}
                 </p>
               )}
+              {/* Confirmare vizuală potrivire */}
+              {registerForm.confirm.length > 0 && (
+                <p
+                  className={`text-xs mt-1 flex items-center gap-1 ${registerForm.password === registerForm.confirm ? "text-emerald-600" : "text-destructive"}`}
+                >
+                  {registerForm.password === registerForm.confirm ? (
+                    <>
+                      <CheckCircle size={12} /> Parolele se potrivesc
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={12} /> Parolele nu se potrivesc
+                    </>
+                  )}
+                </p>
+              )}
             </div>
 
             <Button
               type="submit"
               variant="hero"
               className="w-full mt-2"
-              disabled={loading}
+              disabled={loading || !isStrongPassword(registerForm.password)}
             >
               {loading ? "Se creează contul..." : t("loginPage.createAccount")}
             </Button>

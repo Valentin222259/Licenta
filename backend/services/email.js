@@ -409,7 +409,7 @@ async function sendWelcomeEmail(userEmail, name) {
         )
         .join("")}
     </table>
-    ${ctaButton("Explorează Camerele", BRAND.website + "/rooms")}`;
+    ${ctaButton("Explorează Camerele", `${BRAND.website}/rooms`)}`;
 
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
@@ -550,6 +550,71 @@ async function verifyConnection() {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  8. NOTIFICARE SCHIMBARE PAROLĂ → CLIENT
+// ═════════════════════════════════════════════════════════════════════════════
+async function sendPasswordChangedEmail(userEmail, name) {
+  const content = `
+    ${sectionTitle("🔐", "Parola a fost schimbată")}
+    <p style="margin:0 0 24px;font-size:14px;color:#888;text-align:center;font-family:Arial,sans-serif;">
+      Securitatea contului tău
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;color:#444;font-family:Arial,sans-serif;line-height:1.7;">
+      Dragă <strong>${name}</strong>,<br/><br/>
+      Parola contului tău a fost schimbată cu succes.
+    </p>
+    <div style="background:#fff8f0;border-radius:8px;padding:20px;margin:0 0 24px;border-left:3px solid #e8733a;">
+      <p style="margin:0;font-size:14px;color:#555;font-family:Arial,sans-serif;">
+        ⚠️ Dacă nu tu ai făcut această schimbare, contactează-ne imediat la<br/>
+        <strong>${BRAND.phone}</strong> sau <a href="mailto:${BRAND.email}" style="color:${BRAND.color};">${BRAND.email}</a>
+      </p>
+    </div>
+    ${ctaButton("Mergi la Contul Meu", BRAND.website + "/account")}`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
+    to: userEmail,
+    subject: `🔐 Parola contului tău a fost schimbată — ${BRAND.name}`,
+    html: wrapLayout(content, "Parola ta a fost schimbată cu succes."),
+  });
+
+  console.log(`📧 [CLIENT] Notificare schimbare parolă → ${userEmail}`);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  9. CONFIRMARE ȘTERGERE CONT → CLIENT
+// ═════════════════════════════════════════════════════════════════════════════
+async function sendAccountDeletedEmail(userEmail, name) {
+  const content = `
+    ${sectionTitle("👋", "Contul tău a fost șters")}
+    <p style="margin:0 0 24px;font-size:14px;color:#888;text-align:center;font-family:Arial,sans-serif;">
+      Ne pare rău să te vedem plecând
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;color:#444;font-family:Arial,sans-serif;line-height:1.7;">
+      Dragă <strong>${name}</strong>,<br/><br/>
+      Contul tău a fost șters cu succes. Toate datele tale personale au fost eliminate din sistemul nostru.
+    </p>
+    <div style="background:${BRAND.light};border-radius:8px;padding:20px;margin:0 0 24px;border-left:3px solid ${BRAND.color};">
+      <p style="margin:0;font-size:14px;color:#555;font-family:Arial,sans-serif;">
+        Dacă te răzgândești, poți oricând să îți creezi un cont nou.<br/>
+        Îți mulțumim că ai ales <strong>${BRAND.name}</strong>!
+      </p>
+    </div>
+    ${ctaButton("Vizitează-ne din nou", BRAND.website)}`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
+    to: userEmail,
+    subject: `Contul tău ${BRAND.name} a fost șters`,
+    html: wrapLayout(
+      content,
+      "Contul tău a fost șters. Datele tale personale au fost eliminate.",
+    ),
+  });
+
+  console.log(`📧 [CLIENT] Confirmare ștergere cont → ${userEmail}`);
+}
+
 module.exports = {
   sendClientBookingConfirmation,
   sendClientContactConfirmation,
@@ -558,5 +623,7 @@ module.exports = {
   sendWelcomeEmail,
   sendBookingCancellation,
   sendCheckInReminder,
+  sendPasswordChangedEmail,
+  sendAccountDeletedEmail,
   verifyConnection,
 };

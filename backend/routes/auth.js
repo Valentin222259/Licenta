@@ -166,4 +166,143 @@ router.get("/me", async (req, res) => {
   }
 });
 
+// ─── POST /api/auth/change-password ──────────────────────────────────────────
+router.post("/change-password", async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({ success: false, error: "Token lipsă" });
+  }
+
+  try {
+    const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Câmpurile sunt obligatorii" });
+    }
+
+    // Validare complexitate parolă nouă
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(new_password)) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Parola trebuie să aibă minim 8 caractere, o literă mare, o literă mică și o cifră",
+      });
+    }
+
+    // Verificăm parola curentă
+    const result = await query("SELECT password FROM users WHERE id = $1", [
+      decoded.id,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "User negăsit" });
+    }
+
+    const user = result.rows[0];
+    let passwordOk = false;
+    if (user.password?.endsWith("_hashed")) {
+      passwordOk = current_password === user.password.replace("_hashed", "");
+    } else {
+      passwordOk = await bcrypt.compare(current_password, user.password);
+    }
+
+    if (!passwordOk) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Parola curentă este incorectă" });
+    }
+
+    // Salvăm parola nouă
+    const hashedPassword = await bcrypt.hash(new_password, 12);
+    await query(
+      "UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2",
+      [hashedPassword, decoded.id],
+    );
+
+    // Email notificare schimbare parolă
+    const userResult = await query(
+      "SELECT name, email FROM users WHERE id = $1",
+      [decoded.id],
+    );
+    if (userResult.rows.length > 0) {
+      const { sendPasswordChangedEmail } = require("../services/email");
+      sendPasswordChangedEmail(
+        userResult.rows[0].email,
+        userResult.rows[0].name,
+      ).catch((err) =>
+        console.error("⚠️ Email schimbare parolă eșuat:", err.message),
+      );
+    }
+
+    console.log(`🔐 Parolă schimbată pentru user ${decoded.id}`);
+    res.json({ success: true, message: "Parola a fost schimbată cu succes" });
+  } catch {
+    res.status(401).json({ success: false, error: "Token invalid" });
+  }
+});
+
+// ─── DELETE /api/auth/account ────────────────────────────────────────────────
+router.delete("/account", async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({ success: false, error: "Token lipsă" });
+  }
+
+  try {
+    const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
+    const { password } = req.body;
+
+    if (!password) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "Parola este obligatorie pentru ștergerea contului",
+        });
+    }
+
+    // Verificăm parola înainte de ștergere
+    const result = await query("SELECT password FROM users WHERE id = $1", [
+      decoded.id,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "User negăsit" });
+    }
+
+    const user = result.rows[0];
+    let passwordOk = false;
+    if (user.password?.endsWith("_hashed")) {
+      passwordOk = password === user.password.replace("_hashed", "");
+    } else {
+      passwordOk = await bcrypt.compare(password, user.password);
+    }
+
+    if (!passwordOk) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Parola este incorectă" });
+    }
+
+    // Ștergem contul (rezervările rămân în DB cu user_id = NULL)
+    await query("UPDATE bookings SET user_id = NULL WHERE user_id = $1", [
+      decoded.id,
+    ]);
+    await query("DELETE FROM users WHERE id = $1", [decoded.id]);
+
+    // Email confirmare ștergere cont
+    const { sendAccountDeletedEmail } = require("../services/email");
+    sendAccountDeletedEmail(decoded.email, decoded.name).catch((err) =>
+      console.error("⚠️ Email ștergere cont eșuat:", err.message),
+    );
+
+    console.log(`🗑️  Cont șters: ${decoded.email}`);
+    res.json({ success: true, message: "Contul a fost șters" });
+  } catch {
+    res.status(401).json({ success: false, error: "Token invalid" });
+  }
+});
+
 module.exports = router;

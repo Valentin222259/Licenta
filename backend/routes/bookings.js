@@ -339,6 +339,28 @@ router.patch("/:id/status", async (req, res) => {
     }
 
     console.log(`📋 Status rezervare ${rows[0].booking_ref}: ${status}`);
+    if (status === "cancelled") {
+      const { sendBookingCancellation } = require("../services/email");
+      const full = await query(
+        `SELECT b.*, r.name AS room_name FROM bookings b
+     JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
+        [id],
+      );
+      if (full.rows.length > 0) {
+        const b = full.rows[0];
+        sendBookingCancellation(b.guest_email, {
+          guestName: b.guest_name,
+          roomName: b.room_name,
+          checkIn: String(b.check_in).substring(0, 10),
+          checkOut: String(b.check_out).substring(0, 10),
+          nights: b.nights,
+          totalPrice: b.total_price,
+          bookingRef: b.booking_ref,
+        }).catch((err) =>
+          console.error("⚠️ Email anulare eșuat:", err.message),
+        );
+      }
+    }
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error("❌ PATCH /api/bookings/:id/status:", err.message);
