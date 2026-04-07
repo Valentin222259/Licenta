@@ -17,7 +17,10 @@
 
 const express = require("express");
 const router = express.Router();
-const { sendAdminContactMessage } = require("../services/email");
+const {
+  sendAdminContactMessage,
+  sendClientContactConfirmation,
+} = require("../services/email");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 
@@ -57,13 +60,28 @@ router.post("/", async (req, res) => {
      * Dacă SMTP-ul e lent, clientul nu așteaptă — primește succes imediat.
      * Erorile sunt prinse în .catch() și logate, fără să afecteze UX-ul.
      */
-    sendAdminContactMessage(ADMIN_EMAIL, {
+    const contactData = {
       name: name.trim(),
       email: email.trim(),
       phone: phone?.trim() || null,
       subject: subject?.trim() || null,
       message: message.trim(),
-    }).catch((err) => console.error("⚠️  Contact email eșuat:", err.message));
+    };
+
+    // Trimitem simultan: notificare admin + confirmare client
+    Promise.allSettled([
+      sendAdminContactMessage(ADMIN_EMAIL, contactData),
+      sendClientContactConfirmation(email.trim(), name.trim()),
+    ]).then((results) => {
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          console.error(
+            `⚠️  Contact email ${i === 0 ? "admin" : "client"} eșuat:`,
+            r.reason?.message,
+          );
+        }
+      });
+    });
 
     console.log(`📬 Mesaj contact primit de la ${name} (${email})`);
 

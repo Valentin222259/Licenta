@@ -409,7 +409,7 @@ async function sendWelcomeEmail(userEmail, name) {
         )
         .join("")}
     </table>
-    ${ctaButton("Explorează Camerele", `${BRAND.website}/rooms`)}`;
+    ${ctaButton("Explorează Camerele", BRAND.website + "/rooms")}`;
 
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
@@ -493,6 +493,46 @@ async function sendCheckInReminder(userEmail, bookingData) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  7. CONFIRMARE CONTACT → CLIENT
+// ═════════════════════════════════════════════════════════════════════════════
+/**
+ * Trimis clientului după ce completează formularul de contact.
+ * Îl asigură că mesajul a fost primit și că va fi contactat în curând.
+ */
+async function sendClientContactConfirmation(clientEmail, name) {
+  const content = `
+    ${sectionTitle("✉️", "Mesaj Primit!")}
+    <p style="margin:0 0 24px;font-size:14px;color:#888;text-align:center;font-family:Arial,sans-serif;">
+      Îți mulțumim că ne-ai contactat
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;color:#444;font-family:Arial,sans-serif;line-height:1.7;">
+      Dragă <strong>${name}</strong>,<br/><br/>
+      Am primit mesajul tău și îți vom răspunde în cel mai scurt timp,
+      de obicei în maximum 24 de ore.
+    </p>
+    <div style="background:${BRAND.light};border-radius:8px;padding:20px;margin:0 0 24px;
+                border-left:3px solid ${BRAND.color};text-align:center;">
+      <p style="margin:0;font-size:14px;color:#555;font-family:Arial,sans-serif;">
+        Pentru urgențe ne poți contacta direct la<br/>
+        <strong>${BRAND.phone}</strong>
+      </p>
+    </div>
+    ${ctaButton("Explorează Camerele", BRAND.website + "/rooms")}`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
+    to: clientEmail,
+    subject: `Mesajul tău a fost primit — ${BRAND.name}`,
+    html: wrapLayout(
+      content,
+      "Am primit mesajul tau. Iti vom raspunde in 24 de ore!",
+    ),
+  });
+
+  console.log(`📧 [CLIENT] Confirmare contact → ${clientEmail}`);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  VERIFICARE CONEXIUNE SMTP
 // ═════════════════════════════════════════════════════════════════════════════
 async function verifyConnection() {
@@ -512,6 +552,7 @@ async function verifyConnection() {
 
 module.exports = {
   sendClientBookingConfirmation,
+  sendClientContactConfirmation,
   sendAdminNewBookingAlert,
   sendAdminContactMessage,
   sendWelcomeEmail,
