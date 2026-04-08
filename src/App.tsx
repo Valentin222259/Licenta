@@ -27,6 +27,7 @@ import Account from "./pages/Account";
 import BookingSuccess from "./pages/BookingSuccess";
 import Availability from "./pages/Availability";
 import Reviews from "./pages/Reviews";
+import AdminReviews from "./pages/admin/AdminReviews";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,15 @@ const App = () => (
               <PublicPage>
                 <Account />
               </PublicPage>
+            }
+          />
+
+          <Route
+            path="/admin/reviews"
+            element={
+              <AdminPage>
+                <AdminReviews />
+              </AdminPage>
             }
           />
 
