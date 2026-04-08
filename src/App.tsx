@@ -25,6 +25,8 @@ import About from "./pages/About";
 import AdminLogin from "./pages/admin/AdminLogin";
 import Account from "./pages/Account";
 import BookingSuccess from "./pages/BookingSuccess";
+import Availability from "./pages/Availability";
+import Reviews from "./pages/Reviews";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +118,23 @@ const App = () => (
             element={
               <PublicPage>
                 <BookingSuccess />
+              </PublicPage>
+            }
+          />
+
+          <Route
+            path="/availability"
+            element={
+              <PublicPage>
+                <Availability />
+              </PublicPage>
+            }
+          />
+          <Route
+            path="/reviews"
+            element={
+              <PublicPage>
+                <Reviews />
               </PublicPage>
             }
           />

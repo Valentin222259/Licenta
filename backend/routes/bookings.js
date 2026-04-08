@@ -105,6 +105,24 @@ router.get("/", async (req, res) => {
   }
 });
 
+// ─── GET /api/bookings/availability ──────────────────────────────────────────
+router.get("/availability", async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT b.check_in::text, b.check_out::text, r.name AS room_name, r.id AS room_id
+       FROM bookings b
+       JOIN rooms r ON r.id = b.room_id
+       WHERE b.status IN ('confirmed', 'pending')
+         AND b.check_out >= CURRENT_DATE
+       ORDER BY b.check_in`,
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error("❌ GET /api/bookings/availability:", err.message);
+    res.status(500).json({ success: false, error: "Eroare server" });
+  }
+});
+
 // ─── GET /api/bookings/my ────────────────────────────────────────────────────
 // Rezervările unui client specific (după email sau user_id)
 // TODO: înlocuiește cu user_id din JWT când adăugăm auth
@@ -439,6 +457,34 @@ router.post("/:id/guest-id", async (req, res) => {
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error("❌ POST /api/bookings/:id/guest-id:", err.message);
+    res.status(500).json({ success: false, error: "Eroare server" });
+  }
+});
+
+// ─── DELETE /api/bookings/:id ─────────────────────────────────────────────
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const check = await query(`SELECT status FROM bookings WHERE id = $1`, [
+      id,
+    ]);
+    if (check.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Rezervarea nu există" });
+    }
+    if (check.rows[0].status !== "cancelled") {
+      return res.status(400).json({
+        success: false,
+        error: "Poți șterge doar rezervările anulate",
+      });
+    }
+    await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);
+    await query(`DELETE FROM bookings WHERE id = $1`, [id]);
+    console.log(`🗑️  Rezervare ștearsă: ${id}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ DELETE /api/bookings/:id:", err.message);
     res.status(500).json({ success: false, error: "Eroare server" });
   }
 });

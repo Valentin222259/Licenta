@@ -25,6 +25,7 @@ const { startReminderJob } = require("./jobs/reminderJob");
 const { verifyConnection } = require("./services/email");
 const contactRouter = require("./routes/contact");
 const app = express();
+const reviewsRouter = require("./routes/reviews");
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 // Citim originile permise din .env (separate cu virgulă)
@@ -108,6 +109,7 @@ app.use("/api/ai", aiRouter);
 app.use("/api/analytics", analyticsRouter);
 
 app.use("/api/contact", contactRouter);
+app.use("/api/reviews", reviewsRouter);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GESTIONARE ERORI

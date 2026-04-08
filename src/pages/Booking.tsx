@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import { useRooms } from "@/lib/hooks";
 import { apiPost } from "@/lib/api";
 import heroImage from "@/assets/hero-mountains.jpg";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 const Booking = () => {
   const { t } = useTranslation();
@@ -54,10 +56,18 @@ const Booking = () => {
         )
       : 1;
 
+  // Format dată pentru afișare dd/mm/yyyy
+  const formatDate = (iso: string) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  };
+
   const isFormValid =
     form.name.trim() !== "" &&
     form.email.trim() !== "" &&
-    form.phone.trim() !== "" &&
+    form.phone !== "" &&
+    form.phone !== undefined &&
     form.checkIn !== "" &&
     form.checkOut !== "" &&
     !dateErrors.checkIn &&
@@ -71,7 +81,6 @@ const Booking = () => {
     try {
       const userId = sessionStorage.getItem("userId") || undefined;
 
-      // Pasul 1: salvează rezervarea în DB
       const booking = await apiPost<{ data: { id: number } }>("/api/bookings", {
         room_id: room.id,
         user_id: userId,
@@ -85,7 +94,6 @@ const Booking = () => {
         source: "website",
       });
 
-      // Pasul 2: creează sesiunea Stripe și mergi la plată
       const { checkout_url } = await apiPost<{ checkout_url: string }>(
         "/api/payments/create-checkout",
         { booking_id: booking.data.id },
@@ -158,22 +166,21 @@ const Booking = () => {
               />
             </div>
 
-            {/* Telefon */}
+            {/* Telefon cu prefix */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.phone")}
               </label>
-              <input
-                type="tel"
-                required
+              <PhoneInput
+                international
+                defaultCountry="RO"
                 value={form.phone}
-                onChange={(e) => update("phone", e.target.value)}
-                placeholder="+40 7xx xxx xxx"
-                className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                onChange={(value) => update("phone", value || "")}
+                className="phone-input-wrapper"
               />
             </div>
 
-            {/* Date */}
+            {/* Date check-in / check-out */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
@@ -185,10 +192,13 @@ const Booking = () => {
                   min={today}
                   value={form.checkIn}
                   onChange={(e) => update("checkIn", e.target.value)}
-                  className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring ${
-                    dateErrors.checkIn ? "border-destructive" : "border-border"
-                  }`}
+                  className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring ${dateErrors.checkIn ? "border-destructive" : "border-border"}`}
                 />
+                {form.checkIn && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatDate(form.checkIn)}
+                  </p>
+                )}
                 {dateErrors.checkIn && (
                   <p className="text-xs text-destructive mt-1">
                     {dateErrors.checkIn}
@@ -205,10 +215,13 @@ const Booking = () => {
                   min={form.checkIn || today}
                   value={form.checkOut}
                   onChange={(e) => update("checkOut", e.target.value)}
-                  className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring ${
-                    dateErrors.checkOut ? "border-destructive" : "border-border"
-                  }`}
+                  className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring ${dateErrors.checkOut ? "border-destructive" : "border-border"}`}
                 />
+                {form.checkOut && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatDate(form.checkOut)}
+                  </p>
+                )}
                 {dateErrors.checkOut && (
                   <p className="text-xs text-destructive mt-1">
                     {dateErrors.checkOut}
@@ -268,6 +281,25 @@ const Booking = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 {nights} {nights > 1 ? t("booking.nights") : t("booking.night")}
               </p>
+              {form.checkIn &&
+                form.checkOut &&
+                !dateErrors.checkIn &&
+                !dateErrors.checkOut && (
+                  <div className="text-xs text-muted-foreground mb-3 space-y-1">
+                    <p>
+                      📅 Check-in:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatDate(form.checkIn)}
+                      </span>
+                    </p>
+                    <p>
+                      📅 Check-out:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatDate(form.checkOut)}
+                      </span>
+                    </p>
+                  </div>
+                )}
               <div className="border-t border-border pt-4 mb-6">
                 <div className="flex justify-between text-sm mb-1">
                   <span>
@@ -289,8 +321,8 @@ const Booking = () => {
               >
                 {submitting ? (
                   <span className="flex items-center gap-2">
-                    <Loader2 size={16} className="animate-spin" />
-                    Se procesează...
+                    <Loader2 size={16} className="animate-spin" /> Se
+                    procesează...
                   </span>
                 ) : (
                   t("booking.payNow")

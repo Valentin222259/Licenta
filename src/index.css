@@ -96,3 +96,81 @@
     text-wrap: balance;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PhoneInput cu steaguri — adaugă la FINALUL src/index.css
+   ═══════════════════════════════════════════════════════════════ */
+
+.phone-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  padding: 0 0.75rem;
+  height: 2.625rem;
+  gap: 0.5rem;
+  transition: box-shadow 0.15s;
+}
+
+.phone-input-wrapper:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 1px hsl(var(--ring));
+}
+
+.phone-input-error {
+  border-color: hsl(var(--destructive)) !important;
+}
+
+/* Selector țară */
+.phone-input-wrapper .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-right: 1px solid hsl(var(--border));
+  padding-right: 0.5rem;
+  margin-right: 0.25rem;
+}
+
+.phone-input-wrapper .PhoneInputCountrySelect {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  padding: 0;
+  max-width: 2rem;
+}
+
+/* Steag */
+.phone-input-wrapper .PhoneInputCountryIcon {
+  width: 1.375rem;
+  height: 1rem;
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.phone-input-wrapper .PhoneInputCountryIconImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Câmpul de text al numărului */
+.phone-input-wrapper .PhoneInputInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  padding: 0;
+  min-width: 0;
+}
+
+.phone-input-wrapper .PhoneInputInput::placeholder {
+  color: hsl(var(--muted-foreground));
+}

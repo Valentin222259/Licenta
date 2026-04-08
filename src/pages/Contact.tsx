@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Phone, Mail, Navigation, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import { apiPost } from "@/lib/api";
 
 const directions = [
@@ -105,12 +107,12 @@ const Contact = () => {
                 <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                   Telefon
                 </label>
-                <input
-                  type="tel"
+                <PhoneInput
+                  international
+                  defaultCountry="RO"
                   value={form.phone}
-                  onChange={(e) => update("phone", e.target.value)}
-                  placeholder="+40 7xx xxx xxx"
-                  className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                  onChange={(value) => update("phone", value || "")}
+                  className="phone-input-wrapper"
                 />
               </div>
               <div>

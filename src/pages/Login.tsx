@@ -7,13 +7,14 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Phone,
   CheckCircle,
   XCircle,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { apiPost } from "@/lib/api";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 interface AuthResponse {
   success: boolean;
@@ -21,7 +22,6 @@ interface AuthResponse {
   user: { id: string; name: string; email: string; role: "client" | "admin" };
 }
 
-// ─── Reguli complexitate parolă ───────────────────────────────────────────────
 const PASSWORD_RULES = [
   { label: "Minim 8 caractere", test: (p: string) => p.length >= 8 },
   { label: "O literă mare (A-Z)", test: (p: string) => /[A-Z]/.test(p) },
@@ -75,7 +75,6 @@ const Login = () => {
   const inputCls = (field: string) =>
     `w-full bg-muted border rounded-md pl-10 pr-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring transition-colors ${errors[field] ? "border-destructive" : "border-border"}`;
 
-  // ─── Login ────────────────────────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
@@ -115,7 +114,6 @@ const Login = () => {
     }
   };
 
-  // ─── Register ─────────────────────────────────────────────────────────────
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
@@ -151,7 +149,6 @@ const Login = () => {
       navigate("/account");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Eroare la înregistrare";
-      // Email duplicat — mesaj specific
       if (msg.includes("deja un cont") || msg.includes("409")) {
         setErrors({ email: "Există deja un cont cu această adresă de email" });
       } else {
@@ -168,7 +165,6 @@ const Login = () => {
   return (
     <div className="pt-24 pb-20 px-4 min-h-screen flex items-center justify-center">
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <User size={28} className="text-primary" />
@@ -179,7 +175,6 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Google OAuth — UI only */}
         <div className="mb-6">
           <button
             onClick={() =>
@@ -195,7 +190,6 @@ const Login = () => {
           </button>
         </div>
 
-        {/* Separator */}
         <div className="flex items-center gap-3 mb-6">
           <div className="flex-1 h-px bg-border" />
           <span className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -204,7 +198,6 @@ const Login = () => {
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        {/* Tabs */}
         <div className="flex bg-muted rounded-lg p-1 mb-6">
           {(["login", "register"] as const).map((t_) => (
             <button
@@ -222,7 +215,6 @@ const Login = () => {
           ))}
         </div>
 
-        {/* Eroare generală */}
         {errors.general && (
           <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3 mb-4 flex items-center gap-2">
             <XCircle size={15} className="text-destructive shrink-0" />
@@ -318,60 +310,76 @@ const Login = () => {
         {/* ── REGISTER ──────────────────────────────────────────────────── */}
         {tab === "register" && (
           <form onSubmit={handleRegister} className="space-y-4">
-            {[
-              {
-                field: "name",
-                label: t("booking.fullName"),
-                type: "text",
-                icon: User,
-                placeholder: "Ion Popescu",
-              },
-              {
-                field: "email",
-                label: t("loginPage.emailLabel"),
-                type: "email",
-                icon: Mail,
-                placeholder: "you@example.com",
-              },
-              {
-                field: "phone",
-                label: t("booking.phone"),
-                type: "tel",
-                icon: Phone,
-                placeholder: "+40 7xx xxx xxx",
-              },
-            ].map(({ field, label, type, icon: Icon, placeholder }) => (
-              <div key={field}>
-                <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                  {label}
-                </label>
-                <div className="relative">
-                  <Icon
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <input
-                    type={type}
-                    value={(registerForm as any)[field]}
-                    onChange={(e) =>
-                      setRegisterForm({
-                        ...registerForm,
-                        [field]: e.target.value,
-                      })
-                    }
-                    placeholder={placeholder}
-                    className={inputCls(field)}
-                  />
-                </div>
-                {errors[field] && (
-                  <p className="text-xs text-destructive mt-1">
-                    {errors[field]}
-                  </p>
-                )}
+            {/* Nume */}
+            <div>
+              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                {t("booking.fullName")}
+              </label>
+              <div className="relative">
+                <User
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+                <input
+                  type="text"
+                  value={registerForm.name}
+                  onChange={(e) =>
+                    setRegisterForm({ ...registerForm, name: e.target.value })
+                  }
+                  placeholder="Ion Popescu"
+                  className={inputCls("name")}
+                />
               </div>
-            ))}
+              {errors.name && (
+                <p className="text-xs text-destructive mt-1">{errors.name}</p>
+              )}
+            </div>
 
-            {/* Parolă cu indicator complexitate */}
+            {/* Email */}
+            <div>
+              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                {t("loginPage.emailLabel")}
+              </label>
+              <div className="relative">
+                <Mail
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+                <input
+                  type="email"
+                  value={registerForm.email}
+                  onChange={(e) =>
+                    setRegisterForm({ ...registerForm, email: e.target.value })
+                  }
+                  placeholder="you@example.com"
+                  className={inputCls("email")}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-xs text-destructive mt-1">{errors.email}</p>
+              )}
+            </div>
+
+            {/* ── Telefon cu steag + prefix ── */}
+            <div>
+              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                {t("booking.phone")}
+              </label>
+              <PhoneInput
+                international
+                defaultCountry="RO"
+                value={registerForm.phone}
+                onChange={(value) =>
+                  setRegisterForm({ ...registerForm, phone: value || "" })
+                }
+                className={`phone-input-wrapper${errors.phone ? " phone-input-error" : ""}`}
+              />
+              {errors.phone && (
+                <p className="text-xs text-destructive mt-1">{errors.phone}</p>
+              )}
+            </div>
+
+            {/* Parolă cu indicator */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("loginPage.passwordLabel")}
@@ -406,8 +414,6 @@ const Login = () => {
                   {errors.password}
                 </p>
               )}
-
-              {/* Indicator complexitate */}
               {showPasswordRules && (
                 <div className="mt-2 grid grid-cols-2 gap-1">
                   {PASSWORD_RULES.map((rule) => {
@@ -471,7 +477,6 @@ const Login = () => {
                   {errors.confirm}
                 </p>
               )}
-              {/* Confirmare vizuală potrivire */}
               {registerForm.confirm.length > 0 && (
                 <p
                   className={`text-xs mt-1 flex items-center gap-1 ${registerForm.password === registerForm.confirm ? "text-emerald-600" : "text-destructive"}`}

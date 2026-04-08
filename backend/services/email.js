@@ -7,7 +7,7 @@
  *
  * 1. SINGLE RESPONSIBILITY: Fiecare funcție trimite UN singur tip de email.
  * 2. NON-BLOCKING: Apelantul folosește .catch() → eșecul emailului nu
- *    afectează fluxul principal (rezervarea rămâne salvată).
+ * afectează fluxul principal (rezervarea rămâne salvată).
  * 3. INLINE CSS: Obligatoriu pentru Gmail/Outlook/Yahoo/Apple Mail.
  * 4. SINGLETON TRANSPORTER: Creat o dată, reutilizat (connection pool).
  *
@@ -15,26 +15,26 @@
  * FUNCȚII EXPORTATE
  * ═══════════════════════════════════════════════════════════════════
  *
- *  CLIENT:
- *    sendClientBookingConfirmation(email, bookingData)
- *    sendWelcomeEmail(email, name)
- *    sendBookingCancellation(email, bookingData)
- *    sendCheckInReminder(email, bookingData)
+ * CLIENT:
+ * sendClientBookingConfirmation(email, bookingData)
+ * sendWelcomeEmail(email, name)
+ * sendBookingCancellation(email, bookingData)
+ * sendCheckInReminder(email, bookingData)
  *
- *  ADMIN:
- *    sendAdminNewBookingAlert(adminEmail, bookingData)
- *    sendAdminContactMessage(adminEmail, contactData)
+ * ADMIN:
+ * sendAdminNewBookingAlert(adminEmail, bookingData)
+ * sendAdminContactMessage(adminEmail, contactData)
  *
- *  UTILITAR:
- *    verifyConnection()
+ * UTILITAR:
+ * verifyConnection()
  *
  * ═══════════════════════════════════════════════════════════════════
  * VARIABILE .env
  * ═══════════════════════════════════════════════════════════════════
- *   EMAIL_USER=adresa@gmail.com
- *   EMAIL_PASS=xxxx xxxx xxxx xxxx
- *   EMAIL_FROM="Maramureș Belvedere <adresa@gmail.com>"
- *   ADMIN_EMAIL=admin@pensiune.ro
+ * EMAIL_USER=adresa@gmail.com
+ * EMAIL_PASS=xxxx xxxx xxxx xxxx
+ * EMAIL_FROM="Maramureș Belvedere <adresa@gmail.com>"
+ * ADMIN_EMAIL=admin@pensiune.ro
  */
 
 "use strict";
@@ -378,7 +378,7 @@ async function sendAdminContactMessage(adminEmail, contactData) {
     subject: `✉️ Contact de la ${name}${subject ? ` — ${subject}` : ""}`,
     html: wrapLayout(
       content,
-      `Mesaj de la ${name}: ${message.substring(0, 80)}`,
+      `Mesaj de la ${name}: ${(message || "").substring(0, 80)}`,
     ),
   });
 
@@ -615,11 +615,226 @@ async function sendAccountDeletedEmail(userEmail, name) {
   console.log(`📧 [CLIENT] Confirmare ștergere cont → ${userEmail}`);
 }
 
+// =============================================================================
+//  RECENZIE NOUĂ → ADMIN
+// =============================================================================
+async function sendAdminNewReviewAlert(adminEmail, reviewData) {
+  const { guestName, guestEmail, rating, text, roomName, autoApproved } =
+    reviewData;
+
+  // Stele vizuale
+  const starsHTML = Array.from(
+    { length: 5 },
+    (_, i) =>
+      `<span style="font-size:24px;color:${i < rating ? "#d4a547" : "#ddd"};">&#9733;</span>`,
+  ).join("");
+
+  const content = `
+    ${sectionTitle("⭐", "Recenzie Nouă")}
+    <p style="margin:0 0 24px;font-size:14px;color:#555;text-align:center;font-family:Arial,sans-serif;">
+      Un oaspete a lăsat o recenzie pe site. Verificați și aprobați-o din panoul de administrare.
+    </p>
+
+    <div style="text-align:center;margin:0 0 24px;">
+      ${starsHTML}
+      <p style="margin:8px 0 0;font-size:13px;font-weight:600;color:#d4a547;font-family:Arial,sans-serif;">
+        ${rating}/5 stele
+      </p>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:${BRAND.light};border-radius:8px;margin:0 0 20px;border:1px solid #eeece8;">
+      ${[
+        ["Oaspete", guestName],
+        [
+          "Email",
+          `<a href="mailto:${guestEmail}" style="color:${BRAND.color};">${guestEmail}</a>`,
+        ],
+        ["Camera", roomName || "—"],
+        ["Rating", `${rating}/5 stele`],
+      ]
+        .map(
+          ([l, v]) => `
+        <tr style="border-bottom:1px solid #eeece8;">
+          <td style="padding:10px 20px;font-size:12px;color:#888;font-family:Arial,sans-serif;width:35%;">${l}</td>
+          <td style="padding:10px 20px;font-size:14px;color:#333;font-family:Arial,sans-serif;">${v}</td>
+        </tr>`,
+        )
+        .join("")}
+    </table>
+
+    <h3 style="margin:0 0 10px;font-size:11px;font-weight:600;color:#888;
+                font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.5px;">
+      Recenzia
+    </h3>
+    <div style="background:${BRAND.light};border-radius:8px;padding:20px;
+                border-left:3px solid #d4a547;margin:0 0 24px;">
+      <p style="margin:0;font-size:15px;color:#444;font-family:Arial,sans-serif;
+                 line-height:1.9;font-style:italic;">"${text}"</p>
+    </div>
+
+    ${
+      autoApproved
+        ? `<p style="margin:0 0 24px;font-size:12px;color:#2e7d4f;text-align:center;font-family:Arial,sans-serif;background:#f0faf4;border-radius:8px;padding:12px;">
+            ✅ Recenzia a fost publicată automat (${rating} stele).
+         </p>`
+        : `<p style="margin:0 0 24px;font-size:12px;color:#b45309;text-align:center;font-family:Arial,sans-serif;background:#fffbeb;border-radius:8px;padding:12px;">
+            ⏳ Recenzia este în așteptare — necesită aprobare (${rating} stele).
+         </p>
+         ${ctaButton("Aprobă Recenzia", BRAND.website + "/admin/reviews")}`
+    }
+    <p style="margin:16px 0 0;font-size:11px;color:#bbb;text-align:center;font-family:Arial,sans-serif;">
+      Puteți răspunde oaspetelui direct la <a href="mailto:${guestEmail}" style="color:${BRAND.color};">${guestEmail}</a>
+    </p>`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
+    to: adminEmail,
+    replyTo: `"${guestName}" <${guestEmail}>`,
+    subject: `${autoApproved ? "⭐" : "⏳"} Recenzie nouă ${rating}/5 — ${guestName}${roomName ? ` (${roomName})` : ""}`,
+    html: wrapLayout(
+      content,
+      `${guestName} a lăsat ${rating} stele: ${text.substring(0, 80)}`,
+    ),
+  });
+
+  console.log(
+    `📧 [ADMIN] Recenzie nouă → ${adminEmail} (de la: ${guestEmail}, rating: ${rating}/5)`,
+  );
+}
+
+// =============================================================================
+//  CONFIRMARE RECENZIE → CLIENT
+// =============================================================================
+async function sendClientReviewConfirmation(clientEmail, reviewData) {
+  const { guestName, rating, roomName, autoApproved } = reviewData;
+
+  const starsHTML = Array.from(
+    { length: 5 },
+    (_, i) =>
+      `<span style="font-size:22px;color:${i < rating ? "#d4a547" : "#ddd"};">&#9733;</span>`,
+  ).join("");
+
+  const content = `
+    ${sectionTitle("🙏", `Mulțumim, ${guestName}!`)}
+    <p style="margin:0 0 24px;font-size:14px;color:#555;text-align:center;font-family:Arial,sans-serif;">
+      ${
+        autoApproved
+          ? "Recenzia dumneavoastră a fost publicată imediat. Mulțumim pentru aprecierea caldă!"
+          : "Recenzia dumneavoastră a fost primită și va fi verificată în scurt timp înainte de publicare."
+      }
+    </p>
+
+    <div style="background:${BRAND.light};border-radius:12px;padding:24px;text-align:center;margin:0 0 24px;border:1px solid #eeece8;">
+      ${starsHTML}
+      <p style="margin:10px 0 4px;font-size:16px;font-weight:600;color:#333;font-family:Arial,sans-serif;">
+        ${rating}/5 stele
+      </p>
+      ${roomName ? `<p style="margin:0;font-size:13px;color:#888;font-family:Arial,sans-serif;">${roomName}</p>` : ""}
+    </div>
+
+    <p style="margin:0 0 24px;font-size:14px;color:#555;text-align:center;font-family:Arial,sans-serif;line-height:1.8;">
+      Opinia dumneavoastră ne ajută să îmbunătățim continuu serviciile și să oferim experiențe memorabile 
+      tuturor oaspeților noștri. Abia așteptăm să vă revedem la Maramureș Belvedere!
+    </p>
+
+    ${ctaButton("Rezervă din Nou", BRAND.website + "/booking")}`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
+    to: clientEmail,
+    subject: `🙏 Mulțumim pentru recenzie, ${guestName}!`,
+    html: wrapLayout(
+      content,
+      `Recenzia ta de ${rating} stele a fost primită. Mulțumim!`,
+    ),
+  });
+
+  console.log(`📧 [CLIENT] Confirmare recenzie → ${clientEmail}`);
+}
+
+// =============================================================================
+//  SOLICITARE RECENZIE → CLIENT (trimis în ziua check-out)
+// =============================================================================
+async function sendReviewRequest(clientEmail, bookingData) {
+  const { guestName, roomName, checkIn, checkOut, bookingRef } = bookingData;
+  const reviewUrl = BRAND.website + "/reviews";
+
+  // Stele interactive — link direct cu rating pre-selectat
+  const starsHTML = Array.from({ length: 5 }, (_, i) => {
+    const starNum = i + 1;
+    const url = `${reviewUrl}?ref=${bookingRef}&stars=${starNum}`;
+    return `<a href="${url}" style="text-decoration:none;font-size:32px;color:#ddd;margin:0 2px;transition:color 0.2s;" 
+                title="${starNum} stele">&#9733;</a>`;
+  }).join("");
+
+  const content = `
+    ${sectionTitle("🌟", `Cum a fost sejurul, ${guestName}?`)}
+    <p style="margin:0 0 24px;font-size:14px;color:#555;text-align:center;font-family:Arial,sans-serif;line-height:1.8;">
+      Sperăm că ați avut parte de o experiență de neuitat la Maramureș Belvedere.<br>
+      Câteva cuvinte din partea dumneavoastră ne ajută enorm să creștem și să oferim<br>
+      experiențe și mai bune viitorilor oaspeți.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:${BRAND.light};border-radius:8px;margin:0 0 28px;border:1px solid #eeece8;">
+      ${[
+        ["Camera", roomName || "—"],
+        ["Check-in", checkIn],
+        ["Check-out", checkOut],
+        ["Rezervare", bookingRef || "—"],
+      ]
+        .map(
+          ([l, v]) => `
+        <tr style="border-bottom:1px solid #eeece8;">
+          <td style="padding:10px 20px;font-size:12px;color:#888;font-family:Arial,sans-serif;width:35%;">${l}</td>
+          <td style="padding:10px 20px;font-size:14px;color:#333;font-family:Arial,sans-serif;">${v}</td>
+        </tr>`,
+        )
+        .join("")}
+    </table>
+
+    <h3 style="margin:0 0 12px;font-size:11px;font-weight:600;color:#888;
+                font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.5px;text-align:center;">
+      Selectați un rating
+    </h3>
+    <div style="text-align:center;margin:0 0 8px;">
+      ${starsHTML}
+    </div>
+    <p style="margin:0 0 28px;font-size:11px;color:#bbb;text-align:center;font-family:Arial,sans-serif;">
+      Apăsați pe o stea pentru a deschide formularul pre-completat
+    </p>
+
+    ${ctaButton("Lasă o Recenzie", reviewUrl)}
+
+    <p style="margin:20px 0 0;font-size:12px;color:#bbb;text-align:center;font-family:Arial,sans-serif;">
+      Vă mulțumim că ați ales Maramureș Belvedere.<br>
+      Abia așteptăm să vă revedem!
+    </p>`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `"${BRAND.name}" <${EMAIL_USER}>`,
+    to: clientEmail,
+    subject: `🌟 Cum a fost sejurul, ${guestName}? Spuneți-ne părerea!`,
+    html: wrapLayout(
+      content,
+      `${guestName}, cum a fost la ${roomName}? Lăsați o recenzie în 1 minut.`,
+    ),
+  });
+
+  console.log(
+    `📧 [CLIENT] Solicitare recenzie → ${clientEmail} (ref: ${bookingRef})`,
+  );
+}
+
 module.exports = {
   sendClientBookingConfirmation,
   sendClientContactConfirmation,
   sendAdminNewBookingAlert,
   sendAdminContactMessage,
+  sendAdminNewReviewAlert,
+  sendClientReviewConfirmation,
+  sendReviewRequest,
   sendWelcomeEmail,
   sendBookingCancellation,
   sendCheckInReminder,

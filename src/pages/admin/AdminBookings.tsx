@@ -13,11 +13,12 @@ import {
   ArrowLeft,
   ShieldCheck,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { apiGet, apiPatch } from "@/lib/api";
 import type { ApiResponse, Booking } from "@/lib/types";
+import { toast } from "@/hooks/use-toast";
 
-// ─── Tipuri ──────────────────────────────────────────────────────────────────
 interface GuestIdData {
   cnp: string;
   nume: string;
@@ -34,7 +35,6 @@ interface GuestIdData {
   emis_de: string;
 }
 
-// ─── Constante ────────────────────────────────────────────────────────────────
 const statusStyle: Record<string, { bg: string; text: string; dot: string }> = {
   confirmed: {
     bg: "bg-emerald-50",
@@ -414,6 +414,8 @@ const AdminBookings = () => {
   const [selected, setSelected] = useState<Booking | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -452,9 +454,30 @@ const AdminBookings = () => {
     }
   };
 
+  const deleteBooking = async (id: string) => {
+    setDeleting(true);
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/bookings/${id}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) throw new Error("Eroare la ștergere");
+      toast({ title: "Rezervare ștearsă din listă" });
+      closeModal();
+      await fetchBookings();
+    } catch {
+      toast({ title: "Eroare la ștergere", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
+  };
+
   const closeModal = () => {
     setSelected(null);
     setScannerOpen(false);
+    setDeleteConfirm(false);
   };
 
   const filterKeys = [
@@ -465,9 +488,15 @@ const AdminBookings = () => {
     "completed",
   ] as const;
 
+  // ── Logică butoane acțiuni ────────────────────────────────────────────────
+  const canConfirm = (b: Booking) => b.status === "pending";
+  const canCancel = (b: Booking) =>
+    b.status === "pending" || b.status === "confirmed";
+  const canDelete = (b: Booking) => b.status === "cancelled";
+
   return (
     <div className="space-y-5">
-      {/* Filtre + refresh */}
+      {/* Filtre */}
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Filtrare:
@@ -477,11 +506,7 @@ const AdminBookings = () => {
             key={s}
             type="button"
             onClick={() => setStatusFilter(s)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              statusFilter === s
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
-            }`}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${statusFilter === s ? "bg-primary text-primary-foreground shadow-sm" : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
           >
             {filterLabels[s]}
           </button>
@@ -541,6 +566,7 @@ const AdminBookings = () => {
                       onClick={() => {
                         setSelected(b);
                         setScannerOpen(false);
+                        setDeleteConfirm(false);
                       }}
                       className="hover:bg-muted/20 cursor-pointer transition-colors"
                     >
@@ -688,41 +714,106 @@ const AdminBookings = () => {
 
               {/* Acțiuni */}
               <div className="px-6 py-5 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setScannerOpen(true)}
-                  className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-primary/8 hover:bg-primary/15 border border-primary/25 hover:border-primary/50 text-primary rounded-xl text-sm font-semibold transition-all"
-                >
-                  <ScanLine size={17} /> Scanează Buletinul Oaspetelui
-                </button>
+                {/* Scanare buletin — doar pentru rezervări active */}
+                {selected.status !== "cancelled" && (
+                  <button
+                    type="button"
+                    onClick={() => setScannerOpen(true)}
+                    className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-primary/8 hover:bg-primary/15 border border-primary/25 hover:border-primary/50 text-primary rounded-xl text-sm font-semibold transition-all"
+                  >
+                    <ScanLine size={17} /> Scanează Buletinul Oaspetelui
+                  </button>
+                )}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    size="sm"
-                    className="h-10"
-                    disabled={selected.status === "confirmed" || updating}
-                    onClick={() => updateStatus(selected.id, "confirmed")}
+                {/* Confirmare / Anulare — doar dacă e relevantă acțiunea */}
+                {(canConfirm(selected) || canCancel(selected)) && (
+                  <div
+                    className={`grid gap-3 ${canConfirm(selected) && canCancel(selected) ? "grid-cols-2" : "grid-cols-1"}`}
                   >
-                    {updating ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      "Confirmă"
+                    {canConfirm(selected) && (
+                      <Button
+                        size="sm"
+                        className="h-10"
+                        disabled={updating}
+                        onClick={() => updateStatus(selected.id, "confirmed")}
+                      >
+                        {updating ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          "✓ Confirmă"
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-10 text-destructive border-destructive/30 hover:bg-destructive hover:text-white hover:border-destructive"
-                    disabled={selected.status === "cancelled" || updating}
-                    onClick={() => updateStatus(selected.id, "cancelled")}
-                  >
-                    {updating ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      "Anulează"
+                    {canCancel(selected) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-10 text-destructive border-destructive/30 hover:bg-destructive hover:text-white hover:border-destructive"
+                        disabled={updating}
+                        onClick={() => updateStatus(selected.id, "cancelled")}
+                      >
+                        {updating ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          "Anulează"
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                </div>
+                  </div>
+                )}
+
+                {/* Ștergere — doar pentru rezervări anulate */}
+                {canDelete(selected) && (
+                  <div>
+                    {!deleteConfirm ? (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm(true)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-destructive/30 text-destructive rounded-xl text-sm font-medium hover:bg-destructive hover:text-white transition-all"
+                      >
+                        <Trash2 size={15} /> Șterge din listă
+                      </button>
+                    ) : (
+                      <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 space-y-3">
+                        <p className="text-sm text-destructive font-medium flex items-center gap-2">
+                          <AlertTriangle size={15} /> Ești sigur că vrei să
+                          ștergi această rezervare?
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => deleteBooking(selected.id)}
+                            disabled={deleting}
+                            className="flex-1 py-2 bg-destructive text-white rounded-lg text-sm font-semibold hover:bg-destructive/90 transition-colors"
+                          >
+                            {deleting ? (
+                              <Loader2
+                                size={14}
+                                className="animate-spin mx-auto"
+                              />
+                            ) : (
+                              "Da, șterge"
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirm(false)}
+                            className="flex-1 py-2 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+                          >
+                            Anulează
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Mesaj info pentru rezervări finalizate */}
+                {selected.status === "completed" && (
+                  <p className="text-xs text-center text-muted-foreground py-2">
+                    Rezervare finalizată — nicio acțiune disponibilă
+                  </p>
+                )}
               </div>
             </div>
           )}
