@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Mountain,
 } from "lucide-react";
+import { Star } from "lucide-react";
 
 const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Panou de Control" },
@@ -21,6 +22,7 @@ const navItems = [
   { to: "/admin/images", icon: ImageIcon, label: "Imagini" },
   { to: "/admin/analytics", icon: BarChart3, label: "Analitice" },
   { to: "/admin/settings", icon: Settings, label: "Setări" },
+  { to: "/admin/reviews", icon: Star, label: "Recenzii" },
 ];
 
 const AdminLayout = () => {

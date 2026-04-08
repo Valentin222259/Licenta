@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Star, Loader2, CheckCircle } from "lucide-react";
+import { Star, Loader2, CheckCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { apiGet, apiPost } from "@/lib/api";
@@ -35,7 +35,11 @@ const StarRating = ({
         >
           <Star
             size={onChange ? 28 : 16}
-            className={`transition-colors ${(hover || value) >= s ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
+            className={`transition-colors ${
+              (hover || value) >= s
+                ? "fill-amber-400 text-amber-400"
+                : "text-muted-foreground/30"
+            }`}
           />
         </button>
       ))}
@@ -48,13 +52,24 @@ const Reviews = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
   const [searchParams] = useSearchParams();
-  const [form, setForm] = useState(() => {
-    const stars = parseInt(searchParams.get("stars") || "0");
-    const validStars = stars >= 1 && stars <= 5 ? stars : 0;
-    return { name: "", email: "", rating: validStars, text: "" };
+
+  // Parametrii vin din URL-ul trimis automat pe email după check-out
+  // Clientul nu vede și nu completează aceste câmpuri
+  const bookingIdFromUrl = searchParams.get("ref") || "";
+  const emailFromUrl = searchParams.get("email") || "";
+  const starsFromUrl = parseInt(searchParams.get("stars") || "0");
+  const validStars = starsFromUrl >= 1 && starsFromUrl <= 5 ? starsFromUrl : 0;
+
+  const isFromEmail = !!bookingIdFromUrl;
+
+  const [form, setForm] = useState({
+    name: "",
+    email: emailFromUrl,
+    rating: validStars,
+    text: "",
   });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -84,22 +99,13 @@ const Reviews = () => {
     setSubmitting(true);
     try {
       await apiPost("/api/reviews", {
+        booking_id: bookingIdFromUrl,
         guest_name: form.name,
         guest_email: form.email,
         rating: form.rating,
         text: form.text,
       });
       setSubmitted(true);
-      setReviews((prev) => [
-        {
-          id: Date.now().toString(),
-          guest_name: form.name,
-          rating: form.rating,
-          text: form.text,
-          created_at: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
       toast({ title: "Recenzie trimisă! Mulțumim pentru feedback." });
     } catch (err) {
       toast({
@@ -114,7 +120,6 @@ const Reviews = () => {
   return (
     <div className="pt-24 pb-20 px-4">
       <div className="container mx-auto max-w-4xl">
-        {/* Header */}
         <h1 className="font-heading text-4xl md:text-5xl text-center mb-3">
           Recenzii
         </h1>
@@ -122,7 +127,7 @@ const Reviews = () => {
           Experiențele oaspeților noștri sunt cea mai bună recomandare.
         </p>
 
-        {/* Statistici globale */}
+        {/* Statistici */}
         {!loading && reviews.length > 0 && (
           <div className="bg-card border border-border rounded-2xl p-6 mb-10 flex flex-col sm:flex-row items-center gap-6">
             <div className="text-center sm:border-r sm:border-border sm:pr-6">
@@ -166,7 +171,7 @@ const Reviews = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* ── Formular ────────────────────────────────────────────────── */}
+          {/* Formular */}
           <div>
             <h2 className="font-heading text-2xl mb-6">Lasă o recenzie</h2>
 
@@ -179,8 +184,25 @@ const Reviews = () => {
                 <h3 className="font-heading text-xl mb-2">Mulțumim!</h3>
                 <p className="text-sm text-muted-foreground">
                   Recenzia ta a fost trimisă și va fi publicată după verificare.
-                  Am trimis și o confirmare pe emailul tău.
                 </p>
+              </div>
+            ) : !isFromEmail ? (
+              // Vizitator care nu a venit prin link de email
+              <div className="bg-muted/40 border border-border rounded-2xl p-8 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Mail size={24} className="text-primary" />
+                </div>
+                <h3 className="font-heading text-lg">Ai stat la noi?</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Recenziile se pot lăsa doar prin link-ul primit pe email după
+                  check-out. Dacă nu ai primit emailul, contactează-ne:
+                </p>
+                <a
+                  href="mailto:contact@maramures-belvedere.ro"
+                  className="inline-block text-sm text-primary underline"
+                >
+                  contact@maramures-belvedere.ro
+                </a>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -203,7 +225,7 @@ const Reviews = () => {
                   )}
                 </div>
 
-                {/* Email */}
+                {/* Email — pre-completat din URL, readonly */}
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                     Email *
@@ -214,8 +236,11 @@ const Reviews = () => {
                     onChange={(e) =>
                       setForm({ ...form, email: e.target.value })
                     }
+                    readOnly={!!emailFromUrl}
                     placeholder="you@example.com"
-                    className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring ${errors.email ? "border-destructive" : "border-border"}`}
+                    className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring ${
+                      emailFromUrl ? "opacity-60 cursor-not-allowed" : ""
+                    } ${errors.email ? "border-destructive" : "border-border"}`}
                   />
                   {errors.email && (
                     <p className="text-xs text-destructive mt-1">
@@ -281,10 +306,9 @@ const Reviews = () => {
             )}
           </div>
 
-          {/* ── Lista recenzii ───────────────────────────────────────────── */}
+          {/* Lista recenzii */}
           <div>
             <h2 className="font-heading text-2xl mb-6">Ce spun oaspeții</h2>
-
             {loading ? (
               <div className="flex justify-center py-10">
                 <Loader2 size={24} className="animate-spin text-primary" />

@@ -123,6 +123,13 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_images_room_id      ON images(room_id)`,
   `CREATE INDEX IF NOT EXISTS idx_images_category     ON images(category)`,
   `CREATE INDEX IF NOT EXISTS idx_guest_ids_booking   ON guest_ids(booking_id)`,
+  `DO $$ BEGIN
+   IF NOT EXISTS (
+     SELECT 1 FROM pg_constraint WHERE conname = 'reviews_booking_id_unique'
+   ) THEN
+     ALTER TABLE reviews ADD CONSTRAINT reviews_booking_id_unique UNIQUE (booking_id);
+   END IF;
+ END $$`,
 ];
 
 // ─── Rulează migrările ──────────────────────────────────────────────────────

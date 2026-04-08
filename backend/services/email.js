@@ -758,7 +758,7 @@ async function sendClientReviewConfirmation(clientEmail, reviewData) {
 // =============================================================================
 async function sendReviewRequest(clientEmail, bookingData) {
   const { guestName, roomName, checkIn, checkOut, bookingRef } = bookingData;
-  const reviewUrl = BRAND.website + "/reviews";
+  const reviewUrl = `${BRAND.website}/reviews?ref=${bookingRef}&email=${encodeURIComponent(clientEmail)}&stars=5`;
 
   // Stele interactive — link direct cu rating pre-selectat
   const starsHTML = Array.from({ length: 5 }, (_, i) => {

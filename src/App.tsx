@@ -115,15 +115,6 @@ const App = () => (
           />
 
           <Route
-            path="/admin/reviews"
-            element={
-              <AdminPage>
-                <AdminReviews />
-              </AdminPage>
-            }
-          />
-
-          <Route
             path="/booking/success"
             element={
               <PublicPage>
@@ -167,6 +158,7 @@ const App = () => (
             <Route path="images" element={<AdminImages />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="reviews" element={<AdminReviews />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
