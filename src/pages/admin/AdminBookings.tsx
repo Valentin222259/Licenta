@@ -494,6 +494,15 @@ const AdminBookings = () => {
     b.status === "pending" || b.status === "confirmed";
   const canDelete = (b: Booking) => b.status === "cancelled";
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = String(d.getFullYear()).slice(2);
+    return `${day}/${month}/${year}`;
+  };
+
   return (
     <div className="space-y-5">
       {/* Filtre */}
@@ -539,22 +548,27 @@ const AdminBookings = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-muted/40 border-b border-border">
-                  {[
-                    "ID",
-                    "Oaspete",
-                    "Cameră",
-                    "Check-in",
-                    "Check-out",
-                    "Total",
-                    "Status",
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-left first:text-center"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                    ID
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-left">
+                    Oaspete
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden md:table-cell">
+                    Cameră
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
+                    Check-in
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
+                    Check-out
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                    Total
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -581,21 +595,21 @@ const AdminBookings = () => {
                           {b.guest_email}
                         </p>
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground hidden md:table-cell">
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden md:table-cell">
                         {b.room_name}
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground hidden sm:table-cell">
-                        {b.check_in?.split("T")[0] || b.check_in}
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
+                        {formatDate(b.check_in)}
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground hidden sm:table-cell">
-                        {b.check_out?.split("T")[0] || b.check_out}
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
+                        {formatDate(b.check_out)}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 text-center">
                         <span className="text-sm font-semibold">
                           {b.total_price} RON
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 text-center">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
                         >

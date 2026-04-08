@@ -6,28 +6,18 @@ import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useTranslation } from "react-i18next";
 import { useRooms } from "@/lib/hooks";
 import { useHeroImages } from "@/lib/useImages";
+import { useState, useEffect } from "react";
+import { apiGet } from "@/lib/api";
 import roomPlaceholder from "@/assets/hero-mountains.jpg";
 
-const reviews = [
-  {
-    name: "Sophie & Marc",
-    country: "France",
-    rating: 5,
-    text: "An unforgettable experience. The views, the hospitality, the food — everything was perfect.",
-  },
-  {
-    name: "Andrei R.",
-    country: "Romania",
-    rating: 5,
-    text: "Cel mai frumos loc din Maramureș. Ne-am simțit ca acasă, dar într-un vis.",
-  },
-  {
-    name: "Julia W.",
-    country: "Austria",
-    rating: 5,
-    text: "Reminds me of our best Alpine lodges, but with a unique Romanian soul. Truly special.",
-  },
-];
+interface Review {
+  id: string;
+  guest_name: string;
+  rating: number;
+  text: string;
+  created_at: string;
+  room_name?: string;
+}
 
 const Index = () => {
   const { t } = useTranslation();
@@ -36,9 +26,16 @@ const Index = () => {
   const reviewsRef = useScrollReveal();
   const activitiesRef = useScrollReveal();
 
-  // Imagini din API
   const { primary: heroImage } = useHeroImages();
   const { rooms } = useRooms();
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+
+  useEffect(() => {
+    apiGet<{ success: boolean; data: Review[] }>("/api/reviews")
+      .then((res) => setReviews(res.data || []))
+      .catch(() => setReviews([]));
+  }, []);
 
   const heroSrc = heroImage?.url || heroImageFallback;
 
@@ -92,7 +89,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Rooms — imagini din API */}
+      {/* Featured Rooms */}
       <section className="py-20 px-4" ref={roomsRef}>
         <div className="container mx-auto max-w-6xl">
           <h2 className="font-heading text-3xl md:text-4xl text-center mb-4">
@@ -167,35 +164,45 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Reviews */}
+      {/* Reviews — date reale din DB */}
       <section className="py-20 px-4" ref={reviewsRef}>
         <div className="container mx-auto max-w-5xl">
           <h2 className="font-heading text-3xl md:text-4xl text-center mb-12">
             {t("reviews.title")}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {reviews.map((r, i) => (
-              <div
-                key={i}
-                className="bg-card border border-border rounded-lg p-6"
-              >
-                <div className="flex gap-1 mb-3">
-                  {Array.from({ length: r.rating }).map((_, j) => (
-                    <Star
-                      key={j}
-                      size={16}
-                      className="fill-primary text-primary"
-                    />
-                  ))}
+          {reviews.length === 0 ? (
+            <p className="text-center text-muted-foreground">
+              Nu există recenzii încă.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {reviews.slice(0, 3).map((r) => (
+                <div
+                  key={r.id}
+                  className="bg-card border border-border rounded-lg p-6"
+                >
+                  <div className="flex gap-1 mb-3">
+                    {Array.from({ length: r.rating }).map((_, j) => (
+                      <Star
+                        key={j}
+                        size={16}
+                        className="fill-primary text-primary"
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground italic mb-4">
+                    "{r.text}"
+                  </p>
+                  <p className="font-heading text-sm">{r.guest_name}</p>
+                  {r.room_name && (
+                    <p className="text-xs text-muted-foreground">
+                      {r.room_name}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground italic mb-4">
-                  "{r.text}"
-                </p>
-                <p className="font-heading text-sm">{r.name}</p>
-                <p className="text-xs text-muted-foreground">{r.country}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

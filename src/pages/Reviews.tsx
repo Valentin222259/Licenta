@@ -35,11 +35,7 @@ const StarRating = ({
         >
           <Star
             size={onChange ? 28 : 16}
-            className={`transition-colors ${
-              (hover || value) >= s
-                ? "fill-amber-400 text-amber-400"
-                : "text-muted-foreground/30"
-            }`}
+            className={`transition-colors ${(hover || value) >= s ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
           />
         </button>
       ))}

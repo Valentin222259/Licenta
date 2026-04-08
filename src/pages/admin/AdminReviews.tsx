@@ -150,30 +150,6 @@ const AdminReviews = () => {
         ))}
       </div>
 
-      {/* Legendă acțiuni */}
-      <div className="bg-muted/40 border border-border rounded-xl px-4 py-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <CheckCircle size={13} className="text-emerald-500" />
-          <span>
-            <strong>Aprobă</strong> — publică recenzia pe site
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <EyeOff size={13} className="text-amber-500" />
-          <span>
-            <strong>Ascunde</strong> — rămâne în DB, nu e vizibilă public
-            (reversibil)
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Trash2 size={13} className="text-destructive" />
-          <span>
-            <strong>Șterge</strong> — eliminare definitivă (spam, conținut
-            ilegal)
-          </span>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="flex bg-card border border-border rounded-xl p-1 gap-1">
         <button

@@ -66,26 +66,41 @@ const AdminSettings = () => {
 
       {/* Notificări email */}
       <section>
-        <h2 className="font-heading text-xl mb-4">Notificări Email</h2>
-        <div className="space-y-3">
-          {notifItems.map((n) => (
-            <label
-              key={n.key}
-              className="flex items-center gap-3 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={notifications[n.key]}
-                onChange={(e) =>
-                  setNotifications({
-                    ...notifications,
-                    [n.key]: e.target.checked,
-                  })
-                }
-                className="w-4 h-4 accent-primary rounded"
-              />
-              <span className="text-sm">{n.label}</span>
-            </label>
+        <h2 className="font-heading text-xl mb-2">Notificări Email</h2>
+        <div className="bg-muted/40 border border-border rounded-xl px-5 py-4 space-y-3">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Sistemul trimite automat următoarele emailuri:
+          </p>
+          {[
+            {
+              label: "Confirmare rezervare",
+              desc: "Trimis clientului după plata Stripe",
+            },
+            {
+              label: "Alertă rezervare nouă",
+              desc: "Trimis adminului la fiecare rezervare confirmată",
+            },
+            {
+              label: "Reminder check-in",
+              desc: "Trimis clientului cu o zi înainte de sosire (zilnic 10:00)",
+            },
+            {
+              label: "Solicitare recenzie",
+              desc: "Trimis clientului în ziua check-out-ului (zilnic 12:00)",
+            },
+            {
+              label: "Anulare rezervare",
+              desc: "Trimis clientului când rezervarea e anulată",
+            },
+            { label: "Bun venit", desc: "Trimis la crearea unui cont nou" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-start gap-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            </div>
           ))}
         </div>
       </section>
