@@ -14,7 +14,6 @@ async function generateBookingRef() {
 }
 
 // ─── Helper: verifică disponibilitate cameră ────────────────────────────────
-// Returnează true dacă camera este liberă în perioada dată
 async function isRoomAvailable(
   roomId,
   checkIn,
@@ -25,7 +24,7 @@ async function isRoomAvailable(
     SELECT COUNT(*) as count
     FROM bookings
     WHERE room_id = $1
-      AND status NOT IN ('cancelled')
+      AND status NOT IN ('cancelled', 'finished')
       AND check_in < $3
       AND check_out > $2
   `;
@@ -41,7 +40,6 @@ async function isRoomAvailable(
 }
 
 // ─── GET /api/bookings ───────────────────────────────────────────────────────
-// Lista completă pentru admin, cu filtre opționale
 router.get("/", async (req, res) => {
   try {
     const { status, room_id, from, to, limit = 50, offset = 0 } = req.query;
@@ -88,10 +86,9 @@ router.get("/", async (req, res) => {
       params,
     );
 
-    // Total pentru paginare
     const countResult = await query(
       `SELECT COUNT(*) FROM bookings b ${whereClause}`,
-      params.slice(0, -2), // fără limit/offset
+      params.slice(0, -2),
     );
 
     res.json({
@@ -124,8 +121,6 @@ router.get("/availability", async (req, res) => {
 });
 
 // ─── GET /api/bookings/my ────────────────────────────────────────────────────
-// Rezervările unui client specific (după email sau user_id)
-// TODO: înlocuiește cu user_id din JWT când adăugăm auth
 router.get("/my", async (req, res) => {
   try {
     const { email } = req.query;
@@ -179,7 +174,6 @@ router.get("/:id", async (req, res) => {
         .json({ success: false, error: "Rezervarea nu a fost găsită" });
     }
 
-    // Date buletin (dacă există)
     const guestIdResult = await query(
       `SELECT * FROM guest_ids WHERE booking_id = $1`,
       [id],
@@ -199,7 +193,17 @@ router.get("/:id", async (req, res) => {
 });
 
 // ─── POST /api/bookings ──────────────────────────────────────────────────────
-// Creează o rezervare nouă cu verificare disponibilitate
+/**
+ * Creează o rezervare nouă.
+ *
+ * Body fields:
+ *  - payment_method: "card" | "bank_transfer"
+ *    - "card"          → statusul inițial e "pending", se va confirma prin webhook Stripe
+ *    - "bank_transfer" → statusul inițial e "pending", adminul confirmă manual
+ *
+ * Ambele metode returnează rezervarea creată.
+ * Diferența de flux (redirect Stripe vs pagina de confirmare) se gestionează în frontend.
+ */
 router.post("/", async (req, res) => {
   try {
     const {
@@ -213,6 +217,7 @@ router.post("/", async (req, res) => {
       special_requests,
       source = "website",
       user_id,
+      payment_method = "card", // "card" | "bank_transfer"
     } = req.body;
 
     // ── Validare câmpuri obligatorii ─────────────────────────────────────
@@ -221,6 +226,15 @@ router.post("/", async (req, res) => {
         success: false,
         error:
           "Câmpurile room_id, guest_name, guest_email, check_in, check_out sunt obligatorii",
+      });
+    }
+
+    // ── Validare metodă de plată ─────────────────────────────────────────
+    const validPaymentMethods = ["card", "bank_transfer", "reception"];
+    if (!validPaymentMethods.includes(payment_method)) {
+      return res.status(400).json({
+        success: false,
+        error: `Metodă de plată invalidă. Valori permise: ${validPaymentMethods.join(", ")}`,
       });
     }
 
@@ -285,13 +299,18 @@ router.post("/", async (req, res) => {
     // ── Generează referința ──────────────────────────────────────────────
     const booking_ref = await generateBookingRef();
 
+    // ── Statusul inițial e întotdeauna "pending" ─────────────────────────
+    // • Pentru "card": Stripe webhook-ul schimbă statusul în "confirmed" după plată
+    // • Pentru "bank_transfer": Adminul confirmă manual din panou
+    const initial_status = "pending";
+
     // ── Inserează rezervarea ─────────────────────────────────────────────
     const { rows } = await query(
       `
       INSERT INTO bookings
         (booking_ref, user_id, room_id, guest_name, guest_email, guest_phone,
          check_in, check_out, guests, total_price, status, source, special_requests)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `,
       [
@@ -305,19 +324,83 @@ router.post("/", async (req, res) => {
         check_out,
         guests,
         total_price,
+        initial_status,
         source,
         special_requests || null,
       ],
     );
 
     console.log(
-      `✅ Rezervare creată: ${booking_ref} (${guest_name}, ${nights} nopți)`,
+      `✅ Rezervare creată: ${booking_ref} (${guest_name}, ${nights} nopți, metodă: ${payment_method})`,
     );
+
+    // ── Trimitem emailuri pentru plăți non-Stripe ────────────────────────
+    // Pentru card, emailul se trimite din webhook-ul Stripe după confirmare
+    if (payment_method === "bank_transfer" || payment_method === "reception") {
+      try {
+        const emailServices = require("../services/email");
+
+        const roomNameResult = await query(
+          `SELECT name FROM rooms WHERE id = $1`,
+          [room_id],
+        );
+        const roomName = roomNameResult.rows[0]?.name || "cameră";
+
+        const bookingEmailData = {
+          guestName: guest_name,
+          guestEmail: guest_email,
+          guestPhone: guest_phone || null,
+          roomName,
+          checkIn: check_in,
+          checkOut: check_out,
+          nights,
+          totalPrice: total_price,
+          bookingRef: booking_ref,
+        };
+
+        if (payment_method === "bank_transfer") {
+          // Email cu instrucțiuni transfer bancar → client
+          emailServices
+            .sendBankTransferInstructions(guest_email, bookingEmailData)
+            .catch((err) =>
+              console.error("⚠️ Email transfer bancar eșuat:", err.message),
+            );
+        } else {
+          // Email confirmare rezervare la recepție → client
+          emailServices
+            .sendReceptionPaymentConfirmation(guest_email, bookingEmailData)
+            .catch((err) =>
+              console.error("⚠️ Email plată recepție eșuat:", err.message),
+            );
+        }
+
+        // Alertă admin pentru ambele metode
+        const paymentLabel =
+          payment_method === "bank_transfer"
+            ? "Transfer Bancar"
+            : "Plată la Recepție";
+
+        emailServices
+          .sendAdminNewBookingAlert(
+            process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+            { ...bookingEmailData, paymentMethod: paymentLabel },
+          )
+          .catch((err) =>
+            console.error("⚠️ Email alertă admin eșuat:", err.message),
+          );
+      } catch (emailErr) {
+        console.error("⚠️ Eroare serviciu email:", emailErr.message);
+      }
+    }
 
     res.status(201).json({
       success: true,
       data: rows[0],
-      message: `Rezervarea ${booking_ref} a fost înregistrată cu succes`,
+      payment_method,
+      message:
+        payment_method === "bank_transfer"
+          ? `Rezervarea ${booking_ref} a fost înregistrată. Vă vom contacta cu detaliile de plată prin transfer bancar.`
+          : `Rezervarea ${booking_ref} a fost înregistrată cu succes`,
     });
   } catch (err) {
     console.error("❌ POST /api/bookings:", err.message);
@@ -325,14 +408,194 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/bookings/:id/status ─────────────────────────────────────────
-// Actualizează statusul rezervării — admin
+// ─── PUT /api/bookings/:id/status ────────────────────────────────────────────
+/**
+ * Actualizează statusul unei rezervări — acțiune admin.
+ *
+ * Statusuri permise: pending → confirmed | cancelled
+ *                    confirmed → cancelled | finished
+ *                    finished → (doar citire, nu se poate schimba)
+ *
+ * Tranzițiile valide:
+ *  pending     → confirmed  (admin confirmă rezervarea / plata prin transfer)
+ *  pending     → cancelled  (admin anulează)
+ *  confirmed   → cancelled  (admin anulează o rezervare confirmată)
+ *  confirmed   → finished   (marcat manual sau automat de cron job)
+ */
+router.put("/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const { reason } = req.body;
+
+    const validStatuses = ["pending", "confirmed", "cancelled", "finished"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Status invalid. Valori permise: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    // Verificăm că rezervarea există și obținem statusul curent
+    const current = await query(
+      `SELECT id, status, booking_ref, guest_name, guest_email, room_id FROM bookings WHERE id = $1`,
+      [id],
+    );
+
+    if (current.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Rezervarea nu a fost găsită" });
+    }
+
+    const currentStatus = current.rows[0].status;
+
+    // Validare tranziții permise
+    const allowedTransitions = {
+      pending: ["confirmed", "cancelled"],
+      confirmed: ["cancelled", "finished"],
+      cancelled: [], // statusul final nu se poate schimba
+      finished: [], // statusul final nu se poate schimba
+    };
+
+    if (!allowedTransitions[currentStatus]?.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Nu se poate trece din statusul "${currentStatus}" în "${status}"`,
+      });
+    }
+
+    // Actualizăm statusul
+    const { rows } = await query(
+      `UPDATE bookings
+       SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, booking_ref, guest_name, guest_email, status`,
+      [status, id],
+    );
+
+    console.log(
+      `📋 Status rezervare ${rows[0].booking_ref}: ${currentStatus} → ${status}`,
+    );
+
+    // ── Acțiuni post-actualizare ─────────────────────────────────────────
+    try {
+      const emailServices = require("../services/email");
+
+      if (status === "confirmed") {
+        // Trimitem email de confirmare rezervare
+        const bookingFull = await query(
+          `SELECT b.*, r.name AS room_name FROM bookings b
+           JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
+          [id],
+        );
+        if (bookingFull.rows.length > 0) {
+          const b = bookingFull.rows[0];
+          emailServices
+            .sendClientBookingConfirmation(b.guest_email, {
+              guestName: b.guest_name,
+              guestEmail: b.guest_email,
+              guestPhone: b.guest_phone || null,
+              roomName: b.room_name,
+              checkIn: String(b.check_in).substring(0, 10),
+              checkOut: String(b.check_out).substring(0, 10),
+              nights: b.nights,
+              totalPrice: b.total_price,
+              bookingRef: b.booking_ref,
+            })
+            .catch((err) =>
+              console.error("⚠️ Email confirmare eșuat:", err.message),
+            );
+        }
+      }
+      if (status === "cancelled") {
+        const bookingFull = await query(
+          `SELECT b.*, r.name AS room_name FROM bookings b
+     JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
+          [id],
+        );
+        if (bookingFull.rows.length > 0) {
+          const b = bookingFull.rows[0];
+          // Email client
+          emailServices
+            .sendBookingCancellation(b.guest_email, {
+              guestName: b.guest_name,
+              roomName: b.room_name,
+              checkIn: String(b.check_in).substring(0, 10),
+              checkOut: String(b.check_out).substring(0, 10),
+              nights: b.nights,
+              totalPrice: b.total_price,
+              bookingRef: b.booking_ref,
+              reason: reason || null,
+            })
+            .catch((err) =>
+              console.error("⚠️ Email anulare client eșuat:", err.message),
+            );
+
+          // Email admin
+          emailServices
+            .sendAdminCancellationAlert(
+              process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+              {
+                guestName: b.guest_name,
+                guestEmail: b.guest_email,
+                roomName: b.room_name,
+                checkIn: String(b.check_in).substring(0, 10),
+                checkOut: String(b.check_out).substring(0, 10),
+                bookingRef: b.booking_ref,
+                reason: reason || "Motiv nespecificat",
+              },
+            )
+            .catch((err) =>
+              console.error("⚠️ Email anulare admin eșuat:", err.message),
+            );
+        }
+      }
+
+      if (status === "finished") {
+        // Trimitem email de mulțumire + link recenzie
+        const bookingFull = await query(
+          `SELECT b.*, r.name AS room_name FROM bookings b
+           JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
+          [id],
+        );
+        if (bookingFull.rows.length > 0) {
+          const b = bookingFull.rows[0];
+          emailServices
+            .sendReviewRequest(b.guest_email, {
+              guestName: b.guest_name,
+              roomName: b.room_name,
+              checkIn: String(b.check_in).substring(0, 10),
+              checkOut: String(b.check_out).substring(0, 10),
+              bookingRef: b.id,
+            })
+            .catch((err) =>
+              console.error("⚠️ Email recenzie eșuat:", err.message),
+            );
+        }
+      }
+    } catch (emailErr) {
+      console.error("⚠️ Eroare serviciu email post-status:", emailErr.message);
+    }
+
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    console.error("❌ PUT /api/bookings/:id/status:", err.message);
+    res.status(500).json({ success: false, error: "Eroare server" });
+  }
+});
+
+// ─── PATCH /api/bookings/:id/status (backward compat cu codul vechi) ─────────
+/**
+ * Alias pentru PUT /:id/status — menținut pentru compatibilitate cu codul
+ * existent (webhook Stripe folosea PATCH).
+ */
 router.patch("/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ["pending", "confirmed", "cancelled", "completed"];
+    const validStatuses = ["pending", "confirmed", "cancelled", "finished"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -341,12 +604,10 @@ router.patch("/:id/status", async (req, res) => {
     }
 
     const { rows } = await query(
-      `
-      UPDATE bookings
-      SET status = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING id, booking_ref, guest_name, status
-    `,
+      `UPDATE bookings
+       SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, booking_ref, guest_name, status`,
       [status, id],
     );
 
@@ -357,11 +618,13 @@ router.patch("/:id/status", async (req, res) => {
     }
 
     console.log(`📋 Status rezervare ${rows[0].booking_ref}: ${status}`);
+
+    // Email anulare (comportament existent)
     if (status === "cancelled") {
       const { sendBookingCancellation } = require("../services/email");
       const full = await query(
         `SELECT b.*, r.name AS room_name FROM bookings b
-     JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
+         JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
         [id],
       );
       if (full.rows.length > 0) {
@@ -379,6 +642,7 @@ router.patch("/:id/status", async (req, res) => {
         );
       }
     }
+
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     console.error("❌ PATCH /api/bookings/:id/status:", err.message);
@@ -387,7 +651,6 @@ router.patch("/:id/status", async (req, res) => {
 });
 
 // ─── POST /api/bookings/:id/guest-id ────────────────────────────────────────
-// Salvează datele buletinului scanat cu Gemini (OG 97/2005)
 router.post("/:id/guest-id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -407,7 +670,6 @@ router.post("/:id/guest-id", async (req, res) => {
       data_expirarii,
     } = req.body;
 
-    // Verifică că rezervarea există
     const bookingCheck = await query(
       `SELECT id, guest_name FROM bookings WHERE id = $1`,
       [id],
@@ -418,7 +680,6 @@ router.post("/:id/guest-id", async (req, res) => {
         .json({ success: false, error: "Rezervarea nu există" });
     }
 
-    // Upsert: dacă există deja date pentru această rezervare, le actualizăm
     const { rows } = await query(
       `
       INSERT INTO guest_ids
@@ -473,10 +734,10 @@ router.delete("/:id", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Rezervarea nu există" });
     }
-    if (check.rows[0].status !== "cancelled") {
+    if (!["cancelled", "finished"].includes(check.rows[0].status)) {
       return res.status(400).json({
         success: false,
-        error: "Poți șterge doar rezervările anulate",
+        error: "Poți șterge doar rezervările anulate sau finalizate",
       });
     }
     await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);

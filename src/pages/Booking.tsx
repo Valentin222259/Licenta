@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, CreditCard, Building2, ConciergeBell } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useRooms } from "@/lib/hooks";
@@ -9,6 +9,8 @@ import { apiPost } from "@/lib/api";
 import heroImage from "@/assets/hero-mountains.jpg";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
+
+type PaymentMethod = "card" | "bank_transfer" | "reception";
 
 const Booking = () => {
   const { t } = useTranslation();
@@ -20,6 +22,8 @@ const Booking = () => {
   const room = rooms.find((r) => r.slug === roomSlug) || rooms[0];
 
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+
   const [form, setForm] = useState({
     name: sessionStorage.getItem("clientName") || "",
     email: sessionStorage.getItem("userEmail") || "",
@@ -56,7 +60,6 @@ const Booking = () => {
         )
       : 1;
 
-  // Format dată pentru afișare dd/mm/yyyy
   const formatDate = (iso: string) => {
     if (!iso) return "";
     const [y, m, d] = iso.split("-");
@@ -81,7 +84,11 @@ const Booking = () => {
     try {
       const userId = sessionStorage.getItem("userId") || undefined;
 
-      const booking = await apiPost<{ data: { id: number } }>("/api/bookings", {
+      // Creăm rezervarea trimițând și metoda de plată
+      const booking = await apiPost<{
+        data: { id: string; booking_ref: string };
+        payment_method: string;
+      }>("/api/bookings", {
         room_id: room.id,
         user_id: userId,
         guest_name: form.name,
@@ -92,14 +99,23 @@ const Booking = () => {
         guests: form.guests,
         special_requests: form.requests || undefined,
         source: "website",
+        payment_method: paymentMethod,
       });
 
-      const { checkout_url } = await apiPost<{ checkout_url: string }>(
-        "/api/payments/create-checkout",
-        { booking_id: booking.data.id },
-      );
-
-      window.location.href = checkout_url;
+      // Flux diferit în funcție de metoda de plată
+      if (paymentMethod === "card") {
+        // Flux Stripe — generăm sesiunea de checkout
+        const { checkout_url } = await apiPost<{ checkout_url: string }>(
+          "/api/payments/create-checkout",
+          { booking_id: booking.data.id },
+        );
+        window.location.href = checkout_url;
+      } else {
+        // Flux transfer bancar — redirectăm la o pagină de confirmare specială
+        navigate(
+          `/booking/success?method=bank_transfer&ref=${booking.data.booking_ref}&booking_id=${booking.data.id}`,
+        );
+      }
     } catch (err) {
       toast({
         title: "Eroare",
@@ -264,6 +280,129 @@ const Booking = () => {
                 className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring resize-none"
               />
             </div>
+
+            {/* ── Metodă de plată ───────────────────────────────────────── */}
+            <div>
+              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-3 block">
+                Metodă de plată
+              </label>
+              <div className="grid grid-cols-1 gap-3">
+                {/* Card online */}
+                <label
+                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    paymentMethod === "card"
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-muted/30 hover:border-primary/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="card"
+                    checked={paymentMethod === "card"}
+                    onChange={() => setPaymentMethod("card")}
+                    className="mt-0.5 accent-primary shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CreditCard size={16} className="text-primary shrink-0" />
+                      <span className="text-sm font-semibold">
+                        Plată online cu cardul
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Plată securizată prin Stripe. Rezervarea se confirmă
+                      automat după plată.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Transfer bancar */}
+                <label
+                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    paymentMethod === "bank_transfer"
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-muted/30 hover:border-primary/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="bank_transfer"
+                    checked={paymentMethod === "bank_transfer"}
+                    onChange={() => setPaymentMethod("bank_transfer")}
+                    className="mt-0.5 accent-primary shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Building2 size={16} className="text-primary shrink-0" />
+                      <span className="text-sm font-semibold">
+                        Transfer bancar
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Veți primi un email cu datele contului bancar. Rezervarea
+                      se confirmă după primirea plății.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Plată la recepție */}
+                <label
+                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    paymentMethod === "reception"
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-muted/30 hover:border-primary/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="reception"
+                    checked={paymentMethod === "reception"}
+                    onChange={() => setPaymentMethod("reception")}
+                    className="mt-0.5 accent-primary shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ConciergeBell
+                        size={16}
+                        className="text-primary shrink-0"
+                      />
+                      <span className="text-sm font-semibold">
+                        Plată la recepție (card sau cash)
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Plătiți la sosire. Rezervarea intră în așteptare până la
+                      confirmarea de către echipa noastră.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Note informative per metodă */}
+              {paymentMethod === "bank_transfer" && (
+                <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <span className="text-amber-500 text-base shrink-0">ℹ️</span>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    Rezervarea rămâne <strong>„În așteptare"</strong> până la
+                    confirmarea plății. Vă vom trimite datele de cont bancar pe
+                    email imediat după rezervare.
+                  </p>
+                </div>
+              )}
+              {paymentMethod === "reception" && (
+                <div className="mt-3 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <span className="text-blue-500 text-base shrink-0">ℹ️</span>
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    Rezervarea rămâne <strong>„În așteptare"</strong> până la
+                    confirmarea de către echipa noastră. Plata se efectuează la
+                    sosire, cu cardul sau cash.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Sidebar sumar */}
@@ -313,10 +452,33 @@ const Booking = () => {
                   <span className="text-accent">{room.price * nights} RON</span>
                 </div>
               </div>
+
+              {/* Metodă selectată */}
+              <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                {paymentMethod === "card" && (
+                  <>
+                    <CreditCard size={13} className="text-primary" />
+                    <span>Plată online cu cardul (Stripe)</span>
+                  </>
+                )}
+                {paymentMethod === "bank_transfer" && (
+                  <>
+                    <Building2 size={13} className="text-primary" />
+                    <span>Transfer bancar</span>
+                  </>
+                )}
+                {paymentMethod === "reception" && (
+                  <>
+                    <ConciergeBell size={13} className="text-primary" />
+                    <span>Plată la recepție</span>
+                  </>
+                )}
+              </div>
+
               <Button
                 variant="hero"
                 type="submit"
-                className="w-full"
+                className="w-full tracking-wide text-sm"
                 disabled={!isFormValid || submitting}
               >
                 {submitting ? (
@@ -324,8 +486,10 @@ const Booking = () => {
                     <Loader2 size={16} className="animate-spin" /> Se
                     procesează...
                   </span>
-                ) : (
+                ) : paymentMethod === "card" ? (
                   t("booking.payNow")
+                ) : (
+                  "Rezervă Acum"
                 )}
               </Button>
             </div>

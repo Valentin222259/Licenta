@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { CheckCircle, XCircle, Loader2, Calendar, Home } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Calendar,
+  Home,
+  Building2,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiGet } from "@/lib/api";
 
@@ -23,13 +31,20 @@ const BookingSuccess = () => {
   const [params] = useSearchParams();
   const sessionId = params.get("session_id");
   const ref = params.get("ref");
+  const method = params.get("method"); // "bank_transfer" sau null (card)
 
-  const [status, setStatus] = useState<"loading" | "success" | "failed">(
-    "loading",
-  );
+  const [status, setStatus] = useState<
+    "loading" | "success" | "bank_pending" | "failed"
+  >(method === "bank_transfer" ? "bank_pending" : "loading");
   const [data, setData] = useState<PaymentVerification | null>(null);
 
   useEffect(() => {
+    // Dacă e transfer bancar, nu facem verificare Stripe
+    if (method === "bank_transfer") {
+      setStatus("bank_pending");
+      return;
+    }
+
     if (!sessionId) {
       setStatus("failed");
       return;
@@ -41,8 +56,9 @@ const BookingSuccess = () => {
         setStatus(res.paid ? "success" : "failed");
       })
       .catch(() => setStatus("failed"));
-  }, [sessionId]);
+  }, [sessionId, method]);
 
+  // ── Loading (doar pentru flux Stripe) ──────────────────────────────────────
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
@@ -54,6 +70,7 @@ const BookingSuccess = () => {
     );
   }
 
+  // ── Eșec Stripe ────────────────────────────────────────────────────────────
   if (status === "failed") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
@@ -83,6 +100,107 @@ const BookingSuccess = () => {
     );
   }
 
+  // ── Transfer bancar — rezervare în așteptare ───────────────────────────────
+  if (status === "bank_pending") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-20">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden max-w-md w-full shadow-lg">
+          {/* Header amber */}
+          <div className="bg-amber-500 px-8 py-8 text-center">
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
+              <Clock size={40} className="text-white" />
+            </div>
+            <h1 className="font-heading text-2xl text-white font-semibold mb-1">
+              Rezervare în Așteptare
+            </h1>
+            <p className="text-white/80 text-sm">Plată prin transfer bancar</p>
+          </div>
+
+          {/* Detalii */}
+          <div className="px-8 py-6 space-y-5">
+            <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+              {ref && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Referință
+                  </span>
+                  <span className="font-mono font-bold text-primary text-sm">
+                    {ref}
+                  </span>
+                </div>
+              )}
+              <div className="h-px bg-border" />
+              <div className="flex items-start gap-3">
+                <Building2
+                  size={16}
+                  className="text-amber-500 shrink-0 mt-0.5"
+                />
+                <div>
+                  <p className="text-sm font-semibold mb-1">Date cont bancar</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Vei primi pe email datele contului bancar și instrucțiunile
+                    de plată în cel mai scurt timp.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pași următori */}
+            <div className="space-y-3">
+              <p className="text-sm font-semibold">Ce urmează?</p>
+              {[
+                {
+                  nr: "1",
+                  text: "Verifică emailul pentru datele de cont bancar",
+                },
+                {
+                  nr: "2",
+                  text: "Efectuează transferul cu referința rezervării tale",
+                },
+                {
+                  nr: "3",
+                  text: "Echipa noastră confirmă rezervarea după primirea plății",
+                },
+              ].map((step) => (
+                <div key={step.nr} className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold shrink-0">
+                    {step.nr}
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed pt-0.5">
+                    {step.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              📞 Ai întrebări? Sună-ne la{" "}
+              <a href="tel:+40262330123" className="text-primary font-medium">
+                +40 262 330 123
+              </a>
+            </p>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <Button asChild variant="hero" className="w-full">
+                <Link to="/account">
+                  <Calendar size={16} />
+                  Vezi rezervările mele
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/">
+                  <Home size={16} />
+                  Înapoi acasă
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Succes Stripe ──────────────────────────────────────────────────────────
   const booking = data?.booking;
 
   return (
