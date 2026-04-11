@@ -365,6 +365,28 @@ ${hi(d.guestName)}
 </p>
 ${bookingTable(d)}
 ${paymentBlock}
+${
+  d.needsInvoice
+    ? `
+<div style="border-radius:10px;border:1px solid #fde68a;background:#fffbeb;
+  padding:14px 20px;margin:16px 0;">
+  <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#92400e;">
+    🧾 Factura pe firmă va fi emisă pe numele:
+  </p>
+  <p style="margin:0;font-size:14px;color:#1c1917;font-weight:600;">
+    ${d.companyName}
+  </p>
+  <p style="margin:4px 0 0;font-size:12px;color:#78716c;">
+    CUI: ${d.companyCui}${d.companyRegNo ? ` · ${d.companyRegNo}` : ""}
+  </p>
+  <p style="margin:8px 0 0;font-size:12px;color:#92400e;">
+    Factura va fi trimisă pe email în termen de 24h de la check-in.
+    Dacă datele de mai sus sunt incorecte, contactați-ne înainte de sosire.
+  </p>
+</div>
+`
+    : ""
+}
 ${hr()}
 ${infoRow("🚗", "Parcare", "Gratuită, supravegheată — intrați direct în curte")}
 ${infoRow("📶", "Wi-Fi", "Gratuit în toată pensiunea — parola la recepție")}
@@ -436,6 +458,46 @@ ${title("🔔", "Rezervare Nouă!", pmLabel)}
 </div>
 
 ${bookingTable(d)}
+${
+  d.needsInvoice
+    ? `
+<div style="border-radius:12px;overflow:hidden;border:2px solid #d97706;margin:20px 0;">
+  <div style="background:#92400e;padding:10px 20px;">
+    <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
+      letter-spacing:1px;color:#fef3c7;">🧾 Facturare pe Firmă — Date Fiscale</p>
+  </div>
+  ${[
+    ["Denumire Firmă", d.companyName || "—"],
+    ["CUI / CIF", d.companyCui || "—"],
+    ["Nr. Reg. Com.", d.companyRegNo || "—"],
+    ["Adresă Sediu", d.companyAddress || "—"],
+  ]
+    .map(
+      ([label, value], i) => `
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${i % 2 === 0 ? "#fffbeb" : "#fef3c7"};">
+    <tr>
+      <td style="padding:10px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+        letter-spacing:0.8px;color:#92400e;width:40%;border-right:1px solid #fde68a;">
+        ${label}
+      </td>
+      <td style="padding:10px 20px;font-size:14px;font-weight:600;color:#1c1917;">
+        ${value}
+      </td>
+    </tr>
+  </table>`,
+    )
+    .join("")}
+  <div style="background:#fffbeb;padding:10px 20px;border-top:1px solid #fde68a;">
+    <p style="margin:0;font-size:12px;color:#92400e;">
+      ⚠️ <strong>Acțiune necesară:</strong> Emite factura fiscal în SmartBill după check-in
+      și trimite-o pe email la <strong>${d.guestEmail}</strong>.
+    </p>
+  </div>
+</div>
+`
+    : ""
+}
 ${btn("Deschide în Panoul Admin", `${B.site}/admin/bookings`)}
 <p style="margin:16px 0 0;font-size:11px;color:${B.textM};text-align:center;">
   Generat automat · ${new Date().toLocaleString("ro-RO")}
@@ -588,6 +650,24 @@ ${banner(
   B.orangeBorder,
   B.orange,
 )}
+
+${
+  d.needsInvoice
+    ? `
+<div style="border-radius:10px;border:1px solid #fde68a;background:#fffbeb;
+  padding:14px 20px;margin:16px 0;">
+  <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#92400e;">
+    🧾 Factură pe firmă solicitată
+  </p>
+  <p style="margin:0;font-size:14px;color:#1c1917;font-weight:600;">${d.companyName}</p>
+  <p style="margin:4px 0 0;font-size:12px;color:#78716c;">CUI: ${d.companyCui}</p>
+  <p style="margin:8px 0 0;font-size:12px;color:#92400e;">
+    Factura va fi emisă după confirmarea plății și trimisă pe email.
+  </p>
+</div>
+`
+    : ""
+}
 ${btn("Gestionează Rezervarea", `${B.site}/account`)}`;
 
   await transporter.sendMail({

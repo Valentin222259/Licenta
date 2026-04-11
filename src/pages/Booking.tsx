@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard, Building2 } from "lucide-react";
+import { Loader2, CreditCard, Building2, Receipt } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useRooms } from "@/lib/hooks";
@@ -10,7 +10,7 @@ import heroImage from "@/assets/hero-mountains.jpg";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 
-type PaymentMethod = "card" | "bank_transfer";
+type PaymentMethod = "card" | "bank_transfer" | "reception";
 type PaymentSplit = "full" | "advance";
 
 const ADVANCE_PERCENT = 0.3;
@@ -27,6 +27,17 @@ const Booking = () => {
   const [submitting, setSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [paymentSplit, setPaymentSplit] = useState<PaymentSplit>("full");
+
+  // ── B2B / Factură pe firmă ───────────────────────────────────────────
+  const [needsInvoice, setNeedsInvoice] = useState(false);
+  const [company, setCompany] = useState({
+    name: "",
+    cui: "",
+    regNo: "",
+    address: "",
+  });
+  const updateCompany = (field: string, value: string) =>
+    setCompany((c) => ({ ...c, [field]: value }));
 
   const [form, setForm] = useState({
     name: sessionStorage.getItem("clientName") || "",
@@ -68,12 +79,20 @@ const Booking = () => {
   const advanceAmount = Math.round(totalPrice * ADVANCE_PERCENT);
   const remainingAmount = totalPrice - advanceAmount;
   const stripeAmount = paymentSplit === "advance" ? advanceAmount : totalPrice;
+  const receptionAmount = paymentSplit === "advance" ? remainingAmount : 0;
 
   const formatDate = (iso: string) => {
     if (!iso) return "";
     const [y, m, d] = iso.split("-");
     return `${d}/${m}/${y}`;
   };
+
+  const b2bValid =
+    !needsInvoice ||
+    (company.name.trim() !== "" &&
+      company.cui.trim() !== "" &&
+      company.regNo.trim() !== "" &&
+      company.address.trim() !== "");
 
   const isFormValid =
     form.name.trim() !== "" &&
@@ -83,7 +102,8 @@ const Booking = () => {
     form.checkIn !== "" &&
     form.checkOut !== "" &&
     !dateErrors.checkIn &&
-    !dateErrors.checkOut;
+    !dateErrors.checkOut &&
+    b2bValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +128,15 @@ const Booking = () => {
         source: "website",
         payment_method: paymentMethod,
         payment_split: paymentMethod === "card" ? paymentSplit : "full",
+        stripe_amount: paymentMethod === "card" ? stripeAmount : 0,
+        remaining_amount:
+          paymentMethod === "card" ? receptionAmount : totalPrice,
+        // ── B2B ─────────────────────────────────────────────────────
+        needs_invoice: needsInvoice,
+        company_name: needsInvoice ? company.name : undefined,
+        company_cui: needsInvoice ? company.cui : undefined,
+        company_reg_no: needsInvoice ? company.regNo : undefined,
+        company_address: needsInvoice ? company.address : undefined,
       });
 
       if (paymentMethod === "card") {
@@ -117,7 +146,6 @@ const Booking = () => {
         );
         window.location.href = checkout_url;
       } else {
-        // Transfer bancar → pagina de confirmare
         navigate(
           `/booking/success?method=bank_transfer&ref=${booking.data.booking_ref}&booking_id=${booking.data.id}`,
         );
@@ -293,13 +321,9 @@ const Booking = () => {
                 Metodă de plată
               </label>
               <div className="grid grid-cols-1 gap-2">
-                {/* Card online cu sub-opțiuni */}
+                {/* Card online */}
                 <div
-                  className={`rounded-xl border-2 overflow-hidden transition-all ${
-                    paymentMethod === "card"
-                      ? "border-primary"
-                      : "border-border"
-                  }`}
+                  className={`rounded-xl border-2 overflow-hidden transition-all ${paymentMethod === "card" ? "border-primary" : "border-border"}`}
                 >
                   <label className="flex items-center gap-3 px-4 py-3.5 cursor-pointer bg-card">
                     <input
@@ -322,13 +346,8 @@ const Booking = () => {
                   {paymentMethod === "card" && (
                     <div className="px-4 pb-4 pt-3 bg-muted/20 border-t border-border/50">
                       <div className="grid grid-cols-2 gap-2">
-                        {/* Integral */}
                         <label
-                          className={`flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                            paymentSplit === "full"
-                              ? "border-primary bg-primary/5"
-                              : "border-border bg-card hover:border-primary/40"
-                          }`}
+                          className={`flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentSplit === "full" ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
                         >
                           <div className="flex items-center gap-2">
                             <input
@@ -355,13 +374,8 @@ const Booking = () => {
                           )}
                         </label>
 
-                        {/* Avans 30% */}
                         <label
-                          className={`flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                            paymentSplit === "advance"
-                              ? "border-primary bg-primary/5"
-                              : "border-border bg-card hover:border-primary/40"
-                          }`}
+                          className={`flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${paymentSplit === "advance" ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
                         >
                           <div className="flex items-center gap-2">
                             <input
@@ -392,13 +406,9 @@ const Booking = () => {
                   )}
                 </div>
 
-                {/* Transfer bancar — mereu integral */}
+                {/* Transfer bancar */}
                 <label
-                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                    paymentMethod === "bank_transfer"
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-muted/30 hover:border-primary/40"
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === "bank_transfer" ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-primary/40"}`}
                 >
                   <input
                     type="radio"
@@ -423,6 +433,99 @@ const Booking = () => {
                   </div>
                 </label>
               </div>
+            </div>
+
+            {/* ── Secțiunea B2B / Factură pe firmă ── */}
+            <div className="pt-1">
+              <label
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${needsInvoice ? "border-primary bg-primary/5" : "border-border bg-muted/20 hover:border-primary/30"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={needsInvoice}
+                  onChange={(e) => setNeedsInvoice(e.target.checked)}
+                  className="accent-primary mt-0.5 shrink-0 w-4 h-4"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Receipt size={15} className="text-primary shrink-0" />
+                    <span className="text-sm font-semibold">
+                      Doresc factură pe firmă / persoană juridică
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Completează datele firmei pentru emiterea facturii fiscale.
+                  </p>
+                </div>
+              </label>
+
+              {needsInvoice && (
+                <div className="mt-3 space-y-3 px-1">
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                      Denumire firmă <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required={needsInvoice}
+                      value={company.name}
+                      onChange={(e) => updateCompany("name", e.target.value)}
+                      placeholder="SC Exemplu SRL"
+                      className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                        CUI / CIF <span className="text-destructive">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required={needsInvoice}
+                        value={company.cui}
+                        onChange={(e) => updateCompany("cui", e.target.value)}
+                        placeholder="RO12345678"
+                        className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                        Nr. Reg. Comerțului{" "}
+                        <span className="text-destructive">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required={needsInvoice}
+                        value={company.regNo}
+                        onChange={(e) => updateCompany("regNo", e.target.value)}
+                        placeholder="J40/1234/2020"
+                        className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                      Adresa sediului social{" "}
+                      <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required={needsInvoice}
+                      value={company.address}
+                      onChange={(e) => updateCompany("address", e.target.value)}
+                      placeholder="Str. Exemplu nr. 1, București, Sector 1"
+                      className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+
+                  <p className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    💡 Factura va fi emisă manual de echipa noastră și trimisă
+                    pe email în termen de 24h de la check-in.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -508,6 +611,18 @@ const Booking = () => {
                   </span>
                   <span className="font-heading text-lg font-bold text-primary">
                     {stripeAmount} RON
+                  </span>
+                </div>
+              )}
+
+              {needsInvoice && company.name && (
+                <div className="mb-4 flex items-center gap-2 text-xs bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+                  <Receipt size={13} className="text-primary shrink-0" />
+                  <span className="text-muted-foreground">
+                    Factură ·{" "}
+                    <span className="font-medium text-foreground">
+                      {company.name}
+                    </span>
                   </span>
                 </div>
               )}

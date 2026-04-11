@@ -3,13 +3,8 @@ const router = express.Router();
 const { query } = require("../config/db");
 
 // ─── Helper: formatează data PostgreSQL → "YYYY-MM-DD" ───────────────────────
-// PostgreSQL poate returna DATE fie ca string, fie ca Date object.
-// String(Date) dă "Fri Apr 17 2026..." — incorect pentru email/afișare.
 function fmtISO(val) {
   if (!val) return "";
-  // String: "2026-05-03" sau "2026-05-03T00:00:00.000Z" → primii 10 chars
-  if (typeof val === "string") return val.substring(0, 10);
-  // Date object: folosim getters LOCALI (nu toISOString care e UTC)
   if (val instanceof Date) {
     const y = val.getFullYear();
     const m = String(val.getMonth() + 1).padStart(2, "0");
@@ -19,7 +14,7 @@ function fmtISO(val) {
   return String(val).substring(0, 10);
 }
 
-// ─── Helper: generează referință rezervare (BLV-2025-001) ───────────────────
+// ─── Helper: generează referință rezervare (BLV-2025-001) ────────────────────
 async function generateBookingRef() {
   const year = new Date().getFullYear();
   const result = await query(
@@ -30,7 +25,7 @@ async function generateBookingRef() {
   return `BLV-${year}-${seq}`;
 }
 
-// ─── Helper: verifică disponibilitate cameră ────────────────────────────────
+// ─── Helper: verifică disponibilitate cameră ─────────────────────────────────
 async function isRoomAvailable(
   roomId,
   checkIn,
@@ -52,7 +47,7 @@ async function isRoomAvailable(
   return parseInt(result.rows[0].count) === 0;
 }
 
-// ─── GET /api/bookings ───────────────────────────────────────────────────────
+// ─── GET /api/bookings ────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   try {
     const { status, room_id, from, to, limit = 50, offset = 0 } = req.query;
@@ -121,7 +116,7 @@ router.get("/availability", async (req, res) => {
   }
 });
 
-// ─── GET /api/bookings/my ────────────────────────────────────────────────────
+// ─── GET /api/bookings/my ─────────────────────────────────────────────────────
 router.get("/my", async (req, res) => {
   try {
     const { email } = req.query;
@@ -143,7 +138,7 @@ router.get("/my", async (req, res) => {
   }
 });
 
-// ─── GET /api/bookings/:id ───────────────────────────────────────────────────
+// ─── GET /api/bookings/:id ────────────────────────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -174,7 +169,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ─── POST /api/bookings ──────────────────────────────────────────────────────
+// ─── POST /api/bookings ───────────────────────────────────────────────────────
 router.post("/", async (req, res) => {
   try {
     const {
@@ -190,6 +185,12 @@ router.post("/", async (req, res) => {
       user_id,
       payment_method = "card",
       payment_split = "full",
+      // ── B2B / Facturare ──────────────────────────────────────────────
+      needs_invoice = false,
+      company_name = null,
+      company_cui = null,
+      company_reg_no = null,
+      company_address = null,
     } = req.body;
 
     if (!room_id || !guest_name || !guest_email || !check_in || !check_out)
@@ -202,47 +203,68 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ success: false, error: "Metodă de plată invalidă" });
 
+    // Validare câmpuri B2B dacă e cerută factură
+    if (
+      needs_invoice &&
+      (!company_name || !company_cui || !company_reg_no || !company_address)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Pentru facturare pe firmă sunt obligatorii: denumirea firmei, CUI, nr. Reg. Comerțului și adresa sediului.",
+      });
+    }
+
     const checkInDate = new Date(check_in);
     const checkOutDate = new Date(check_out);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     if (checkInDate < today)
-      return res.status(400).json({
-        success: false,
-        error: "Data de check-in nu poate fi în trecut",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "Data de check-in nu poate fi în trecut",
+        });
     if (checkOutDate <= checkInDate)
-      return res.status(400).json({
-        success: false,
-        error: "Data de check-out trebuie să fie după check-in",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "Data de check-out trebuie să fie după check-in",
+        });
 
     const roomResult = await query(
       `SELECT id, price, capacity FROM rooms WHERE id = $1 AND status = 'active'`,
       [room_id],
     );
     if (roomResult.rows.length === 0)
-      return res.status(404).json({
-        success: false,
-        error: "Camera nu există sau nu este disponibilă",
-      });
+      return res
+        .status(404)
+        .json({
+          success: false,
+          error: "Camera nu există sau nu este disponibilă",
+        });
 
     const room = roomResult.rows[0];
     if (guests > room.capacity)
-      return res.status(400).json({
-        success: false,
-        error: `Camera acceptă maxim ${room.capacity} oaspeți`,
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: `Camera acceptă maxim ${room.capacity} oaspeți`,
+        });
 
     const available = await isRoomAvailable(room_id, check_in, check_out);
     if (!available)
-      return res.status(409).json({
-        success: false,
-        error: "Camera nu este disponibilă în perioada selectată",
-      });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          error: "Camera nu este disponibilă în perioada selectată",
+        });
 
-    // ── Calculăm din prețul real din DB — nu din ce trimite frontend-ul ──
     const nights = Math.ceil(
       (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24),
     );
@@ -273,8 +295,9 @@ router.post("/", async (req, res) => {
       `INSERT INTO bookings
         (booking_ref, user_id, room_id, guest_name, guest_email, guest_phone,
          check_in, check_out, guests, total_price, status, source, special_requests,
-         payment_split, stripe_amount, remaining_amount)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         payment_split, stripe_amount, remaining_amount,
+         needs_invoice, company_name, company_cui, company_reg_no, company_address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING *`,
       [
         booking_ref,
@@ -293,6 +316,11 @@ router.post("/", async (req, res) => {
         effectiveSplit,
         effectiveStripeAmount,
         effectiveRemainingAmount,
+        needs_invoice ? true : false,
+        needs_invoice ? company_name : null,
+        needs_invoice ? company_cui : null,
+        needs_invoice ? company_reg_no : null,
+        needs_invoice ? company_address : null,
       ],
     );
 
@@ -301,10 +329,13 @@ router.post("/", async (req, res) => {
     console.log(
       `✅ Rezervare: ${booking_ref} | ${guest_name} | ${nights} nopți | ` +
         `${payment_method} | split: ${effectiveSplit} | ` +
-        `stripe: ${effectiveStripeAmount ?? "N/A"} RON | rest: ${effectiveRemainingAmount} RON`,
+        `stripe: ${effectiveStripeAmount ?? "N/A"} RON | rest: ${effectiveRemainingAmount} RON` +
+        (needs_invoice
+          ? ` | 🧾 Factură: ${company_name} (${company_cui})`
+          : ""),
     );
 
-    // Emailuri pentru non-Stripe
+    // Emailuri pentru non-Stripe (bank_transfer, reception)
     if (payment_method === "bank_transfer" || payment_method === "reception") {
       try {
         const emailServices = require("../services/email");
@@ -319,11 +350,17 @@ router.post("/", async (req, res) => {
           guestEmail: guest_email,
           guestPhone: guest_phone || null,
           roomName,
-          checkIn: fmtISO(check_in), // ← fix: fmtISO în loc de String().substring
-          checkOut: fmtISO(check_out), // ← fix
+          checkIn: fmtISO(check_in),
+          checkOut: fmtISO(check_out),
           nights,
           totalPrice: total_price,
           bookingRef: booking_ref,
+          // ── Date B2B ────────────────────────────────────────────────
+          needsInvoice: needs_invoice,
+          companyName: needs_invoice ? company_name : null,
+          companyCui: needs_invoice ? company_cui : null,
+          companyRegNo: needs_invoice ? company_reg_no : null,
+          companyAddress: needs_invoice ? company_address : null,
         };
 
         if (payment_method === "bank_transfer") {
@@ -333,9 +370,9 @@ router.post("/", async (req, res) => {
               console.error("⚠️ Email transfer bancar eșuat:", err.message),
             );
         } else {
-          // Plată la recepție — rezervare în așteptare, fără email automat
+          // reception — fără email automat de plată, adminul contactează telefonic
           console.log(
-            `📋 Rezervare recepție ${booking_ref} — admin contactează clientul`,
+            `📋 Rezervare recepție ${booking_ref} — admin contactează clientul telefonic`,
           );
         }
 
@@ -380,10 +417,12 @@ router.put("/:id/status", async (req, res) => {
 
     const validStatuses = ["pending", "confirmed", "cancelled", "finished"];
     if (!validStatuses.includes(status))
-      return res.status(400).json({
-        success: false,
-        error: `Status invalid: ${validStatuses.join(", ")}`,
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: `Status invalid: ${validStatuses.join(", ")}`,
+        });
 
     const current = await query(
       `SELECT id, status, booking_ref FROM bookings WHERE id = $1`,
@@ -403,10 +442,12 @@ router.put("/:id/status", async (req, res) => {
     };
 
     if (!allowedTransitions[currentStatus]?.includes(status))
-      return res.status(400).json({
-        success: false,
-        error: `Nu se poate trece din "${currentStatus}" în "${status}"`,
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: `Nu se poate trece din "${currentStatus}" în "${status}"`,
+        });
 
     const { rows } = await query(
       `UPDATE bookings SET status = $1, updated_at = NOW()
@@ -418,10 +459,8 @@ router.put("/:id/status", async (req, res) => {
       `📋 Status rezervare ${rows[0].booking_ref}: ${currentStatus} → ${status}`,
     );
 
-    // Emailuri post-actualizare
     try {
       const emailServices = require("../services/email");
-
       const bookingFull = await query(
         `SELECT b.*, r.name AS room_name FROM bookings b
          JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
@@ -430,21 +469,25 @@ router.put("/:id/status", async (req, res) => {
 
       if (bookingFull.rows.length > 0) {
         const b = bookingFull.rows[0];
-
-        // ── fmtISO() pentru toate datele din DB ───────────────────────────
         const emailData = {
           guestName: b.guest_name,
           guestEmail: b.guest_email,
           guestPhone: b.guest_phone || null,
           roomName: b.room_name,
-          checkIn: fmtISO(b.check_in), // ← FIX
-          checkOut: fmtISO(b.check_out), // ← FIX
+          checkIn: fmtISO(b.check_in),
+          checkOut: fmtISO(b.check_out),
           nights: b.nights,
           totalPrice: b.total_price,
           bookingRef: b.booking_ref,
           paymentSplit: b.payment_split,
           stripeAmount: b.stripe_amount,
           remainingAmount: b.remaining_amount,
+          // ── Date B2B ─────────────────────────────────────────────────
+          needsInvoice: b.needs_invoice,
+          companyName: b.company_name,
+          companyCui: b.company_cui,
+          companyRegNo: b.company_reg_no,
+          companyAddress: b.company_address,
         };
 
         if (status === "confirmed") {
@@ -525,8 +568,7 @@ router.patch("/:id/status", async (req, res) => {
     if (status === "cancelled") {
       const { sendBookingCancellation } = require("../services/email");
       const full = await query(
-        `SELECT b.*, r.name AS room_name FROM bookings b
-         JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
+        `SELECT b.*, r.name AS room_name FROM bookings b JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
         [id],
       );
       if (full.rows.length > 0) {
@@ -534,8 +576,8 @@ router.patch("/:id/status", async (req, res) => {
         sendBookingCancellation(b.guest_email, {
           guestName: b.guest_name,
           roomName: b.room_name,
-          checkIn: fmtISO(b.check_in), // ← FIX
-          checkOut: fmtISO(b.check_out), // ← FIX
+          checkIn: fmtISO(b.check_in),
+          checkOut: fmtISO(b.check_out),
           nights: b.nights,
           totalPrice: b.total_price,
           bookingRef: b.booking_ref,
@@ -552,7 +594,7 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
-// ─── POST /api/bookings/:id/guest-id ────────────────────────────────────────
+// ─── POST /api/bookings/:id/guest-id ─────────────────────────────────────────
 router.post("/:id/guest-id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -619,7 +661,7 @@ router.post("/:id/guest-id", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/bookings/:id ─────────────────────────────────────────────
+// ─── DELETE /api/bookings/:id ─────────────────────────────────────────────────
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -631,10 +673,12 @@ router.delete("/:id", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Rezervarea nu există" });
     if (!["cancelled", "finished"].includes(check.rows[0].status))
-      return res.status(400).json({
-        success: false,
-        error: "Poți șterge doar rezervările anulate sau finalizate",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "Poți șterge doar rezervările anulate sau finalizate",
+        });
 
     await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);
     await query(`DELETE FROM bookings WHERE id = $1`, [id]);
