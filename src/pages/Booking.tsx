@@ -648,7 +648,7 @@ const Booking = () => {
               <Button
                 variant="hero"
                 type="submit"
-                className="w-full tracking-wide"
+                className="w-full text-xs tracking-wide"
                 disabled={!isFormValid || submitting}
               >
                 {submitting ? (

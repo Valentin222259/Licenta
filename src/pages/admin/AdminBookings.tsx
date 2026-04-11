@@ -121,7 +121,7 @@ const CANCEL_REASONS: { label: string; description: string }[] = [
     description: "S-a răzgândit, a intervenit o problemă personală etc.",
   },
   {
-    label: "Neprezentare (No-show)",
+    label: "Neprezentare",
     description: "Nu a dat niciun semn și nu a apărut în ziua de check-in.",
   },
   {
@@ -138,7 +138,7 @@ const CANCEL_REASONS: { label: string; description: string }[] = [
     description: "Overbooking — rezervări suprapuse din greșeală.",
   },
   {
-    label: "Forță majoră",
+    label: "Fenomene meteo intense",
     description: "Condiții meteo extreme, drum blocat etc.",
   },
   { label: "Alt motiv...", description: "Specifică manual motivul exact." },
