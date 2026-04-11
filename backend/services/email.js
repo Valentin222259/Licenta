@@ -280,15 +280,91 @@ function infoRow(emoji, label, value) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // 1. Confirmare rezervare → CLIENT
+// ─── PATCH pentru services/email.js ──────────────────────────────────────────
+// Înlocuiește DOAR funcția sendClientBookingConfirmation cu această versiune.
+// Restul fișierului rămâne identic.
+
 async function sendClientBookingConfirmation(clientEmail, d) {
+  const isAdvance = d.paymentSplit === "advance";
+  const stripeAmount = d.stripeAmount || d.totalPrice;
+  const remaining = d.remainingAmount || 0;
+
+  // ── Bloc plată — diferit pentru avans vs integral ──────────────────────────
+  const paymentBlock = isAdvance
+    ? `
+<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
+  <div style="background:${B.green};padding:12px 20px;">
+    <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
+      letter-spacing:1px;color:rgba(255,255,255,0.8);">Detalii plată</p>
+  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${B.cardBg};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
+      Plătit acum online
+    </td>
+    <td style="padding:13px 20px;font-size:15px;font-weight:700;color:#16a34a;">
+      ${stripeAmount} RON ✓
+    </td>
+  </tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${B.rowEven};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
+      Rest de achitat la check-in
+    </td>
+    <td style="padding:13px 20px;font-size:15px;font-weight:700;color:${B.textH};">
+      ${remaining} RON
+    </td>
+  </tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${B.cardBg};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
+      Total sejur
+    </td>
+    <td style="padding:13px 20px;font-size:15px;font-weight:700;color:${B.textH};">
+      ${d.totalPrice} RON
+    </td>
+  </tr>
+  </table>
+</div>
+${banner(
+  `💡 La check-in veți achita restul de <strong>${remaining} RON</strong> (card sau cash).`,
+  B.goldLight,
+  B.goldBorder,
+  B.gold,
+)}`
+    : `
+<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${B.cardBg};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
+      Plătit integral online
+    </td>
+    <td style="padding:13px 20px;font-size:15px;font-weight:700;color:#16a34a;">
+      ${d.totalPrice} RON ✓
+    </td>
+  </tr>
+  </table>
+</div>`;
+
   const body = `
-${title("✓", "Rezervare Confirmată!", "Plata a fost procesată cu succes")}
+${title("✓", "Rezervare Confirmată!", isAdvance ? "Avans 30% plătit cu succes" : "Plata a fost procesată cu succes")}
 ${hi(d.guestName)}
 <p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
   Suntem bucuroși să vă confirmăm rezervarea la <strong>${B.name}</strong>.
   Vă așteptăm cu drag în Maramureș!
 </p>
 ${bookingTable(d)}
+${paymentBlock}
 ${hr()}
 ${infoRow("🚗", "Parcare", "Gratuită, supravegheată — intrați direct în curte")}
 ${infoRow("📶", "Wi-Fi", "Gratuit în toată pensiunea — parola la recepție")}
@@ -303,13 +379,19 @@ ${btn("Gestionează Rezervarea", `${B.site}/account`)}
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `✓ Rezervare confirmată · ${d.bookingRef} · ${B.name}`,
+    subject: isAdvance
+      ? `✓ Avans confirmat · ${d.bookingRef} · ${B.name}`
+      : `✓ Rezervare confirmată · ${d.bookingRef} · ${B.name}`,
     html: layout(
       body,
-      `Rezervarea ${d.bookingRef} a fost confirmată! Check-in: ${fmtDate(d.checkIn)}`,
+      isAdvance
+        ? `Avans ${stripeAmount} RON plătit! Rest ${remaining} RON la check-in · ${fmtDate(d.checkIn)}`
+        : `Rezervarea ${d.bookingRef} confirmată! Check-in: ${fmtDate(d.checkIn)}`,
     ),
   });
-  console.log(`📧 [CLIENT] Confirmare → ${clientEmail} (${d.bookingRef})`);
+  console.log(
+    `📧 [CLIENT] Confirmare${isAdvance ? " avans" : ""} → ${clientEmail} (${d.bookingRef})`,
+  );
 }
 
 // 2. Alertă rezervare nouă → ADMIN

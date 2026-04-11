@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard, Building2, ConciergeBell } from "lucide-react";
+import { Loader2, CreditCard, Building2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useRooms } from "@/lib/hooks";
@@ -10,7 +10,10 @@ import heroImage from "@/assets/hero-mountains.jpg";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 
-type PaymentMethod = "card" | "bank_transfer" | "reception";
+type PaymentMethod = "card" | "bank_transfer";
+type PaymentSplit = "full" | "advance";
+
+const ADVANCE_PERCENT = 0.3;
 
 const Booking = () => {
   const { t } = useTranslation();
@@ -23,6 +26,7 @@ const Booking = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [paymentSplit, setPaymentSplit] = useState<PaymentSplit>("full");
 
   const [form, setForm] = useState({
     name: sessionStorage.getItem("clientName") || "",
@@ -60,6 +64,11 @@ const Booking = () => {
         )
       : 1;
 
+  const totalPrice = room ? room.price * nights : 0;
+  const advanceAmount = Math.round(totalPrice * ADVANCE_PERCENT);
+  const remainingAmount = totalPrice - advanceAmount;
+  const stripeAmount = paymentSplit === "advance" ? advanceAmount : totalPrice;
+
   const formatDate = (iso: string) => {
     if (!iso) return "";
     const [y, m, d] = iso.split("-");
@@ -84,10 +93,8 @@ const Booking = () => {
     try {
       const userId = sessionStorage.getItem("userId") || undefined;
 
-      // Creăm rezervarea trimițând și metoda de plată
       const booking = await apiPost<{
         data: { id: string; booking_ref: string };
-        payment_method: string;
       }>("/api/bookings", {
         room_id: room.id,
         user_id: userId,
@@ -100,18 +107,17 @@ const Booking = () => {
         special_requests: form.requests || undefined,
         source: "website",
         payment_method: paymentMethod,
+        payment_split: paymentMethod === "card" ? paymentSplit : "full",
       });
 
-      // Flux diferit în funcție de metoda de plată
       if (paymentMethod === "card") {
-        // Flux Stripe — generăm sesiunea de checkout
         const { checkout_url } = await apiPost<{ checkout_url: string }>(
           "/api/payments/create-checkout",
           { booking_id: booking.data.id },
         );
         window.location.href = checkout_url;
       } else {
-        // Flux transfer bancar — redirectăm la o pagină de confirmare specială
+        // Transfer bancar → pagina de confirmare
         navigate(
           `/booking/success?method=bank_transfer&ref=${booking.data.booking_ref}&booking_id=${booking.data.id}`,
         );
@@ -182,7 +188,7 @@ const Booking = () => {
               />
             </div>
 
-            {/* Telefon cu prefix */}
+            {/* Telefon */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.phone")}
@@ -196,7 +202,7 @@ const Booking = () => {
               />
             </div>
 
-            {/* Date check-in / check-out */}
+            {/* Date */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
@@ -246,7 +252,7 @@ const Booking = () => {
               </div>
             </div>
 
-            {/* Număr oaspeți */}
+            {/* Oaspeți */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 Număr oaspeți
@@ -281,45 +287,114 @@ const Booking = () => {
               />
             </div>
 
-            {/* ── Metodă de plată ───────────────────────────────────────── */}
+            {/* ── Metodă de plată ── */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-3 block">
                 Metodă de plată
               </label>
-              <div className="grid grid-cols-1 gap-3">
-                {/* Card online */}
-                <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+              <div className="grid grid-cols-1 gap-2">
+                {/* Card online cu sub-opțiuni */}
+                <div
+                  className={`rounded-xl border-2 overflow-hidden transition-all ${
                     paymentMethod === "card"
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-muted/30 hover:border-primary/40"
+                      ? "border-primary"
+                      : "border-border"
                   }`}
                 >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="card"
-                    checked={paymentMethod === "card"}
-                    onChange={() => setPaymentMethod("card")}
-                    className="mt-0.5 accent-primary shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CreditCard size={16} className="text-primary shrink-0" />
-                      <span className="text-sm font-semibold">
-                        Plată online cu cardul
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Plată securizată prin Stripe. Rezervarea se confirmă
-                      automat după plată.
-                    </p>
-                  </div>
-                </label>
+                  <label className="flex items-center gap-3 px-4 py-3.5 cursor-pointer bg-card">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="card"
+                      checked={paymentMethod === "card"}
+                      onChange={() => setPaymentMethod("card")}
+                      className="accent-primary shrink-0"
+                    />
+                    <CreditCard size={15} className="text-primary shrink-0" />
+                    <span className="text-sm font-semibold">
+                      Plată online cu cardul
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground hidden sm:inline">
+                      Stripe · securizat 🔒
+                    </span>
+                  </label>
 
-                {/* Transfer bancar */}
+                  {paymentMethod === "card" && (
+                    <div className="px-4 pb-4 pt-3 bg-muted/20 border-t border-border/50">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Integral */}
+                        <label
+                          className={`flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            paymentSplit === "full"
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-card hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="paymentSplit"
+                              value="full"
+                              checked={paymentSplit === "full"}
+                              onChange={() => setPaymentSplit("full")}
+                              className="accent-primary shrink-0"
+                            />
+                            <span className="text-xs font-semibold">
+                              Integral acum
+                            </span>
+                          </div>
+                          {totalPrice > 0 && (
+                            <div className="pl-5">
+                              <span className="text-sm font-bold text-foreground">
+                                {totalPrice} RON
+                              </span>
+                              <span className="text-xs text-muted-foreground block">
+                                fără restanță
+                              </span>
+                            </div>
+                          )}
+                        </label>
+
+                        {/* Avans 30% */}
+                        <label
+                          className={`flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            paymentSplit === "advance"
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-card hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="paymentSplit"
+                              value="advance"
+                              checked={paymentSplit === "advance"}
+                              onChange={() => setPaymentSplit("advance")}
+                              className="accent-primary shrink-0"
+                            />
+                            <span className="text-xs font-semibold">
+                              Avans 30% acum
+                            </span>
+                          </div>
+                          {totalPrice > 0 && (
+                            <div className="pl-5">
+                              <span className="text-sm font-bold text-primary">
+                                {advanceAmount} RON
+                              </span>
+                              <span className="text-xs text-muted-foreground block">
+                                + {remainingAmount} RON la check-in
+                              </span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Transfer bancar — mereu integral */}
                 <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all ${
                     paymentMethod === "bank_transfer"
                       ? "border-primary bg-primary/5"
                       : "border-border bg-muted/30 hover:border-primary/40"
@@ -330,82 +405,28 @@ const Booking = () => {
                     name="paymentMethod"
                     value="bank_transfer"
                     checked={paymentMethod === "bank_transfer"}
-                    onChange={() => setPaymentMethod("bank_transfer")}
-                    className="mt-0.5 accent-primary shrink-0"
+                    onChange={() => {
+                      setPaymentMethod("bank_transfer");
+                      setPaymentSplit("full");
+                    }}
+                    className="accent-primary shrink-0"
                   />
+                  <Building2 size={15} className="text-primary shrink-0" />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Building2 size={16} className="text-primary shrink-0" />
-                      <span className="text-sm font-semibold">
-                        Transfer bancar
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Veți primi un email cu datele contului bancar. Rezervarea
-                      se confirmă după primirea plății.
-                    </p>
-                  </div>
-                </label>
-
-                {/* Plată la recepție */}
-                <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    paymentMethod === "reception"
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-muted/30 hover:border-primary/40"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="reception"
-                    checked={paymentMethod === "reception"}
-                    onChange={() => setPaymentMethod("reception")}
-                    className="mt-0.5 accent-primary shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ConciergeBell
-                        size={16}
-                        className="text-primary shrink-0"
-                      />
-                      <span className="text-sm font-semibold">
-                        Plată la recepție (card sau cash)
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Plătiți la sosire. Rezervarea intră în așteptare până la
-                      confirmarea de către echipa noastră.
-                    </p>
+                    <span className="text-sm font-semibold block">
+                      Transfer bancar
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Plată integrală · datele contului pe email · confirmare
+                      după primirea plății
+                    </span>
                   </div>
                 </label>
               </div>
-
-              {/* Note informative per metodă */}
-              {paymentMethod === "bank_transfer" && (
-                <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                  <span className="text-amber-500 text-base shrink-0">ℹ️</span>
-                  <p className="text-xs text-amber-800 leading-relaxed">
-                    Rezervarea rămâne <strong>„În așteptare"</strong> până la
-                    confirmarea plății. Vă vom trimite datele de cont bancar pe
-                    email imediat după rezervare.
-                  </p>
-                </div>
-              )}
-              {paymentMethod === "reception" && (
-                <div className="mt-3 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                  <span className="text-blue-500 text-base shrink-0">ℹ️</span>
-                  <p className="text-xs text-blue-800 leading-relaxed">
-                    Rezervarea rămâne <strong>„În așteptare"</strong> până la
-                    confirmarea de către echipa noastră. Plata se efectuează la
-                    sosire, cu cardul sau cash.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Sidebar sumar */}
+          {/* ── Sidebar sumar ── */}
           {room && (
             <div className="bg-card border border-border rounded-lg p-6 h-fit lg:sticky lg:top-24">
               <h2 className="font-heading text-lg mb-4">
@@ -420,6 +441,7 @@ const Booking = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 {nights} {nights > 1 ? t("booking.nights") : t("booking.night")}
               </p>
+
               {form.checkIn &&
                 form.checkOut &&
                 !dateErrors.checkIn &&
@@ -439,46 +461,79 @@ const Booking = () => {
                     </p>
                   </div>
                 )}
-              <div className="border-t border-border pt-4 mb-6">
-                <div className="flex justify-between text-sm mb-1">
+
+              <div className="border-t border-border pt-4 mb-5 space-y-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
                   <span>
                     {room.price} RON × {nights}{" "}
                     {nights > 1 ? t("booking.nights") : t("booking.night")}
                   </span>
-                  <span>{room.price * nights} RON</span>
+                  <span>{totalPrice} RON</span>
                 </div>
-                <div className="flex justify-between font-heading text-lg mt-3 pt-3 border-t border-border">
+                <div className="flex justify-between font-heading text-lg pt-2 border-t border-border">
                   <span>{t("booking.total")}</span>
-                  <span className="text-accent">{room.price * nights} RON</span>
+                  <span className="text-accent">{totalPrice} RON</span>
                 </div>
+
+                {paymentMethod === "card" &&
+                  paymentSplit === "advance" &&
+                  totalPrice > 0 && (
+                    <div className="mt-3 pt-3 border-t border-dashed border-border space-y-1.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Acum online
+                        </span>
+                        <span className="font-semibold text-primary">
+                          {advanceAmount} RON
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          La check-in
+                        </span>
+                        <span className="font-semibold">
+                          {remainingAmount} RON
+                        </span>
+                      </div>
+                    </div>
+                  )}
               </div>
 
-              {/* Metodă selectată */}
-              <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-                {paymentMethod === "card" && (
-                  <>
-                    <CreditCard size={13} className="text-primary" />
-                    <span>Plată online cu cardul (Stripe)</span>
-                  </>
+              {paymentMethod === "card" && totalPrice > 0 && (
+                <div className="mb-4 bg-primary/8 border border-primary/20 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {paymentSplit === "advance"
+                      ? "Plătești acum"
+                      : "Total online"}
+                  </span>
+                  <span className="font-heading text-lg font-bold text-primary">
+                    {stripeAmount} RON
+                  </span>
+                </div>
+              )}
+
+              <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+                {paymentMethod === "card" ? (
+                  <CreditCard size={13} className="text-primary shrink-0" />
+                ) : (
+                  <Building2 size={13} className="text-primary shrink-0" />
                 )}
-                {paymentMethod === "bank_transfer" && (
-                  <>
-                    <Building2 size={13} className="text-primary" />
-                    <span>Transfer bancar</span>
-                  </>
-                )}
-                {paymentMethod === "reception" && (
-                  <>
-                    <ConciergeBell size={13} className="text-primary" />
-                    <span>Plată la recepție</span>
-                  </>
-                )}
+                <span>
+                  {paymentMethod === "card" &&
+                    paymentSplit === "advance" &&
+                    `Avans 30% · ${remainingAmount} RON la check-in`}
+                  {paymentMethod === "card" &&
+                    paymentSplit === "full" &&
+                    "Plată integrală online (Stripe)"}
+                  {paymentMethod === "bank_transfer" &&
+                    "Transfer bancar · integral"}
+                </span>
               </div>
 
               <Button
                 variant="hero"
                 type="submit"
-                className="w-full tracking-wide text-sm"
+                className="w-full tracking-wide"
                 disabled={!isFormValid || submitting}
               >
                 {submitting ? (
@@ -487,7 +542,11 @@ const Booking = () => {
                     procesează...
                   </span>
                 ) : paymentMethod === "card" ? (
-                  t("booking.payNow")
+                  paymentSplit === "advance" ? (
+                    `Avans ${advanceAmount} RON · Rezervă`
+                  ) : (
+                    t("booking.payNow")
+                  )
                 ) : (
                   "Rezervă Acum"
                 )}
