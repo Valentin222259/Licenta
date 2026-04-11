@@ -698,7 +698,7 @@ const AdminBookings = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-muted/40 border-b border-border">
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center w-28">
+                  <th className="px-4 py-3 text-xs text-center font-semibold uppercase tracking-wider text-muted-foreground text-center w-28">
                     Ref
                   </th>
                   {/* Oaspete centrat */}
@@ -853,11 +853,6 @@ const AdminBookings = () => {
                             )}
 
                             {/* Fără acțiuni disponibile */}
-                            {b.status === "finished" && (
-                              <span className="text-xs text-muted-foreground/40 italic">
-                                —
-                              </span>
-                            )}
                           </div>
                         </td>
                       </tr>

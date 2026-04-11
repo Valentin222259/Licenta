@@ -170,7 +170,7 @@ const AdminDashboard = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-muted/40 border-b border-border">
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
                     Oaspete
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden md:table-cell">
@@ -198,7 +198,7 @@ const AdminDashboard = () => {
                       key={b.id}
                       className="hover:bg-muted/20 transition-colors"
                     >
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 text-center">
                         <p className="text-sm font-medium">{b.guest_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {b.guest_email}

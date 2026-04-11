@@ -366,13 +366,16 @@ router.get("/trigger-expire", async (req, res) => {
     // Alertă admin
     if (succeeded > 0) {
       const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
-      await emailServices
-        .sendAdminExpiredBookingsAlert(adminEmail, {
+      try {
+        console.log("🔍 expired array:", JSON.stringify(expired.slice(0, 1)));
+        await emailServices.sendAdminExpiredBookingsAlert(adminEmail, {
           count: succeeded,
           bookings: expired,
           expireDays: EXPIRE_AFTER_DAYS,
-        })
-        .catch(() => {});
+        });
+      } catch (err) {
+        console.error("⚠️ Email alertă admin expirate:", err.message);
+      }
     }
 
     res.json({

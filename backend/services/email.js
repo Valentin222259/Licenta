@@ -1103,9 +1103,6 @@ ${bookingTable(d)}
   <p style="margin:0;font-size:14px;color:#b91c1c;font-weight:600;">
     ⚠️ Rezervarea ${d.bookingRef} a fost anulată automat.
   </p>
-  <p style="margin:8px 0 0;font-size:13px;color:#7f1d1d;">
-    Camera a fost eliberată și poate fi rezervată de alți oaspeți.
-  </p>
 </div>
  
 <p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
@@ -1136,69 +1133,86 @@ ${btn("Fă o Nouă Rezervare", `${B.site}/booking`)}
 }
 
 async function sendAdminExpiredBookingsAlert(adminEmail, d) {
-  const bookingRows = d.bookings
+  console.log(
+    "🔍 d.bookings type:",
+    typeof d.bookings,
+    Array.isArray(d.bookings),
+    d.bookings?.length,
+  );
+  const bookings = Array.isArray(d.bookings) ? d.bookings : [];
+  const count = d.count;
+  const countLabel =
+    count === 1 ? "o rezervare expirată" : `${count} rezervări expirate`;
+
+  const rows = bookings
     .map(
       (b, i) => `
-  <tr style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
-    <td style="padding:10px 16px;font-size:13px;color:${B.textH};font-weight:600;">${b.booking_ref}</td>
-    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.guest_name}</td>
-    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.guest_email}</td>
-    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.room_name}</td>
-    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.check_in?.substring(0, 10) || "—"}</td>
-    <td style="padding:10px 16px;font-size:13px;font-weight:700;color:#b91c1c;">${b.total_price} RON</td>
-  </tr>`,
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
+  <tr>
+    <td style="padding:12px 20px;font-size:13px;font-weight:700;color:${B.green};width:20%;
+      border-right:1px solid ${B.border};">${b.booking_ref}</td>
+    <td style="padding:12px 20px;font-size:13px;color:${B.textB};width:20%;
+      border-right:1px solid ${B.border};">${b.guest_name}</td>
+    <td style="padding:12px 20px;font-size:13px;color:${B.textB};width:25%;
+      border-right:1px solid ${B.border};">${b.guest_email}</td>
+    <td style="padding:12px 20px;font-size:13px;color:${B.textB};width:15%;
+      border-right:1px solid ${B.border};">${b.room_name}</td>
+    <td style="padding:12px 20px;font-size:13px;color:${B.textB};width:10%;
+      border-right:1px solid ${B.border};">${b.check_in?.substring(0, 10) || "—"}</td>
+    <td style="padding:12px 20px;font-size:13px;font-weight:700;color:#b91c1c;width:10%;">
+      ${b.total_price} RON</td>
+  </tr>
+  </table>`,
     )
     .join("");
 
   const body = `
-${title("🚨", "Rezervări Expirate Automat", `${d.count} rezervare(i) anulate astăzi`)}
+${title("🚨", "Rezervări Expirate Automat", `${countLabel} anulate astăzi`)}
 <p style="margin:0 0 16px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Job-ul automat de expirare a anulat <strong>${d.count} rezervare(i)</strong>
+  Job-ul automat a anulat <strong>${countLabel}</strong>
   de tip <em>Transfer Bancar</em> care nu au primit plata în termen de
-  <strong>${d.expireDays} zile</strong>. Clienții au fost notificați prin email.
+  <strong>${d.expireDays} zile</strong>. ${count === 1 ? "Clientul a fost notificat" : "Clienții au fost notificați"} prin email.
 </p>
- 
+
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:20px 0;">
   <div style="background:#b91c1c;padding:12px 20px;">
     <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
       letter-spacing:1px;color:rgba(255,255,255,0.9);">Rezervări Expirate</p>
   </div>
-  <div style="overflow-x:auto;">
-    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-      <thead>
-        <tr style="background:${B.rowEven};">
-          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
-            letter-spacing:0.8px;color:${B.textM};text-align:left;">Referință</th>
-          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
-            letter-spacing:0.8px;color:${B.textM};text-align:left;">Client</th>
-          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
-            letter-spacing:0.8px;color:${B.textM};text-align:left;">Email</th>
-          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
-            letter-spacing:0.8px;color:${B.textM};text-align:left;">Cameră</th>
-          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
-            letter-spacing:0.8px;color:${B.textM};text-align:left;">Check-in</th>
-          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
-            letter-spacing:0.8px;color:${B.textM};text-align:left;">Valoare</th>
-        </tr>
-      </thead>
-      <tbody>${bookingRows}</tbody>
-    </table>
-  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${B.rowEven};">
+  <tr>
+    <td style="padding:10px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:20%;border-right:1px solid ${B.border};">Referință</td>
+    <td style="padding:10px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:20%;border-right:1px solid ${B.border};">Client</td>
+    <td style="padding:10px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:25%;border-right:1px solid ${B.border};">Email</td>
+    <td style="padding:10px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:15%;border-right:1px solid ${B.border};">Cameră</td>
+    <td style="padding:10px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:10%;border-right:1px solid ${B.border};">Check-in</td>
+    <td style="padding:10px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.8px;color:${B.textM};width:10%;">Valoare</td>
+  </tr>
+  </table>
+  ${rows}
 </div>
- 
-${btn("Deschide Panoul Admin", `${B.site}/admin/bookings`)}`;
+
+${btn("Deschide Panoul Admin", `${B.site}/admin/bookings`)}
+<p style="margin:16px 0 0;font-size:11px;color:${B.textM};text-align:center;">
+  Generat automat · ${new Date().toLocaleString("ro-RO")}
+</p>`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: adminEmail,
-    subject: `🚨 ${d.count} rezervare(i) expirate automat · ${new Date().toLocaleDateString("ro-RO")} · ${B.name}`,
-    html: layout(
-      body,
-      `${d.count} rezervare(i) de tip transfer bancar au expirat automat astăzi`,
-    ),
+    subject: `🚨 ${countLabel} automat · ${new Date().toLocaleDateString("ro-RO")} · ${B.name}`,
+    html: layout(body, `${countLabel} de tip transfer bancar expirate astăzi`),
   });
   console.log(
-    `📧 [ADMIN] Alertă expirare ${d.count} rezervare(i) → ${adminEmail}`,
+    `📧 [ADMIN] Alertă expirare ${count} rezervare(i) → ${adminEmail}`,
   );
 }
 
