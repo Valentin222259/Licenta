@@ -28,6 +28,9 @@ const app = express();
 const reviewsRouter = require("./routes/reviews");
 const { startExpireBookingsJob } = require("./jobs/expireBookingsJob");
 
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swagger");
+
 // ─── CORS ────────────────────────────────────────────────────────────────────
 // Citim originile permise din .env (separate cu virgulă)
 // Ex: FRONTEND_URL=http://localhost:5173,https://main.d1234.amplifyapp.com
@@ -35,6 +38,15 @@ const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
+
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: "Belvedere API Docs",
+    customCss: ".swagger-ui .topbar { background-color: #1a1a1a; }",
+  }),
+);
 
 app.use(
   cors({
@@ -112,6 +124,10 @@ app.use("/api/analytics", analyticsRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/reviews", reviewsRouter);
 
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api/test-jobs", require("./routes/testJobs"));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  GESTIONARE ERORI
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,8 +180,6 @@ async function startServer() {
   console.log(`   Port:    ${PORT}`);
   console.log(`   CORS:    ${allowedOrigins.join(", ")}\n`);
 
-  await testConnection();
-  checkS3Config();
   await testConnection();
   checkS3Config();
   await verifyConnection(); // ← adaugă asta
