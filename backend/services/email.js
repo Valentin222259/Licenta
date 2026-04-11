@@ -604,63 +604,6 @@ ${btn("Gestionează Rezervarea", `${B.site}/account`)}`;
   );
 }
 
-// 6. Confirmare plată la recepție → CLIENT
-async function sendReceptionPaymentConfirmation(clientEmail, d) {
-  const body = `
-${title("🏨", "Rezervare Înregistrată!", "Plată la recepție")}
-${hi(d.guestName)}
-<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Rezervarea ta a fost înregistrată cu succes. Plata se va efectua la sosire,
-  cu <strong>cardul sau cash</strong>.
-</p>
-${bookingTable(d)}
-
-<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
-  ${[
-    [
-      "🕑",
-      "Check-in",
-      `${fmtDate(d.checkIn)} &nbsp;·&nbsp; <strong>după ora 14:00</strong>`,
-    ],
-    ["🚗", "Parcare", "Gratuită — intrați direct în curtea pensiunii"],
-    ["💳", "Plată", "La recepție · card sau cash"],
-    ["📞", "Recepție", B.phone],
-  ]
-    .map(
-      ([emoji, l, v], i) => `
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-    style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
-  <tr>
-    <td style="padding:14px 16px;font-size:22px;width:48px;text-align:center;
-      border-right:1px solid ${B.border};">${emoji}</td>
-    <td style="padding:14px 12px;font-size:11px;font-weight:700;text-transform:uppercase;
-      letter-spacing:0.8px;color:${B.textM};width:28%;border-right:1px solid ${B.border};">${l}</td>
-    <td style="padding:14px 16px;font-size:14px;color:${B.textB};">${v}</td>
-  </tr>
-  </table>`,
-    )
-    .join("")}
-</div>
-
-${banner(
-  "Rezervarea ta este <strong>în așteptare</strong> și va fi confirmată de echipa noastră în cel mai scurt timp. Vei primi un email de confirmare separat.",
-  B.greenLight,
-  B.greenBorder,
-  B.green,
-)}
-${btn("Gestionează Rezervarea", `${B.site}/account`)}`;
-
-  await transporter.sendMail({
-    from: `"${B.name}" <${EMAIL_USER}>`,
-    to: clientEmail,
-    subject: `🏨 Rezervare înregistrată · ${d.bookingRef} · ${B.name}`,
-    html: layout(body, `Rezervare la recepție înregistrată — ${d.bookingRef}`),
-  });
-  console.log(
-    `📧 [CLIENT] Confirmare recepție → ${clientEmail} (${d.bookingRef})`,
-  );
-}
-
 // 7. Reminder check-in → CLIENT
 async function sendCheckInReminder(clientEmail, d) {
   const body = `
@@ -1069,7 +1012,6 @@ module.exports = {
   sendBookingCancellation, // → CLIENT cu motiv
   sendAdminCancellationAlert, // → ADMIN simplă
   sendBankTransferInstructions,
-  sendReceptionPaymentConfirmation,
   sendCheckInReminder,
   sendReviewRequest,
   sendClientReviewConfirmation,

@@ -333,11 +333,10 @@ router.post("/", async (req, res) => {
               console.error("⚠️ Email transfer bancar eșuat:", err.message),
             );
         } else {
-          emailServices
-            .sendReceptionPaymentConfirmation(guest_email, bookingEmailData)
-            .catch((err) =>
-              console.error("⚠️ Email plată recepție eșuat:", err.message),
-            );
+          // Plată la recepție — rezervare în așteptare, fără email automat
+          console.log(
+            `📋 Rezervare recepție ${booking_ref} — admin contactează clientul`,
+          );
         }
 
         emailServices
