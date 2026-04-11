@@ -1086,6 +1086,122 @@ async function verifyConnection() {
   }
 }
 
+async function sendBookingExpired(clientEmail, d) {
+  const body = `
+${title("⏰", "Rezervare Expirată", "Plata nu a fost confirmată în termenul alocat")}
+${hi(d.guestName)}
+<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
+  Din păcate, rezervarea ta la <strong>${B.name}</strong> a expirat automat
+  deoarece nu am recepționat plata prin transfer bancar în termen de
+  <strong>${d.expireDays} zile</strong> de la data rezervării.
+</p>
+ 
+${bookingTable(d)}
+ 
+<div style="border-radius:10px;border:1px solid #fca5a5;background:#fef2f2;
+  padding:14px 20px;margin:20px 0;">
+  <p style="margin:0;font-size:14px;color:#b91c1c;font-weight:600;">
+    ⚠️ Rezervarea ${d.bookingRef} a fost anulată automat.
+  </p>
+  <p style="margin:8px 0 0;font-size:13px;color:#7f1d1d;">
+    Camera a fost eliberată și poate fi rezervată de alți oaspeți.
+  </p>
+</div>
+ 
+<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
+  Dacă dorești să revii la noi, poți face o nouă rezervare oricând.
+  De data aceasta, îți recomandăm plata online cu cardul pentru confirmare imediată.
+</p>
+ 
+${hr()}
+${btn("Fă o Nouă Rezervare", `${B.site}/booking`)}
+<p style="margin:22px 0 0;font-size:12px;color:${B.textM};text-align:center;">
+  Ai întrebări? Contactează-ne la
+  <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>
+  sau la ${B.phone}.
+</p>`;
+
+  await transporter.sendMail({
+    from: `"${B.name}" <${EMAIL_USER}>`,
+    to: clientEmail,
+    subject: `⏰ Rezervare expirată · ${d.bookingRef} · ${B.name}`,
+    html: layout(
+      body,
+      `Rezervarea ${d.bookingRef} a expirat — plata prin transfer bancar nu a fost confirmată în ${d.expireDays} zile`,
+    ),
+  });
+  console.log(
+    `📧 [CLIENT] Expirare rezervare → ${clientEmail} (${d.bookingRef})`,
+  );
+}
+
+async function sendAdminExpiredBookingsAlert(adminEmail, d) {
+  const bookingRows = d.bookings
+    .map(
+      (b, i) => `
+  <tr style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
+    <td style="padding:10px 16px;font-size:13px;color:${B.textH};font-weight:600;">${b.booking_ref}</td>
+    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.guest_name}</td>
+    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.guest_email}</td>
+    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.room_name}</td>
+    <td style="padding:10px 16px;font-size:13px;color:${B.textB};">${b.check_in?.substring(0, 10) || "—"}</td>
+    <td style="padding:10px 16px;font-size:13px;font-weight:700;color:#b91c1c;">${b.total_price} RON</td>
+  </tr>`,
+    )
+    .join("");
+
+  const body = `
+${title("🚨", "Rezervări Expirate Automat", `${d.count} rezervare(i) anulate astăzi`)}
+<p style="margin:0 0 16px;font-size:15px;color:${B.textB};line-height:1.85;">
+  Job-ul automat de expirare a anulat <strong>${d.count} rezervare(i)</strong>
+  de tip <em>Transfer Bancar</em> care nu au primit plata în termen de
+  <strong>${d.expireDays} zile</strong>. Clienții au fost notificați prin email.
+</p>
+ 
+<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:20px 0;">
+  <div style="background:#b91c1c;padding:12px 20px;">
+    <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
+      letter-spacing:1px;color:rgba(255,255,255,0.9);">Rezervări Expirate</p>
+  </div>
+  <div style="overflow-x:auto;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+      <thead>
+        <tr style="background:${B.rowEven};">
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.8px;color:${B.textM};text-align:left;">Referință</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.8px;color:${B.textM};text-align:left;">Client</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.8px;color:${B.textM};text-align:left;">Email</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.8px;color:${B.textM};text-align:left;">Cameră</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.8px;color:${B.textM};text-align:left;">Check-in</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.8px;color:${B.textM};text-align:left;">Valoare</th>
+        </tr>
+      </thead>
+      <tbody>${bookingRows}</tbody>
+    </table>
+  </div>
+</div>
+ 
+${btn("Deschide Panoul Admin", `${B.site}/admin/bookings`)}`;
+
+  await transporter.sendMail({
+    from: `"${B.name}" <${EMAIL_USER}>`,
+    to: adminEmail,
+    subject: `🚨 ${d.count} rezervare(i) expirate automat · ${new Date().toLocaleDateString("ro-RO")} · ${B.name}`,
+    html: layout(
+      body,
+      `${d.count} rezervare(i) de tip transfer bancar au expirat automat astăzi`,
+    ),
+  });
+  console.log(
+    `📧 [ADMIN] Alertă expirare ${d.count} rezervare(i) → ${adminEmail}`,
+  );
+}
+
 module.exports = {
   sendClientBookingConfirmation,
   sendAdminNewBookingAlert,
@@ -1094,6 +1210,8 @@ module.exports = {
   sendBankTransferInstructions,
   sendCheckInReminder,
   sendReviewRequest,
+  sendBookingExpired,
+  sendAdminExpiredBookingsAlert,
   sendClientReviewConfirmation,
   sendAdminNewReviewAlert,
   sendWelcomeEmail,

@@ -26,6 +26,7 @@ const { verifyConnection } = require("./services/email");
 const contactRouter = require("./routes/contact");
 const app = express();
 const reviewsRouter = require("./routes/reviews");
+const { startExpireBookingsJob } = require("./jobs/expireBookingsJob");
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 // Citim originile permise din .env (separate cu virgulă)
@@ -174,6 +175,7 @@ async function startServer() {
     console.log(`Health: http://localhost:${PORT}/health\n`);
 
     startReminderJob();
+    startExpireBookingsJob();
   });
 }
 
