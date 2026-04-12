@@ -402,7 +402,6 @@ router.get("/trigger-expire", async (req, res) => {
 // Inserează rezervări de test direct în DB — fără pgAdmin sau SQL manual
 router.get("/seed", async (req, res) => {
   try {
-    // Luăm primul room_id activ din DB
     const { rows: rooms } = await query(
       `SELECT id FROM rooms WHERE status = 'active' LIMIT 1`,
     );
@@ -415,7 +414,29 @@ router.get("/seed", async (req, res) => {
 
     const roomId = rooms[0].id;
 
-    // Șterge rezervările de test vechi dacă există
+    // Calculăm datele în Node.js — evităm problemele de timezone PostgreSQL
+    const now = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }),
+    );
+    const pad = (n) => String(n).padStart(2, "0");
+    const toDate = (d) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const fiveDaysAgo = new Date(now);
+    fiveDaysAgo.setDate(now.getDate() - 5);
+    const tenDaysAhead = new Date(now);
+    tenDaysAhead.setDate(now.getDate() + 10);
+    const thirteenDaysAhead = new Date(now);
+    thirteenDaysAhead.setDate(now.getDate() + 13);
+    const fourDaysAgo = new Date(now);
+    fourDaysAgo.setDate(now.getDate() - 4);
+
+    console.log("🕐 now în Node.js:", now.toISOString());
+    console.log("📅 yesterday:", toDate(yesterday));
+    console.log("📅 fourDaysAgo:", toDate(fourDaysAgo));
+
     await query(
       `DELETE FROM bookings WHERE booking_ref IN ('BLV-TEST-001', 'BLV-TEST-002')`,
     );
@@ -423,51 +444,52 @@ router.get("/seed", async (req, res) => {
       `DELETE FROM guest_ids WHERE booking_id NOT IN (SELECT id FROM bookings)`,
     );
 
-    // BLV-TEST-001 — confirmed, check-out ieri (mereu relativ la ziua curentă)
+    // BLV-TEST-001 — confirmed, check-out ieri
     await query(
       `INSERT INTO bookings (
-    booking_ref, room_id, guest_name, guest_email, guest_phone,
-    check_in, check_out, guests, total_price,
-    status, payment_split, source,
-    stripe_amount, remaining_amount
-  ) VALUES (
-    'BLV-TEST-001', $1, 'Test Client Job3', 'ardeleanvalentin490@yahoo.com', '+40700000000',
-    (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Bucharest')::date - INTERVAL '5 days',
-    (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Bucharest')::date - INTERVAL '1 day',
-    2, 750, 'confirmed', 'full', 'website', 750, 0
-  )`,
-      [roomId],
+        booking_ref, room_id, guest_name, guest_email, guest_phone,
+        check_in, check_out, guests, total_price,
+        status, payment_split, source, stripe_amount, remaining_amount
+      ) VALUES (
+        'BLV-TEST-001', $1, 'Test Client Job3', 'ardeleanvalentin490@yahoo.com', '+40700000000',
+        $2, $3, 2, 750, 'confirmed', 'full', 'website', 750, 0
+      )`,
+      [roomId, toDate(fiveDaysAgo), toDate(yesterday)],
     );
 
-    // BLV-TEST-002 — pending, creat acum 4 zile (mereu relativ la ziua curentă)
+    // BLV-TEST-002 — pending, creat acum 4 zile
     await query(
       `INSERT INTO bookings (
-    booking_ref, room_id, guest_name, guest_email, guest_phone,
-    check_in, check_out, guests, total_price,
-    status, payment_split, source,
-    stripe_amount, remaining_amount, created_at
-  ) VALUES (
-    'BLV-TEST-002', $1, 'Test Client Job4', 'ardeleanvalentin490@yahoo.com', '+40700000000',
-    (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Bucharest')::date + INTERVAL '10 days',
-    (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Bucharest')::date + INTERVAL '13 days',
-    2, 750, 'pending', 'full', 'website', NULL, 750,
-    (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Bucharest')::date - INTERVAL '4 days'
-  )`,
-      [roomId],
+        booking_ref, room_id, guest_name, guest_email, guest_phone,
+        check_in, check_out, guests, total_price,
+        status, payment_split, source, stripe_amount, remaining_amount, created_at
+      ) VALUES (
+        'BLV-TEST-002', $1, 'Test Client Job4', 'ardeleanvalentin490@yahoo.com', '+40700000000',
+        $2, $3, 2, 750, 'pending', 'full', 'website', NULL, 750, $4
+      )`,
+      [
+        roomId,
+        toDate(tenDaysAhead),
+        toDate(thirteenDaysAhead),
+        toDate(fourDaysAgo),
+      ],
     );
 
     res.json({
       status: "done",
       message: "Rezervări de test create cu succes.",
+      dates: {
+        "BLV-TEST-001 check-out": toDate(yesterday),
+        "BLV-TEST-002 created_at": toDate(fourDaysAgo),
+      },
       created: [
         {
           ref: "BLV-TEST-001",
-          description:
-            "confirmed + check-out în trecut → testează Job 3 și Job 2",
+          description: "confirmed + check-out ieri → testează Job 3 și Job 2",
         },
         {
           ref: "BLV-TEST-002",
-          description: "pending bank_transfer vechi 4 zile → testează Job 4",
+          description: "pending vechi 4 zile → testează Job 4",
         },
       ],
       nextSteps: [

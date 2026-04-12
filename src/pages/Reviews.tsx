@@ -35,7 +35,7 @@ const StarRating = ({
         >
           <Star
             size={onChange ? 28 : 16}
-            className={`transition-colors ${(hover || value) >= s ? "fill-primary text-primary" : "text-muted-foreground/30"}`}
+            className={`transition-colors ${(hover || value) >= s ? "fill-primary text-primary" : "fill-transparent text-primary/30"}`}
           />
         </button>
       ))}
@@ -148,11 +148,11 @@ const Reviews = () => {
                     </span>
                     <Star
                       size={12}
-                      className="fill-amber-400 text-amber-400 shrink-0"
+                      className="fill-primary text-primary shrink-0"
                     />
                     <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-amber-400 rounded-full transition-all"
+                        className="h-full bg-primary rounded-full transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>

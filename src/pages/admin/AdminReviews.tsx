@@ -40,7 +40,9 @@ const StarDisplay = ({ rating }: { rating: number }) => (
         key={s}
         size={14}
         className={
-          s <= rating ? "fill-amber-400 text-amber-400" : "text-muted/30"
+          s <= rating
+            ? "fill-primary text-primary"
+            : "fill-transparent text-primary/30"
         }
       />
     ))}

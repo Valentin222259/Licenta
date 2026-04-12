@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Star, Check, Eye, Loader2, AlertCircle } from "lucide-react";
+import { Check, Eye, Loader2, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import {
   Dialog,
@@ -15,12 +15,11 @@ import { useRoom } from "@/lib/hooks";
 
 const RoomDetail = () => {
   const { t } = useTranslation();
-  const { id } = useParams(); // id e de fapt slug-ul din URL
+  const { id } = useParams();
   const { room, loading, error } = useRoom(id);
   const [selectedImage, setSelectedImage] = useState(0);
   const [tourOpen, setTourOpen] = useState(false);
 
-  // ─── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="pt-24 pb-20 flex items-center justify-center min-h-screen">
@@ -29,7 +28,6 @@ const RoomDetail = () => {
     );
   }
 
-  // ─── Eroare ─────────────────────────────────────────────────────────────────
   if (error || !room) {
     return (
       <div className="pt-24 pb-20 px-4 text-center">
@@ -44,7 +42,6 @@ const RoomDetail = () => {
     );
   }
 
-  // Imaginile camerei — dacă nu are poze în S3, folosim placeholder
   const images =
     room.images && room.images.length > 0
       ? room.images.map((img) => img.url)
@@ -106,39 +103,6 @@ const RoomDetail = () => {
                 </div>
               ))}
             </div>
-
-            {/* Recenzii */}
-            {room.reviews && room.reviews.length > 0 && (
-              <>
-                <h2 className="font-heading text-xl mb-4">
-                  {t("roomDetail.guestReviews")}
-                </h2>
-                <div className="space-y-4">
-                  {room.reviews.map((r) => (
-                    <div key={r.id} className="bg-muted rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex gap-0.5">
-                          {Array.from({ length: r.rating }).map((_, j) => (
-                            <Star
-                              key={j}
-                              size={14}
-                              className="fill-primary text-primary"
-                            />
-                          ))}
-                        </div>
-                        <span className="font-heading text-sm">
-                          {r.guest_name}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-auto">
-                          {new Date(r.created_at).toLocaleDateString("ro-RO")}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{r.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
           </div>
 
           {/* Sidebar rezervare */}
