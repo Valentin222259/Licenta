@@ -8,10 +8,10 @@ import "react-phone-number-input/style.css";
 import { apiPost } from "@/lib/api";
 
 const directions = [
-  { city: "Cluj-Napoca", distance: "160 km", time: "~2.5h" },
-  { city: "Baia Mare", distance: "45 km", time: "~50 min" },
-  { city: "Satu Mare", distance: "80 km", time: "~1.5h" },
-  { city: "Budapest", distance: "380 km", time: "~5h" },
+  { city: "Baia Mare", distance: "55 km", time: "~1h" },
+  { city: "Sighetu Marmației", distance: "30 km", time: "~35 min" },
+  { city: "Vișeu de Sus", distance: "25 km", time: "~25 min" },
+  { city: "Cluj-Napoca", distance: "175 km", time: "~2.5h" },
 ];
 
 const Contact = () => {
@@ -191,7 +191,7 @@ const Contact = () => {
             <div className="rounded-lg overflow-hidden border border-border">
               <iframe
                 title="Location Map"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=24.3700%2C47.7600%2C24.4200%2C47.7900&layer=mapnik&marker=47.7750%2C24.3950"
+                src="https://www.openstreetmap.org/export/embed.html?bbox=24.1389%2C47.8292%2C24.1789%2C47.8692&layer=mapnik&marker=47.849263%2C24.158971"
                 className="w-full h-56"
               />
             </div>

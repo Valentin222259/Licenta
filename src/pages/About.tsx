@@ -125,17 +125,17 @@ const About = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
               { loc: "Mănăstirea Izvorul Tămăduirii", dist: "4–5 km" },
-              { loc: "Bârsana", dist: "15 km" },
-              { loc: "Sighetu Marmației", dist: "29 km" },
-              { loc: "Ieud", dist: "30 km" },
               { loc: "Vișeu de Sus", dist: "25 km" },
-              { loc: "Borșa", dist: "48 km" },
-              { loc: "Moisei", dist: "37 km" },
-              { loc: "Dragomirești", dist: "32 km" },
-              { loc: "Săpânța", dist: "53 km" },
-              { loc: "Ocna Șugatag", dist: "35 km" },
-              { loc: "Breb", dist: "40 km" },
-              { loc: "Vadu Izei", dist: "38 km" },
+              { loc: "Sighetu Marmației", dist: "30 km" },
+              { loc: "Bârsana", dist: "20 km" },
+              { loc: "Borșa", dist: "45 km" },
+              { loc: "Baia Mare", dist: "55 km" },
+              { loc: "Moisei", dist: "35 km" },
+              { loc: "Ieud", dist: "15 km" },
+              { loc: "Săpânța", dist: "50 km" },
+              { loc: "Ocna Șugatag", dist: "40 km" },
+              { loc: "Breb", dist: "45 km" },
+              { loc: "Dragomirești", dist: "10 km" },
             ].map((item) => (
               <div
                 key={item.loc}
