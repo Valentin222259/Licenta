@@ -1,8 +1,6 @@
 /**
- * config/swagger.js — Configurare Swagger / OpenAPI 3.0
- *
- * Generează documentația interactivă a API-ului.
- * Accesibilă la: http://localhost:3001/api-docs
+ * config/swagger.js
+ * Swagger / OpenAPI 3.0 — available at http://localhost:3001/api-docs
  */
 
 "use strict";
@@ -13,45 +11,31 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Pensiunea Maramureș Belvedere — API",
+      title: "Maramures Belvedere — API",
       version: "1.0.0",
-      description: `
-API-ul backend al aplicației de rezervări pentru Pensiunea Maramureș Belvedere.
-
-## Autentificare
-Rutele protejate necesită un token JWT trimis în header:
-\`Authorization: Bearer <token>\`
-
-## Endpoint-uri de test (doar development)
-Rutele \`/api/test-jobs/*\` permit declanșarea manuală a job-urilor cron
-fără să aștepți ora fixă de execuție.
-
-## Flux rezervare
-1. **POST /api/bookings** — creează rezervarea (status: pending)
-2. **POST /api/payments/create-checkout** — generează link Stripe
-3. **POST /api/payments/webhook** — confirmă automat după plată (status: confirmed)
-4. **PUT /api/bookings/:id/status** — admin schimbă statusul manual
-      `,
+      description:
+        "REST API for the Maramures Belvedere guesthouse booking application.",
       contact: {
-        name: "Pensiunea Maramureș Belvedere",
-        email: "contact@belvedere.ro",
+        name: "Maramures Belvedere",
+        email: "contact@maramures-belvedere.ro",
       },
     },
     servers: [
       {
         url: "http://localhost:3001",
-        description: "Server local (development)",
+        description: "Local (development)",
       },
     ],
     tags: [
-      { name: "Rezervări", description: "Gestionarea rezervărilor" },
-      { name: "Plăți", description: "Integrare Stripe — checkout și webhook" },
-      { name: "Camere", description: "Camerele disponibile" },
-      { name: "Autentificare", description: "Login, register, profil" },
-      { name: "Recenzii", description: "Recenzii lăsate de oaspeți" },
+      { name: "Bookings" },
+      { name: "Payments" },
+      { name: "Rooms" },
+      { name: "Auth" },
+      { name: "Reviews" },
+      { name: "Settings" },
       {
         name: "Test Jobs",
-        description: "🧪 Testare manuală job-uri cron (doar development)",
+        description: "Manual triggers for cron jobs — development only.",
       },
     ],
     components: {
@@ -60,7 +44,6 @@ fără să aștepți ora fixă de execuție.
           type: "http",
           scheme: "bearer",
           bearerFormat: "JWT",
-          description: "Token JWT obținut din POST /api/auth/login",
         },
       },
       schemas: {
@@ -76,10 +59,7 @@ fără să aștepți ora fixă de execuție.
             guest_name: { type: "string", example: "Ion Popescu" },
             guest_email: { type: "string", example: "ion@example.com" },
             guest_phone: { type: "string", example: "+40758077433" },
-            room_name: {
-              type: "string",
-              example: "Camera 3 — Balcon & Pădure",
-            },
+            room_name: { type: "string", example: "Room 3" },
             check_in: { type: "string", format: "date", example: "2026-05-10" },
             check_out: {
               type: "string",
@@ -107,16 +87,8 @@ fără să aștepți ora fixă de execuție.
             stripe_amount: { type: "integer", example: 750, nullable: true },
             remaining_amount: { type: "integer", example: 0 },
             needs_invoice: { type: "boolean", example: false },
-            company_name: {
-              type: "string",
-              example: "SC Exemplu SRL",
-              nullable: true,
-            },
-            company_cui: {
-              type: "string",
-              example: "RO12345678",
-              nullable: true,
-            },
+            company_name: { type: "string", nullable: true },
+            company_cui: { type: "string", nullable: true },
             created_at: { type: "string", format: "date-time" },
           },
         },
@@ -124,7 +96,7 @@ fără să aștepți ora fixă de execuție.
           type: "object",
           properties: {
             success: { type: "boolean", example: false },
-            error: { type: "string", example: "Mesaj de eroare" },
+            error: { type: "string", example: "Error message" },
           },
         },
         Success: {
@@ -137,8 +109,7 @@ fără să aștepți ora fixă de execuție.
       },
     },
   },
-  // Fișierele în care Swagger caută comentarii JSDoc cu @swagger
-  apis: ["./routes/*.js", "./routes/testJobs.js"],
+  apis: ["./routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
