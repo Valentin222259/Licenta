@@ -31,6 +31,8 @@ const { startExpireBookingsJob } = require("./jobs/expireBookingsJob");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
 
+const settingsRouter = require("./routes/settings");
+
 // ─── CORS ────────────────────────────────────────────────────────────────────
 // Citim originile permise din .env (separate cu virgulă)
 // Ex: FRONTEND_URL=http://localhost:5173,https://main.d1234.amplifyapp.com
@@ -123,6 +125,8 @@ app.use("/api/analytics", analyticsRouter);
 
 app.use("/api/contact", contactRouter);
 app.use("/api/reviews", reviewsRouter);
+
+app.use("/api/settings", settingsRouter);
 
 if (process.env.NODE_ENV !== "production") {
   app.use("/api/test-jobs", require("./routes/testJobs"));

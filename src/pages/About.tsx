@@ -1,3 +1,6 @@
+// src/pages/About.tsx — versiune actualizată cu conținut dinamic din admin
+// ÎNLOCUIEȘTE complet fișierul existent src/pages/About.tsx
+
 import {
   Bike,
   Utensils,
@@ -11,42 +14,27 @@ import {
 import heroImageFallback from "@/assets/hero-mountains.jpg";
 import { useTranslation } from "react-i18next";
 import { useFacilityImages, useAboutImages } from "@/lib/useImages";
+import { useSettings } from "@/lib/useSettings";
 
-// IMPORTANT: Ordinea TREBUIE să fie identică cu FACILITIES din AdminImages.tsx
-const facilities = [
-  { icon: Waves, titleKey: "about.jacuzziTitle", descKey: "about.jacuzziDesc" },
-  { icon: Bike, titleKey: "about.bikesTitle", descKey: "about.bikesDesc" },
-  {
-    icon: Gamepad2,
-    titleKey: "about.pingPongTitle",
-    descKey: "about.pingPongDesc",
-  },
-  { icon: Snowflake, titleKey: "about.sledsTitle", descKey: "about.sledsDesc" },
-  { icon: Utensils, titleKey: "about.grillTitle", descKey: "about.grillDesc" },
-  {
-    icon: ParkingCircle,
-    titleKey: "about.parkingTitle",
-    descKey: "about.parkingDesc",
-  },
-  {
-    icon: Baby,
-    titleKey: "about.playgroundTitle",
-    descKey: "about.playgroundDesc",
-  },
-  {
-    icon: Shirt,
-    titleKey: "about.traditionalTitle",
-    descKey: "about.traditionalDesc",
-  },
+// Ordinea TREBUIE să fie identică cu FACILITIES din AdminImages.tsx
+// Cheile din settings sunt facility_{key}_title și facility_{key}_desc
+const FACILITY_KEYS = [
+  { key: "jacuzzi", icon: Waves },
+  { key: "bikes", icon: Bike },
+  { key: "pingpong", icon: Gamepad2 },
+  { key: "sleds", icon: Snowflake },
+  { key: "grill", icon: Utensils },
+  { key: "parking", icon: ParkingCircle },
+  { key: "playground", icon: Baby },
+  { key: "traditional", icon: Shirt },
 ];
 
 const About = () => {
   const { t } = useTranslation();
+  const { settings, loading: settingsLoading } = useSettings();
 
-  // 1 singură imagine pentru secțiunea poveste
+  // Imaginile rămân la fel
   const { primary: aboutPrimary } = useAboutImages();
-
-  // Imaginile facilităților — sortate după sort_order, asociate în ordine cu facilitățile
   const { images: facilityImages } = useFacilityImages();
 
   const heroSrc = aboutPrimary?.url || heroImageFallback;
@@ -71,26 +59,41 @@ const About = () => {
         </div>
       </section>
 
-      {/* Povestea */}
+      {/* ── Povestea — titlu și paragrafe din admin ── */}
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
+              {/* Titlu editabil din admin */}
               <h2 className="font-heading text-3xl mb-6">
-                {t("about.storyTitle")}
+                {settingsLoading
+                  ? t("about.storyTitle")
+                  : settings.about_story_title || t("about.storyTitle")}
               </h2>
+
+              {/* Paragraf 1 editabil */}
               <p className="text-muted-foreground leading-relaxed mb-4">
-                {t("about.storyP1")}
+                {settingsLoading
+                  ? t("about.storyP1")
+                  : settings.about_story_p1 || t("about.storyP1")}
               </p>
+
+              {/* Paragraf 2 editabil */}
               <p className="text-muted-foreground leading-relaxed mb-4">
-                {t("about.storyP2")}
+                {settingsLoading
+                  ? t("about.storyP2")
+                  : settings.about_story_p2 || t("about.storyP2")}
               </p>
+
+              {/* Paragraf 3 editabil */}
               <p className="text-muted-foreground leading-relaxed">
-                {t("about.storyP3")}
+                {settingsLoading
+                  ? t("about.storyP3")
+                  : settings.about_story_p3 || t("about.storyP3")}
               </p>
             </div>
+
             <div className="relative">
-              {/* 1 singură poză pentru poveste */}
               {aboutPrimary ? (
                 <img
                   src={aboutPrimary.url}
@@ -113,7 +116,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* Distanțe */}
+      {/* Distanțe — neschimbat */}
       <section className="py-12 px-4 bg-muted">
         <div className="container mx-auto max-w-4xl">
           <h2 className="font-heading text-2xl text-center mb-8">
@@ -148,7 +151,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* Facilități */}
+      {/* ── Facilități — titluri și descrieri din admin ── */}
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-5xl">
           <h2 className="font-heading text-3xl text-center mb-4">
@@ -158,19 +161,30 @@ const About = () => {
             {t("about.facilitiesSubtitle")}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {facilities.map((facility, index) => {
-              // Imaginea pentru această facilitate — index corespunde poziției din admin
+            {FACILITY_KEYS.map(({ key, icon: Icon }, index) => {
               const facilityImg = facilityImages[index] || null;
+
+              // Titlu și descriere din admin (cu fallback la i18n)
+              const titleKey = `facility_${key}_title` as keyof typeof settings;
+              const descKey = `facility_${key}_desc` as keyof typeof settings;
+
+              const title = settingsLoading
+                ? t(`about.${key}Title`)
+                : (settings[titleKey] as string) || t(`about.${key}Title`);
+
+              const desc = settingsLoading
+                ? t(`about.${key}Desc`)
+                : (settings[descKey] as string) || t(`about.${key}Desc`);
 
               return (
                 <div
-                  key={index}
+                  key={key}
                   className="bg-card border border-border rounded-lg overflow-hidden"
                 >
                   {facilityImg ? (
                     <img
                       src={facilityImg.url}
-                      alt={facilityImg.caption || t(facility.titleKey)}
+                      alt={facilityImg.caption || title}
                       className="w-full h-48 object-cover"
                     />
                   ) : (
@@ -184,14 +198,12 @@ const About = () => {
 
                   <div className="p-5 flex gap-4">
                     <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <facility.icon size={20} className="text-primary" />
+                      <Icon size={20} className="text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-heading text-lg mb-1">
-                        {t(facility.titleKey)}
-                      </h3>
+                      <h3 className="font-heading text-lg mb-1">{title}</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        {t(facility.descKey)}
+                        {desc}
                       </p>
                     </div>
                   </div>
@@ -202,7 +214,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* Politica copii */}
+      {/* Politica copii — neschimbat */}
       <section className="py-12 px-4 bg-muted">
         <div className="container mx-auto max-w-3xl text-center">
           <h2 className="font-heading text-2xl mb-4">{t("about.kidsTitle")}</h2>

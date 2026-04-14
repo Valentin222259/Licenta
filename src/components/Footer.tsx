@@ -8,9 +8,11 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSettings } from "@/lib/useSettings";
 
 const Footer = () => {
   const { t } = useTranslation();
+  const { settings } = useSettings();
 
   return (
     <footer className="bg-primary text-primary-foreground">
@@ -63,7 +65,7 @@ const Footer = () => {
           <div className="flex flex-col gap-3 text-sm text-primary-foreground/80">
             <div className="flex items-start gap-2">
               <MapPin size={16} className="mt-0.5 shrink-0" />
-              <span>Str. Hera, Nr. 2, Petrova, Maramureș, România</span>
+              <span>{settings.guesthouse_address}</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone size={16} />

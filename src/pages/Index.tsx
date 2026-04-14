@@ -9,6 +9,7 @@ import { useHeroImages } from "@/lib/useImages";
 import { useState, useEffect } from "react";
 import { apiGet } from "@/lib/api";
 import roomPlaceholder from "@/assets/hero-mountains.jpg";
+import { useSettings } from "@/lib/useSettings";
 
 interface Review {
   id: string;
@@ -28,6 +29,8 @@ const Index = () => {
 
   const { primary: heroImage } = useHeroImages();
   const { rooms } = useRooms();
+
+  const { settings } = useSettings();
 
   const [reviews, setReviews] = useState<Review[]>([]);
 
@@ -140,13 +143,13 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div>
               <h2 className="font-heading text-3xl md:text-4xl mb-6">
-                {t("ourStory.title")}
+                {settings.home_story_title}
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                {t("ourStory.p1")}
+                {settings.home_story_p1}
               </p>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                {t("ourStory.p2")}
+                {settings.home_story_p2}
               </p>
               <Button variant="outline" asChild>
                 <Link to="/contact">{t("ourStory.cta")}</Link>
