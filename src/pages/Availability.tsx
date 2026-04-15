@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 interface OccupiedPeriod {
   room_id: string;
@@ -18,27 +19,9 @@ interface Room {
   price: number;
 }
 
-const DAYS = ["Lu", "Ma", "Mi", "Jo", "Vi", "Sa", "Du"];
-const MONTHS = [
-  "Ianuarie",
-  "Februarie",
-  "Martie",
-  "Aprilie",
-  "Mai",
-  "Iunie",
-  "Iulie",
-  "August",
-  "Septembrie",
-  "Octombrie",
-  "Noiembrie",
-  "Decembrie",
-];
-
 const toISO = (y: number, m: number, d: number) =>
   `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
-// O zi e ocupata daca: check_in <= ziua < check_out
-// Ziua de checkout NU e ocupata — oaspetii pleaca, camera e libera
 const isDayOccupied = (
   dateStr: string,
   periods: OccupiedPeriod[],
@@ -59,6 +42,7 @@ interface RoomCalendarProps {
 }
 
 const RoomCalendar = ({ room, occupied, year, month }: RoomCalendarProps) => {
+  const { t } = useTranslation();
   const today = new Date();
   const todayISO = toISO(
     today.getFullYear(),
@@ -77,26 +61,30 @@ const RoomCalendar = ({ room, occupied, year, month }: RoomCalendarProps) => {
     },
   ).length;
 
+  const dayLabels = Array.from({ length: 7 }, (_, i) => t(`days.${i}`));
+
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
       <div className="px-5 py-4 border-b border-border flex items-center justify-between">
         <div>
           <h3 className="font-heading text-base">{room.name}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            de la{" "}
+            {t("availability.fromPrice")}{" "}
             <span className="font-semibold text-accent">{room.price} RON</span>{" "}
-            / noapte
+            {t("availability.perNight")}
           </p>
         </div>
         <span
           className={`text-xs font-semibold px-2.5 py-1 rounded-full ${freeDays > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}
         >
-          {freeDays > 0 ? `${freeDays} zile libere` : "Complet ocupat"}
+          {freeDays > 0
+            ? t("availability.freeDays", { count: freeDays })
+            : t("availability.fullyBooked")}
         </span>
       </div>
 
       <div className="grid grid-cols-7 bg-muted/40 border-b border-border">
-        {DAYS.map((d) => (
+        {dayLabels.map((d) => (
           <div
             key={d}
             className="py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground"
@@ -132,12 +120,12 @@ const RoomCalendar = ({ room, occupied, year, month }: RoomCalendarProps) => {
           }
 
           const label = isPast
-            ? "Trecut"
+            ? t("availability.past")
             : isOccupied
-              ? "Ocupat"
+              ? t("availability.occupied")
               : isToday
-                ? "Astazi"
-                : "Disponibil";
+                ? t("availability.today")
+                : t("availability.available");
 
           return (
             <div key={day} className={cls} title={label}>
@@ -149,10 +137,12 @@ const RoomCalendar = ({ room, occupied, year, month }: RoomCalendarProps) => {
 
       <div className="px-5 py-3 border-t border-border bg-muted/20 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          Check-out = disponibil din aceeasi zi
+          {t("availability.checkoutNote")}
         </span>
         <Button variant="hero" size="sm" asChild>
-          <Link to={`/booking?room=${room.slug}`}>Rezerva</Link>
+          <Link to={`/booking?room=${room.slug}`}>
+            {t("availability.reserve")}
+          </Link>
         </Button>
       </div>
     </div>
@@ -160,6 +150,7 @@ const RoomCalendar = ({ room, occupied, year, month }: RoomCalendarProps) => {
 };
 
 const Availability = () => {
+  const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [occupied, setOccupied] = useState<OccupiedPeriod[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -191,15 +182,16 @@ const Availability = () => {
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
+  const monthLabel = t(`months.${month}`);
+
   return (
     <div className="pt-24 pb-20 px-4">
       <div className="container mx-auto max-w-5xl">
         <h1 className="font-heading text-4xl md:text-5xl text-center mb-3">
-          Disponibilitate
+          {t("availability.title")}
         </h1>
         <p className="text-center text-muted-foreground mb-10 max-w-xl mx-auto">
-          Verificati disponibilitatea fiecarei camere pentru luna dorita. Ziua
-          de check-out este considerata libera pentru noi rezervari.
+          {t("availability.subtitle")}
         </p>
 
         <div className="flex items-center justify-center gap-6 mb-8">
@@ -211,7 +203,7 @@ const Availability = () => {
             <ChevronLeft size={18} />
           </button>
           <h2 className="font-heading text-2xl min-w-[200px] text-center">
-            {MONTHS[month]} {year}
+            {monthLabel} {year}
           </h2>
           <button
             onClick={nextMonth}
@@ -228,22 +220,22 @@ const Availability = () => {
         ) : (
           <>
             <div className="flex items-center justify-center gap-6 mb-8 flex-wrap">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 rounded bg-emerald-50 border border-emerald-200" />
-                <span className="text-muted-foreground">Disponibil</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 rounded bg-red-100 border border-red-200" />
-                <span className="text-muted-foreground">Ocupat</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 rounded bg-primary" />
-                <span className="text-muted-foreground">Astazi</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-4 h-4 rounded bg-muted/40 border border-border" />
-                <span className="text-muted-foreground">Trecut</span>
-              </div>
+              {[
+                {
+                  key: "available",
+                  cls: "bg-emerald-50 border-emerald-200",
+                },
+                { key: "occupied", cls: "bg-red-100 border-red-200" },
+                { key: "today", cls: "bg-primary border-primary" },
+                { key: "past", cls: "bg-muted/40 border-border" },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center gap-2 text-sm">
+                  <div className={`w-4 h-4 rounded border ${item.cls}`} />
+                  <span className="text-muted-foreground">
+                    {t(`availability.${item.key}`)}
+                  </span>
+                </div>
+              ))}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -260,20 +252,20 @@ const Availability = () => {
 
             {rooms.length === 0 && (
               <p className="text-center text-muted-foreground py-12">
-                Nu s-au putut incarca camerele.
+                {t("availability.noRooms")}
               </p>
             )}
 
             <div className="text-center mt-10">
               <p className="text-sm text-muted-foreground mb-4">
-                Aveti intrebari despre disponibilitate? Contactati-ne direct.
+                {t("availability.questionsTitle")}
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 <Button variant="hero" asChild>
-                  <Link to="/booking">Rezerva Acum</Link>
+                  <Link to="/booking">{t("availability.bookNow")}</Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link to="/contact">Contactati-ne</Link>
+                  <Link to="/contact">{t("availability.contactUs")}</Link>
                 </Button>
               </div>
             </div>

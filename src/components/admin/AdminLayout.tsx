@@ -11,9 +11,9 @@ import {
   LogOut,
   Menu,
   ChevronLeft,
+  Star,
   Mountain,
 } from "lucide-react";
-import { Star } from "lucide-react";
 
 const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Panou de Control" },

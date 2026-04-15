@@ -4,6 +4,7 @@ import { Star, Loader2, CheckCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { apiGet, apiPost } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 interface Review {
   id: string;
@@ -44,14 +45,13 @@ const StarRating = ({
 };
 
 const Reviews = () => {
+  const { t, i18n } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [searchParams] = useSearchParams();
 
-  // Parametrii vin din URL-ul trimis automat pe email după check-out
-  // Clientul nu vede și nu completează aceste câmpuri
   const bookingIdFromUrl = searchParams.get("ref") || "";
   const emailFromUrl = searchParams.get("email") || "";
   const starsFromUrl = parseInt(searchParams.get("stars") || "0");
@@ -82,11 +82,10 @@ const Reviews = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = "Numele este obligatoriu";
-    if (!form.email.trim()) errs.email = "Emailul este obligatoriu";
-    if (form.rating === 0) errs.rating = "Selectați un rating";
-    if (form.text.trim().length < 10)
-      errs.text = "Recenzia trebuie să aibă minim 10 caractere";
+    if (!form.name.trim()) errs.name = t("reviews.nameRequired");
+    if (!form.email.trim()) errs.email = t("reviews.emailRequired");
+    if (form.rating === 0) errs.rating = t("reviews.ratingRequired");
+    if (form.text.trim().length < 10) errs.text = t("reviews.textTooShort");
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
@@ -102,10 +101,10 @@ const Reviews = () => {
         text: form.text,
       });
       setSubmitted(true);
-      toast({ title: "Recenzie trimisă! Mulțumim pentru feedback." });
+      toast({ title: t("reviews.submitted") });
     } catch (err) {
       toast({
-        title: err instanceof Error ? err.message : "Eroare la trimitere",
+        title: err instanceof Error ? err.message : t("reviews.submitError"),
         variant: "destructive",
       });
     } finally {
@@ -113,14 +112,16 @@ const Reviews = () => {
     }
   };
 
+  const dateLocale = i18n.language === "en" ? "en-GB" : "ro-RO";
+
   return (
     <div className="pt-24 pb-20 px-4">
       <div className="container mx-auto max-w-4xl">
         <h1 className="font-heading text-4xl md:text-5xl text-center mb-3">
-          Recenzii
+          {t("reviews.pageTitle")}
         </h1>
         <p className="text-center text-muted-foreground mb-10 max-w-lg mx-auto">
-          Experiențele oaspeților noștri sunt cea mai bună recomandare.
+          {t("reviews.pageSubtitle")}
         </p>
 
         {/* Statistici */}
@@ -132,7 +133,7 @@ const Reviews = () => {
               </p>
               <StarRating value={Math.round(Number(avgRating))} />
               <p className="text-xs text-muted-foreground mt-1">
-                {reviews.length} recenzii
+                {t("reviews.reviewsCount", { count: reviews.length })}
               </p>
             </div>
             <div className="flex-1 space-y-2 w-full">
@@ -169,7 +170,9 @@ const Reviews = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Formular */}
           <div>
-            <h2 className="font-heading text-2xl mb-6">Lasă o recenzie</h2>
+            <h2 className="font-heading text-2xl mb-6">
+              {t("reviews.leaveReview")}
+            </h2>
 
             {submitted ? (
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center">
@@ -177,21 +180,23 @@ const Reviews = () => {
                   size={40}
                   className="text-emerald-500 mx-auto mb-3"
                 />
-                <h3 className="font-heading text-xl mb-2">Mulțumim!</h3>
+                <h3 className="font-heading text-xl mb-2">
+                  {t("reviews.thankYou")}
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  Recenzia ta a fost trimisă și va fi publicată după verificare.
+                  {t("reviews.thankYouDesc")}
                 </p>
               </div>
             ) : !isFromEmail ? (
-              // Vizitator care nu a venit prin link de email
               <div className="bg-muted/40 border border-border rounded-2xl p-8 text-center space-y-4">
                 <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                   <Mail size={24} className="text-primary" />
                 </div>
-                <h3 className="font-heading text-lg">Ai stat la noi?</h3>
+                <h3 className="font-heading text-lg">
+                  {t("reviews.fromEmail")}
+                </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Recenziile se pot lăsa doar prin link-ul primit pe email după
-                  check-out. Dacă nu ai primit emailul, contactează-ne:
+                  {t("reviews.fromEmailDesc")}
                 </p>
                 <a
                   href="mailto:contact@maramures-belvedere.ro"
@@ -202,10 +207,9 @@ const Reviews = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Nume */}
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                    Nume *
+                    {t("reviews.nameLabel")} *
                   </label>
                   <input
                     type="text"
@@ -221,10 +225,9 @@ const Reviews = () => {
                   )}
                 </div>
 
-                {/* Email — pre-completat din URL, readonly */}
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                    Email *
+                    {t("reviews.emailLabel")} *
                   </label>
                   <input
                     type="email"
@@ -244,14 +247,13 @@ const Reviews = () => {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Nu va fi afișat public.
+                    {t("reviews.emailNotPublic")}
                   </p>
                 </div>
 
-                {/* Rating */}
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground mb-2 block">
-                    Rating *
+                    {t("reviews.ratingLabel")} *
                   </label>
                   <StarRating
                     value={form.rating}
@@ -264,16 +266,15 @@ const Reviews = () => {
                   )}
                 </div>
 
-                {/* Text */}
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                    Recenzia ta *
+                    {t("reviews.yourReview")} *
                   </label>
                   <textarea
                     rows={4}
                     value={form.text}
                     onChange={(e) => setForm({ ...form, text: e.target.value })}
-                    placeholder="Descrie experiența ta la Maramureș Belvedere..."
+                    placeholder={t("reviews.reviewPlaceholder")}
                     className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring resize-none ${errors.text ? "border-destructive" : "border-border"}`}
                   />
                   {errors.text && (
@@ -291,11 +292,11 @@ const Reviews = () => {
                 >
                   {submitting ? (
                     <span className="flex items-center gap-2">
-                      <Loader2 size={16} className="animate-spin" /> Se
-                      trimite...
+                      <Loader2 size={16} className="animate-spin" />{" "}
+                      {t("reviews.submitting")}
                     </span>
                   ) : (
-                    "Trimite Recenzia"
+                    t("reviews.submitReview")
                   )}
                 </Button>
               </form>
@@ -304,14 +305,16 @@ const Reviews = () => {
 
           {/* Lista recenzii */}
           <div>
-            <h2 className="font-heading text-2xl mb-6">Ce spun oaspeții</h2>
+            <h2 className="font-heading text-2xl mb-6">
+              {t("reviews.whatGuestsSay")}
+            </h2>
             {loading ? (
               <div className="flex justify-center py-10">
                 <Loader2 size={24} className="animate-spin text-primary" />
               </div>
             ) : reviews.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
-                <p>Nu există recenzii încă. Fii primul!</p>
+                <p>{t("reviews.noReviews")}</p>
               </div>
             ) : (
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
@@ -334,11 +337,14 @@ const Reviews = () => {
                       <div className="text-right shrink-0">
                         <StarRating value={r.rating} />
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(r.created_at).toLocaleDateString("ro-RO", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })}
+                          {new Date(r.created_at).toLocaleDateString(
+                            dateLocale,
+                            {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            },
+                          )}
                         </p>
                       </div>
                     </div>

@@ -7,8 +7,8 @@ import { useTranslation } from "react-i18next";
 const navLinks = [
   { to: "/", labelKey: "nav.home" },
   { to: "/rooms", labelKey: "nav.rooms" },
-  { to: "/availability", label: "Disponibilitate" },
-  { to: "/reviews", label: "Recenzii" },
+  { to: "/availability", labelKey: "nav.availability" },
+  { to: "/reviews", labelKey: "nav.reviews" },
   { to: "/contact", labelKey: "nav.contact" },
   { to: "/about", labelKey: "nav.about" },
 ];
@@ -45,11 +45,6 @@ const Navbar = () => {
     setOpen(false);
   };
 
-  const getLabel = (link: (typeof navLinks)[0]) => {
-    if ("label" in link) return link.label;
-    return t(link.labelKey);
-  };
-
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
@@ -72,7 +67,7 @@ const Navbar = () => {
                   : "text-muted-foreground"
               }`}
             >
-              {getLabel(l)}
+              {t(l.labelKey)}
             </Link>
           ))}
 
@@ -123,7 +118,7 @@ const Navbar = () => {
                     : "text-muted-foreground border-transparent"
                 }`}
               >
-                {getLabel(l)}
+                {t(l.labelKey)}
               </Link>
             ))}
 
