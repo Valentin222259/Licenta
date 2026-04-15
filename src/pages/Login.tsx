@@ -22,14 +22,6 @@ interface AuthResponse {
   user: { id: string; name: string; email: string; role: "client" | "admin" };
 }
 
-const PASSWORD_RULES = [
-  { label: "Minim 8 caractere", test: (p: string) => p.length >= 8 },
-  { label: "O literă mare (A-Z)", test: (p: string) => /[A-Z]/.test(p) },
-  { label: "O literă mică (a-z)", test: (p: string) => /[a-z]/.test(p) },
-  { label: "O cifră (0-9)", test: (p: string) => /\d/.test(p) },
-];
-const isStrongPassword = (p: string) => PASSWORD_RULES.every((r) => r.test(p));
-
 const GoogleIcon = () => (
   <svg
     viewBox="0 0 24 24"
@@ -71,6 +63,27 @@ const Login = () => {
     confirm: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const PASSWORD_RULES = [
+    {
+      label: t("loginPage.passwordRuleLength"),
+      test: (p: string) => p.length >= 8,
+    },
+    {
+      label: t("loginPage.passwordRuleUpper"),
+      test: (p: string) => /[A-Z]/.test(p),
+    },
+    {
+      label: t("loginPage.passwordRuleLower"),
+      test: (p: string) => /[a-z]/.test(p),
+    },
+    {
+      label: t("loginPage.passwordRuleDigit"),
+      test: (p: string) => /\d/.test(p),
+    },
+  ];
+  const isStrongPassword = (p: string) =>
+    PASSWORD_RULES.every((r) => r.test(p));
 
   const inputCls = (field: string) =>
     `w-full bg-muted border rounded-md pl-10 pr-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring transition-colors ${errors[field] ? "border-destructive" : "border-border"}`;
@@ -121,7 +134,7 @@ const Login = () => {
     if (!registerForm.email) errs.email = t("loginPage.emailRequired");
     if (!registerForm.phone) errs.phone = t("loginPage.phoneRequired");
     if (!isStrongPassword(registerForm.password))
-      errs.password = "Parola nu îndeplinește cerințele de securitate";
+      errs.password = t("loginPage.passwordWeak");
     if (registerForm.password !== registerForm.confirm)
       errs.confirm = t("loginPage.passwordMismatch");
     if (Object.keys(errs).length) {
@@ -143,14 +156,15 @@ const Login = () => {
       sessionStorage.setItem("clientName", res.user.name);
       sessionStorage.setItem("isClient", "true");
       toast({
-        title: "Cont creat cu succes!",
-        description: `Bun venit, ${res.user.name}!`,
+        title: t("loginPage.accountCreated"),
+        description: t("loginPage.welcomeUser", { name: res.user.name }),
       });
       navigate("/account");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Eroare la înregistrare";
+      const msg =
+        err instanceof Error ? err.message : t("loginPage.registerError");
       if (msg.includes("deja un cont") || msg.includes("409")) {
-        setErrors({ email: "Există deja un cont cu această adresă de email" });
+        setErrors({ email: t("loginPage.emailExists") });
       } else {
         setErrors({ general: msg });
       }
@@ -222,7 +236,7 @@ const Login = () => {
           </div>
         )}
 
-        {/* ── LOGIN ─────────────────────────────────────────────────────── */}
+        {/* LOGIN */}
         {tab === "login" && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -288,7 +302,7 @@ const Login = () => {
               className="w-full"
               disabled={loading}
             >
-              {loading ? "Se autentifică..." : t("loginPage.signIn")}
+              {loading ? t("loginPage.authenticating") : t("loginPage.signIn")}
             </Button>
 
             <p className="text-center text-xs text-muted-foreground pt-2">
@@ -307,10 +321,9 @@ const Login = () => {
           </form>
         )}
 
-        {/* ── REGISTER ──────────────────────────────────────────────────── */}
+        {/* REGISTER */}
         {tab === "register" && (
           <form onSubmit={handleRegister} className="space-y-4">
-            {/* Nume */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("booking.fullName")}
@@ -335,7 +348,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* Email */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("loginPage.emailLabel")}
@@ -360,7 +372,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* ── Telefon cu steag + prefix ── */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("booking.phone")}
@@ -379,7 +390,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* Parolă cu indicator */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("loginPage.passwordLabel")}
@@ -398,7 +408,7 @@ const Login = () => {
                       password: e.target.value,
                     })
                   }
-                  placeholder="Minim 8 caractere"
+                  placeholder={t("loginPage.passwordRuleLength")}
                   className={`${inputCls("password")} pr-10`}
                 />
                 <button
@@ -442,7 +452,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* Confirmare parolă */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
                 {t("loginPage.confirmPassword")}
@@ -483,11 +492,11 @@ const Login = () => {
                 >
                   {registerForm.password === registerForm.confirm ? (
                     <>
-                      <CheckCircle size={12} /> Parolele se potrivesc
+                      <CheckCircle size={12} /> {t("loginPage.passwordsMatch")}
                     </>
                   ) : (
                     <>
-                      <XCircle size={12} /> Parolele nu se potrivesc
+                      <XCircle size={12} /> {t("loginPage.passwordsNoMatch")}
                     </>
                   )}
                 </p>
@@ -500,7 +509,9 @@ const Login = () => {
               className="w-full mt-2"
               disabled={loading || !isStrongPassword(registerForm.password)}
             >
-              {loading ? "Se creează contul..." : t("loginPage.createAccount")}
+              {loading
+                ? t("loginPage.creatingAccount")
+                : t("loginPage.createAccount")}
             </Button>
 
             <p className="text-center text-xs text-muted-foreground pt-2">

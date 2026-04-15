@@ -49,9 +49,9 @@ const Contact = () => {
       setForm({ name: "", email: "", phone: "", subject: "", message: "" });
     } catch (err) {
       toast({
-        title: "Eroare",
+        title: t("booking.error"),
         description:
-          err instanceof Error ? err.message : "Mesajul nu a putut fi trimis.",
+          err instanceof Error ? err.message : t("contact.errorSend"),
         variant: "destructive",
       });
     } finally {
@@ -70,9 +70,7 @@ const Contact = () => {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          {/* ── Formular ─────────────────────────────────────────────────── */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Nume */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("contact.name")} *
@@ -86,7 +84,6 @@ const Contact = () => {
               />
             </div>
 
-            {/* Email */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("contact.email")} *
@@ -101,11 +98,10 @@ const Contact = () => {
               />
             </div>
 
-            {/* Telefon + Subiect pe același rând */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                  Telefon
+                  {t("contact.phone")}
                 </label>
                 <PhoneInput
                   international
@@ -117,19 +113,18 @@ const Contact = () => {
               </div>
               <div>
                 <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                  Subiect
+                  {t("contact.subject")}
                 </label>
                 <input
                   type="text"
                   value={form.subject}
                   onChange={(e) => update("subject", e.target.value)}
-                  placeholder="ex: Disponibilitate august"
+                  placeholder={t("contact.subjectPlaceholder")}
                   className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
 
-            {/* Mesaj */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("contact.message")} *
@@ -139,7 +134,7 @@ const Contact = () => {
                 rows={5}
                 value={form.message}
                 onChange={(e) => update("message", e.target.value)}
-                placeholder="Scrieți mesajul dumneavoastră..."
+                placeholder={t("contact.messagePlaceholder")}
                 className="w-full bg-muted border border-border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring resize-none"
               />
             </div>
@@ -148,7 +143,7 @@ const Contact = () => {
               {submitting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
-                  Se trimite...
+                  {t("contact.sending")}
                 </span>
               ) : (
                 t("contact.sendMessage")
@@ -156,7 +151,6 @@ const Contact = () => {
             </Button>
           </form>
 
-          {/* ── Info contact ──────────────────────────────────────────────── */}
           <div className="space-y-8">
             <div className="space-y-4">
               <div className="flex items-start gap-3">

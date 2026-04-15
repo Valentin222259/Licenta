@@ -6,60 +6,21 @@ import {
   CalendarCheck,
   Settings,
   LogOut,
-  Clock,
-  CheckCircle,
-  XCircle,
   Edit2,
   Save,
   X,
   Loader2,
   Lock,
   TrendingUp,
-  Star,
+  CheckCircle,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useMyBookings } from "@/lib/hooks";
-import { apiGet, apiPost, apiPatch } from "@/lib/api";
-import type { ApiResponse, User as UserType } from "@/lib/types";
+import { apiGet, apiPatch } from "@/lib/api";
 
-type BookingStatus = "confirmed" | "pending" | "completed" | "cancelled";
 type TabType = "bookings" | "profile" | "security";
-
-const statusConfig: Record<
-  BookingStatus,
-  { label: string; bg: string; text: string; border: string; dot: string }
-> = {
-  confirmed: {
-    label: "Confirmat",
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
-    dot: "bg-emerald-500",
-  },
-  pending: {
-    label: "În așteptare",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    border: "border-amber-200",
-    dot: "bg-amber-500",
-  },
-  completed: {
-    label: "Finalizat",
-    bg: "bg-slate-50",
-    text: "text-slate-500",
-    border: "border-slate-200",
-    dot: "bg-slate-400",
-  },
-  cancelled: {
-    label: "Anulat",
-    bg: "bg-red-50",
-    text: "text-red-700",
-    border: "border-red-200",
-    dot: "bg-red-500",
-  },
-};
 
 const Account = () => {
   const { t } = useTranslation();
@@ -69,19 +30,16 @@ const Account = () => {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
-  // Password change state
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwLoading, setPwLoading] = useState(false);
   const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
 
-  // Delete account state
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
   const userEmail = sessionStorage.getItem("userEmail");
-  const userId = sessionStorage.getItem("userId");
   const { bookings, loading: bookingsLoading } = useMyBookings(userEmail);
 
   const [profile, setProfile] = useState({
@@ -110,7 +68,6 @@ const Account = () => {
     }
   }, [navigate]);
 
-  // ── Statistici ──────────────────────────────────────────────────────────────
   const today = new Date().toISOString().split("T")[0];
   const confirmedBookings = bookings.filter(
     (b) => b.status === "confirmed" || b.status === "completed",
@@ -128,31 +85,60 @@ const Account = () => {
       b.check_out < today,
   );
 
-  // ── Logout ──────────────────────────────────────────────────────────────────
+  const statusConfig: Record<
+    string,
+    { label: string; bg: string; text: string; border: string; dot: string }
+  > = {
+    confirmed: {
+      label: t("account.statusConfirmed"),
+      bg: "bg-emerald-50",
+      text: "text-emerald-700",
+      border: "border-emerald-200",
+      dot: "bg-emerald-500",
+    },
+    pending: {
+      label: t("account.statusPending"),
+      bg: "bg-amber-50",
+      text: "text-amber-700",
+      border: "border-amber-200",
+      dot: "bg-amber-500",
+    },
+    completed: {
+      label: t("account.statusCompleted"),
+      bg: "bg-slate-50",
+      text: "text-slate-500",
+      border: "border-slate-200",
+      dot: "bg-slate-400",
+    },
+    cancelled: {
+      label: t("account.statusCancelled"),
+      bg: "bg-red-50",
+      text: "text-red-700",
+      border: "border-red-200",
+      dot: "bg-red-500",
+    },
+  };
+
   const handleLogout = () => {
     sessionStorage.clear();
     navigate("/");
     toast({ title: t("account.loggedOut") });
   };
 
-  // ── Salvare profil ──────────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
     setProfileSaving(true);
     try {
-      // Dacă ai endpoint PATCH /api/auth/profile îl apelezi aici
-      // await apiPatch("/api/auth/profile", profileDraft);
       setProfile(profileDraft);
       sessionStorage.setItem("clientName", profileDraft.name);
       setEditMode(false);
       toast({ title: t("account.profileSaved") });
     } catch {
-      toast({ title: "Eroare la salvare", variant: "destructive" });
+      toast({ title: t("account.profileError"), variant: "destructive" });
     } finally {
       setProfileSaving(false);
     }
   };
 
-  // ── Anulare rezervare ───────────────────────────────────────────────────────
   const handleCancelBooking = async (bookingId: string, bookingRef: string) => {
     if (confirmCancel !== bookingId) {
       setConfirmCancel(bookingId);
@@ -165,15 +151,14 @@ const Account = () => {
         status: "cancelled",
       });
       toast({
-        title: "Rezervare anulată",
-        description: `Rezervarea ${bookingRef} a fost anulată.`,
+        title: t("account.bookingCancelled"),
+        description: t("account.bookingCancelledDesc", { ref: bookingRef }),
       });
-      // Reîncarcă pagina pentru a reflecta schimbarea
       window.location.reload();
     } catch {
       toast({
-        title: "Eroare la anulare",
-        description: "Nu s-a putut anula rezervarea. Contactează-ne direct.",
+        title: t("account.cancelError"),
+        description: t("account.cancelErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -181,16 +166,26 @@ const Account = () => {
     }
   };
 
-  // ── Validare complexitate parolă ────────────────────────────────────────────
   const passwordRules = [
-    { label: "Minim 8 caractere", test: (p: string) => p.length >= 8 },
-    { label: "O literă mare (A-Z)", test: (p: string) => /[A-Z]/.test(p) },
-    { label: "O literă mică (a-z)", test: (p: string) => /[a-z]/.test(p) },
-    { label: "O cifră (0-9)", test: (p: string) => /\d/.test(p) },
+    {
+      label: t("loginPage.passwordRuleLength"),
+      test: (p: string) => p.length >= 8,
+    },
+    {
+      label: t("loginPage.passwordRuleUpper"),
+      test: (p: string) => /[A-Z]/.test(p),
+    },
+    {
+      label: t("loginPage.passwordRuleLower"),
+      test: (p: string) => /[a-z]/.test(p),
+    },
+    {
+      label: t("loginPage.passwordRuleDigit"),
+      test: (p: string) => /\d/.test(p),
+    },
   ];
   const passwordStrong = (p: string) => passwordRules.every((r) => r.test(p));
 
-  // ── Ștergere cont ───────────────────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
     setDeleteError("");
@@ -208,24 +203,25 @@ const Account = () => {
         },
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Eroare la ștergere");
+      if (!res.ok) throw new Error(data.error || "Error");
       sessionStorage.clear();
-      toast({ title: "Contul a fost șters" });
+      toast({ title: t("account.accountDeleted") });
       navigate("/");
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Eroare necunoscută");
+      setDeleteError(err instanceof Error ? err.message : "Error");
     } finally {
       setDeleteLoading(false);
     }
   };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!pwForm.current) errs.current = "Parola curentă este obligatorie";
+    if (!pwForm.current) errs.current = t("account.currentPasswordRequired");
     if (!passwordStrong(pwForm.next))
-      errs.next = "Parola nu îndeplinește cerințele de mai jos";
+      errs.next = t("account.passwordRequirements");
     if (pwForm.next !== pwForm.confirm)
-      errs.confirm = "Parolele nu se potrivesc";
+      errs.confirm = t("loginPage.passwordMismatch");
     if (Object.keys(errs).length) {
       setPwErrors(errs);
       return;
@@ -233,16 +229,32 @@ const Account = () => {
     setPwErrors({});
     setPwLoading(true);
     try {
-      await apiPost("/api/auth/change-password", {
-        current_password: pwForm.current,
-        new_password: pwForm.next,
-      });
-      toast({ title: "Parolă schimbată cu succes" });
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/change-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            current_password: pwForm.current,
+            new_password: pwForm.next,
+          }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error");
+      toast({ title: t("account.passwordChanged") });
       setPwForm({ current: "", next: "", confirm: "" });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Eroare necunoscută";
-      if (msg.toLowerCase().includes("curent")) {
-        setPwErrors({ current: "Parola curentă este incorectă" });
+      const msg = err instanceof Error ? err.message : "Error";
+      if (
+        msg.toLowerCase().includes("curent") ||
+        msg.toLowerCase().includes("current")
+      ) {
+        setPwErrors({ current: t("account.currentPasswordWrong") });
       } else {
         toast({ title: msg, variant: "destructive" });
       }
@@ -251,9 +263,8 @@ const Account = () => {
     }
   };
 
-  // ── Card rezervare ──────────────────────────────────────────────────────────
   const BookingCard = ({ b, past = false }: { b: any; past?: boolean }) => {
-    const cfg = statusConfig[b.status as BookingStatus] || statusConfig.pending;
+    const cfg = statusConfig[b.status] || statusConfig.pending;
     const isConfirming = confirmCancel === b.id;
     const isCancelling = cancellingId === b.id;
 
@@ -261,7 +272,6 @@ const Account = () => {
       <div
         className={`bg-card border border-border rounded-xl overflow-hidden transition-all ${past ? "opacity-75 hover:opacity-100" : "hover:shadow-sm"}`}
       >
-        {/* Header card */}
         <div className="flex items-center gap-3 px-5 py-3.5">
           <div className="flex-1 flex items-center gap-2 min-w-0 flex-wrap">
             <span className="font-heading text-sm font-semibold text-foreground">
@@ -282,47 +292,45 @@ const Account = () => {
             {b.total_price} RON
           </span>
         </div>
-
         <div className="mx-5 h-px bg-border/60" />
-
-        {/* Detalii */}
         <div className="px-5 py-3 space-y-2">
           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
             <span>
-              <span className="font-medium">Check-in:</span>{" "}
+              <span className="font-medium">{t("booking.checkIn")}:</span>{" "}
               {b.check_in?.split("T")[0] || b.check_in}
             </span>
             <span className="text-border">|</span>
             <span>
-              <span className="font-medium">Check-out:</span>{" "}
+              <span className="font-medium">{t("booking.checkOut")}:</span>{" "}
               {b.check_out?.split("T")[0] || b.check_out}
             </span>
             <span className="text-border">|</span>
             <span>
-              {b.nights} {b.nights === 1 ? "noapte" : "nopți"}
+              {b.nights}{" "}
+              {b.nights === 1
+                ? t("account.nightSingular")
+                : t("account.nightPlural")}
             </span>
             <span className="text-border hidden sm:inline">|</span>
             <span className="text-muted-foreground/50 hidden sm:inline font-mono">
               #{b.booking_ref}
             </span>
           </div>
-
-          {/* Cereri speciale dacă există */}
           {b.special_requests && (
             <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-              <span className="font-medium">Cereri speciale:</span>{" "}
+              <span className="font-medium">
+                {t("account.specialRequests")}:
+              </span>{" "}
               {b.special_requests}
             </div>
           )}
-
-          {/* Acțiuni */}
           <div className="flex items-center justify-between pt-1">
             <div />
             {!past ? (
               isConfirming ? (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-destructive flex items-center gap-1">
-                    <AlertTriangle size={12} /> Ești sigur?
+                    <AlertTriangle size={12} /> {t("account.cancelConfirm")}
                   </span>
                   <button
                     onClick={() => handleCancelBooking(b.id, b.booking_ref)}
@@ -332,14 +340,14 @@ const Account = () => {
                     {isCancelling ? (
                       <Loader2 size={12} className="animate-spin" />
                     ) : (
-                      "Da, anulează"
+                      t("account.cancelYes")
                     )}
                   </button>
                   <button
                     onClick={() => setConfirmCancel(null)}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Nu
+                    {t("account.cancelNo")}
                   </button>
                 </div>
               ) : (
@@ -372,7 +380,7 @@ const Account = () => {
   return (
     <div className="min-h-screen bg-muted/30 pt-24 pb-20">
       <div className="container mx-auto max-w-3xl px-4">
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+        {/* Header */}
         <div className="bg-card border border-border rounded-2xl px-6 py-5 mb-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -401,23 +409,23 @@ const Account = () => {
           </Button>
         </div>
 
-        {/* ── Statistici ──────────────────────────────────────────────────── */}
+        {/* Stats */}
         {!bookingsLoading && bookings.length > 0 && (
           <div className="grid grid-cols-3 gap-3 mb-5">
             {[
               {
                 icon: CalendarCheck,
-                label: "Total rezervări",
+                label: t("account.totalBookings"),
                 value: bookings.length,
               },
               {
                 icon: CheckCircle,
-                label: "Confirmate",
+                label: t("account.confirmed"),
                 value: confirmedBookings.length,
               },
               {
                 icon: TrendingUp,
-                label: "Total cheltuit",
+                label: t("account.totalSpent"),
                 value: `${totalSpent} RON`,
               },
             ].map((s) => (
@@ -433,7 +441,7 @@ const Account = () => {
           </div>
         )}
 
-        {/* ── Tabs ────────────────────────────────────────────────────────── */}
+        {/* Tabs */}
         <div className="flex bg-card border border-border rounded-xl p-1 mb-5 gap-1">
           {[
             {
@@ -446,7 +454,11 @@ const Account = () => {
               icon: Settings,
               label: t("account.myProfile"),
             },
-            { key: "security" as TabType, icon: Lock, label: "Securitate" },
+            {
+              key: "security" as TabType,
+              icon: Lock,
+              label: t("account.security"),
+            },
           ].map((item) => (
             <button
               key={item.key}
@@ -463,7 +475,7 @@ const Account = () => {
           ))}
         </div>
 
-        {/* ── TAB REZERVĂRI ────────────────────────────────────────────────── */}
+        {/* TAB BOOKINGS */}
         {tab === "bookings" && (
           <div className="space-y-5">
             <div>
@@ -478,7 +490,6 @@ const Account = () => {
                   </span>
                 )}
               </div>
-
               {bookingsLoading ? (
                 <div className="flex justify-center py-10">
                   <Loader2 size={24} className="animate-spin text-primary" />
@@ -504,7 +515,6 @@ const Account = () => {
                 </div>
               )}
             </div>
-
             {pastBookings.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -523,7 +533,7 @@ const Account = () => {
           </div>
         )}
 
-        {/* ── TAB PROFIL ──────────────────────────────────────────────────── */}
+        {/* TAB PROFILE */}
         {tab === "profile" && (
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -563,7 +573,6 @@ const Account = () => {
                 </div>
               )}
             </div>
-
             <div className="divide-y divide-border">
               {[
                 {
@@ -617,7 +626,6 @@ const Account = () => {
                 </div>
               ))}
             </div>
-
             <div className="px-6 py-4 bg-muted/30 border-t border-border flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
                 {t("account.dangerZone")}
@@ -632,16 +640,17 @@ const Account = () => {
           </div>
         )}
 
-        {/* ── TAB SECURITATE ──────────────────────────────────────────────── */}
+        {/* TAB SECURITY */}
         {tab === "security" && (
           <div className="space-y-5">
-            {/* Schimbare parolă */}
+            {/* Change password */}
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-border flex items-center gap-3">
                 <Lock size={16} className="text-primary" />
-                <h2 className="text-sm font-semibold">Schimbă Parola</h2>
+                <h2 className="text-sm font-semibold">
+                  {t("account.changePassword")}
+                </h2>
               </div>
-
               <form
                 onSubmit={handleChangePassword}
                 className="px-6 py-5 space-y-4"
@@ -649,17 +658,17 @@ const Account = () => {
                 {[
                   {
                     field: "current" as const,
-                    label: "Parola curentă",
+                    label: t("account.currentPassword"),
                     placeholder: "••••••••",
                   },
                   {
                     field: "next" as const,
-                    label: "Parola nouă",
-                    placeholder: "Minim 8 caractere",
+                    label: t("account.newPassword"),
+                    placeholder: t("loginPage.passwordRuleLength"),
                   },
                   {
                     field: "confirm" as const,
-                    label: "Confirmă parola",
+                    label: t("account.confirmNewPassword"),
                     placeholder: "••••••••",
                   },
                 ].map((f) => (
@@ -674,18 +683,13 @@ const Account = () => {
                         setPwForm({ ...pwForm, [f.field]: e.target.value })
                       }
                       placeholder={f.placeholder}
-                      className={`w-full bg-muted border rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
-                        pwErrors[f.field]
-                          ? "border-destructive"
-                          : "border-border"
-                      }`}
+                      className={`w-full bg-muted border rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${pwErrors[f.field] ? "border-destructive" : "border-border"}`}
                     />
                     {pwErrors[f.field] && (
                       <p className="text-xs text-destructive mt-1">
                         {pwErrors[f.field]}
                       </p>
                     )}
-                    {/* Indicator complexitate — apare doar la câmpul "next" */}
                     {f.field === "next" && pwForm.next.length > 0 && (
                       <div className="mt-2 grid grid-cols-2 gap-1">
                         {passwordRules.map((rule) => {
@@ -708,7 +712,6 @@ const Account = () => {
                     )}
                   </div>
                 ))}
-
                 <Button
                   type="submit"
                   disabled={pwLoading}
@@ -716,59 +719,56 @@ const Account = () => {
                 >
                   {pwLoading ? (
                     <span className="flex items-center gap-2">
-                      <Loader2 size={14} className="animate-spin" /> Se
-                      schimbă...
+                      <Loader2 size={14} className="animate-spin" />{" "}
+                      {t("account.changingPassword")}
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      <Lock size={14} /> Schimbă Parola
+                      <Lock size={14} /> {t("account.changePassword")}
                     </span>
                   )}
                 </Button>
               </form>
-
               <div className="px-6 py-4 bg-muted/30 border-t border-border">
                 <p className="text-xs text-muted-foreground">
-                  💡 Parola trebuie să aibă minim 8 caractere, o literă mare, o
-                  literă mică și o cifră.
+                  💡 {t("account.passwordHint")}
                 </p>
               </div>
             </div>
 
-            {/* Ștergere cont */}
+            {/* Delete account */}
             <div className="bg-card border border-destructive/30 rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-destructive/20 flex items-center gap-3">
                 <AlertTriangle size={16} className="text-destructive" />
                 <h2 className="text-sm font-semibold text-destructive">
-                  Zonă Periculoasă
+                  {t("account.dangerZoneTitle")}
                 </h2>
               </div>
-
               <div className="px-6 py-5">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Ștergerea contului este <strong>ireversibilă</strong>. Datele
-                  tale personale vor fi șterse, dar istoricul rezervărilor va fi
-                  păstrat anonim.
-                </p>
-
+                <p
+                  className="text-sm text-muted-foreground mb-4"
+                  dangerouslySetInnerHTML={{
+                    __html: t("account.deleteAccountDesc"),
+                  }}
+                />
                 {!deleteConfirm ? (
                   <Button
                     variant="outline"
                     className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                     onClick={() => setDeleteConfirm(true)}
                   >
-                    Șterge Contul
+                    {t("account.deleteAccount")}
                   </Button>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm font-medium text-destructive">
-                      Introdu parola pentru a confirma ștergerea:
+                      {t("account.deleteConfirmPrompt")}
                     </p>
                     <input
                       type="password"
                       value={deletePassword}
                       onChange={(e) => setDeletePassword(e.target.value)}
-                      placeholder="Parola ta"
+                      placeholder={t("loginPage.passwordLabel")}
                       className="w-full bg-muted border border-destructive/30 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-destructive/30"
                     />
                     {deleteError && (
@@ -783,11 +783,11 @@ const Account = () => {
                       >
                         {deleteLoading ? (
                           <span className="flex items-center gap-2">
-                            <Loader2 size={14} className="animate-spin" /> Se
-                            șterge...
+                            <Loader2 size={14} className="animate-spin" />{" "}
+                            {t("account.deleting")}
                           </span>
                         ) : (
-                          "Confirmă Ștergerea"
+                          t("account.deleteConfirm")
                         )}
                       </Button>
                       <Button
@@ -798,7 +798,7 @@ const Account = () => {
                           setDeleteError("");
                         }}
                       >
-                        Anulează
+                        {t("account.cancelEdit")}
                       </Button>
                     </div>
                   </div>

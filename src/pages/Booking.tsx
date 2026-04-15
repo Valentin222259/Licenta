@@ -1,6 +1,3 @@
-// src/pages/Booking.tsx — versiune actualizată cu extras (mic dejun, cină, paturi, ciubăr)
-// ÎNLOCUIEȘTE complet fișierul existent src/pages/Booking.tsx
-
 import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,7 +33,7 @@ interface Extras {
 const ADVANCE_PERCENT = 0.3;
 
 const Booking = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const roomSlug = searchParams.get("room");
@@ -49,7 +46,6 @@ const Booking = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [paymentSplit, setPaymentSplit] = useState<PaymentSplit>("full");
 
-  // ── Extras ────────────────────────────────────────────────────────────────
   const [extras, setExtras] = useState<Extras>({
     breakfast: false,
     dinner: false,
@@ -69,7 +65,6 @@ const Booking = () => {
     });
   };
 
-  // ── B2B ──────────────────────────────────────────────────────────────────
   const [needsInvoice, setNeedsInvoice] = useState(false);
   const [company, setCompany] = useState({
     name: "",
@@ -116,7 +111,6 @@ const Booking = () => {
         )
       : 1;
 
-  // ── Calcul preț ──────────────────────────────────────────────────────────
   const roomPrice = room ? room.price * nights : 0;
 
   const extrasPrice = useMemo(() => {
@@ -193,13 +187,13 @@ const Booking = () => {
         company_cui: needsInvoice ? company.cui : undefined,
         company_reg_no: needsInvoice ? company.regNo : undefined,
         company_address: needsInvoice ? company.address : undefined,
-        // ── EXTRAS ───────────────────────────────────────────────────────
         extras: {
           breakfast: extras.breakfast,
           dinner: extras.dinner,
           extra_beds: extras.extra_beds,
           jacuzzi: extras.jacuzzi,
         },
+        preferred_language: i18n.language?.startsWith("en") ? "en" : "ro",
       });
 
       if (paymentMethod === "card") {
@@ -215,9 +209,9 @@ const Booking = () => {
       }
     } catch (err) {
       toast({
-        title: "Eroare",
+        title: t("booking.error"),
         description:
-          err instanceof Error ? err.message : "Nu s-a putut salva rezervarea",
+          err instanceof Error ? err.message : t("booking.errorSave"),
         variant: "destructive",
       });
     } finally {
@@ -249,7 +243,6 @@ const Booking = () => {
               {t("booking.guestInfo")}
             </h2>
 
-            {/* Nume */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.fullName")}
@@ -264,7 +257,6 @@ const Booking = () => {
               />
             </div>
 
-            {/* Email */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.email")}
@@ -279,7 +271,6 @@ const Booking = () => {
               />
             </div>
 
-            {/* Telefon */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.phone")}
@@ -293,7 +284,6 @@ const Booking = () => {
               />
             </div>
 
-            {/* Date */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
@@ -343,10 +333,9 @@ const Booking = () => {
               </div>
             </div>
 
-            {/* Număr oaspeți */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                Număr oaspeți
+                {t("booking.guestsLabel")}
               </label>
               <select
                 value={form.guests}
@@ -355,24 +344,23 @@ const Booking = () => {
               >
                 {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
                   <option key={n} value={n}>
-                    {n} {n === 1 ? "persoană" : "persoane"}
+                    {n} {n === 1 ? t("booking.person") : t("booking.persons")}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-muted-foreground mt-1">
-                Fiecare cameră are 2 locuri standard. Puteți adăuga paturi
-                suplimentare mai jos.
+                {t("booking.guestsStandard")}
               </p>
             </div>
 
-            {/* ── SECȚIUNEA EXTRAS ── */}
+            {/* EXTRAS */}
             <div>
               <h2 className="font-heading text-xl mb-3">
-                Opțiuni suplimentare
+                {t("booking.extras")}
               </h2>
 
               <div className="space-y-3">
-                {/* Mic dejun */}
+                {/* Breakfast */}
                 <label
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     extras.breakfast
@@ -390,28 +378,28 @@ const Booking = () => {
                     <div className="flex items-center gap-2">
                       <Coffee size={15} className="text-primary shrink-0" />
                       <span className="text-sm font-semibold">
-                        Mic dejun inclus
+                        {t("booking.breakfast")}
                       </span>
                       <span className="ml-auto text-sm font-bold text-primary">
                         {settings.price_breakfast} RON
                         <span className="text-xs text-muted-foreground font-normal">
-                          /persoană/noapte
+                          {t("booking.breakfastUnit")}
                         </span>
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Mic dejun tradițional românesc servit în pensiune.
+                      {t("booking.breakfastDesc")}
                     </p>
                     {extras.breakfast && nights > 0 && (
                       <p className="text-xs text-primary mt-1 font-medium">
                         = {settings.price_breakfast * form.guests * nights} RON
-                        ({form.guests} pers × {nights} nopți)
+                        ({form.guests} × {nights})
                       </p>
                     )}
                   </div>
                 </label>
 
-                {/* Cină */}
+                {/* Dinner */}
                 <label
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     extras.dinner
@@ -432,28 +420,28 @@ const Booking = () => {
                         className="text-primary shrink-0"
                       />
                       <span className="text-sm font-semibold">
-                        Cină inclusă
+                        {t("booking.dinner")}
                       </span>
                       <span className="ml-auto text-sm font-bold text-primary">
                         {settings.price_dinner} RON
                         <span className="text-xs text-muted-foreground font-normal">
-                          /persoană/noapte
+                          {t("booking.dinnerUnit")}
                         </span>
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Masă de seară cu preparate tradiționale maramureșene.
+                      {t("booking.dinnerDesc")}
                     </p>
                     {extras.dinner && nights > 0 && (
                       <p className="text-xs text-primary mt-1 font-medium">
                         = {settings.price_dinner * form.guests * nights} RON (
-                        {form.guests} pers × {nights} nopți)
+                        {form.guests} × {nights})
                       </p>
                     )}
                   </div>
                 </label>
 
-                {/* Paturi suplimentare */}
+                {/* Extra beds */}
                 <div
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                     extras.extra_beds > 0
@@ -465,18 +453,17 @@ const Booking = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold">
-                        Paturi suplimentare
+                        {t("booking.extraBeds")}
                       </span>
                       <span className="ml-auto text-sm font-bold text-primary">
                         {settings.price_extra_bed} RON
                         <span className="text-xs text-muted-foreground font-normal">
-                          /loc/noapte
+                          {t("booking.extraBedsUnit")}
                         </span>
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 mb-3">
-                      Fiecare cameră are 2 locuri standard. Puteți adăuga maxim
-                      2 paturi suplimentare.
+                      {t("booking.extraBedsDesc")}
                     </p>
                     <div className="flex gap-2">
                       {([0, 1, 2] as const).map((n) => (
@@ -490,7 +477,11 @@ const Booking = () => {
                               : "border-border bg-card text-muted-foreground hover:border-primary/40"
                           }`}
                         >
-                          {n === 0 ? "Fără" : n === 1 ? "+1 loc" : "+2 locuri"}
+                          {n === 0
+                            ? t("booking.extraBedsNone")
+                            : n === 1
+                              ? t("booking.extraBeds1")
+                              : t("booking.extraBeds2")}
                         </button>
                       ))}
                     </div>
@@ -498,13 +489,13 @@ const Booking = () => {
                       <p className="text-xs text-primary mt-2 font-medium">
                         ={" "}
                         {settings.price_extra_bed * extras.extra_beds * nights}{" "}
-                        RON ({extras.extra_beds} loc × {nights} nopți)
+                        RON ({extras.extra_beds} × {nights})
                       </p>
                     )}
                   </div>
                 </div>
 
-                {/* Ciubăr / Jacuzzi */}
+                {/* Jacuzzi */}
                 <label
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     extras.jacuzzi
@@ -522,25 +513,24 @@ const Booking = () => {
                     <div className="flex items-center gap-2">
                       <Waves size={15} className="text-primary shrink-0" />
                       <span className="text-sm font-semibold">
-                        Ciubăr / Jacuzzi
+                        {t("booking.jacuzzi")}
                       </span>
                       <span className="ml-auto text-sm font-bold text-primary">
                         {settings.price_jacuzzi} RON
                         <span className="text-xs text-muted-foreground font-normal">
-                          /sesiune
+                          {t("booking.jacuzziUnit")}
                         </span>
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      O sesiune relaxantă în ciubărul cu apă termală sub cerul
-                      liber. Programul se confirmă la check-in.
+                      {t("booking.jacuzziDesc")}
                     </p>
                   </div>
                 </label>
               </div>
             </div>
 
-            {/* Cereri speciale */}
+            {/* Special requests */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.specialRequests")}
@@ -554,13 +544,13 @@ const Booking = () => {
               />
             </div>
 
-            {/* Metodă de plată */}
+            {/* Payment method */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-3 block">
-                Metodă de plată
+                {t("booking.paymentMethod")}
               </label>
               <div className="grid grid-cols-1 gap-2">
-                {/* Card online */}
+                {/* Card */}
                 <div
                   className={`rounded-xl border-2 overflow-hidden transition-all ${paymentMethod === "card" ? "border-primary" : "border-border"}`}
                 >
@@ -575,10 +565,10 @@ const Booking = () => {
                     />
                     <CreditCard size={15} className="text-primary shrink-0" />
                     <span className="text-sm font-semibold">
-                      Plată online cu cardul
+                      {t("booking.cardOnline")}
                     </span>
                     <span className="ml-auto text-xs text-muted-foreground hidden sm:inline">
-                      Stripe · securizat 🔒
+                      {t("booking.cardSecure")}
                     </span>
                   </label>
 
@@ -598,7 +588,7 @@ const Booking = () => {
                               className="accent-primary shrink-0"
                             />
                             <span className="text-xs font-semibold">
-                              Integral acum
+                              {t("booking.payFull")}
                             </span>
                           </div>
                           {totalPrice > 0 && (
@@ -607,7 +597,7 @@ const Booking = () => {
                                 {totalPrice} RON
                               </span>
                               <span className="text-xs text-muted-foreground block">
-                                fără restanță
+                                {t("booking.payFullDesc")}
                               </span>
                             </div>
                           )}
@@ -626,7 +616,7 @@ const Booking = () => {
                               className="accent-primary shrink-0"
                             />
                             <span className="text-xs font-semibold">
-                              Avans 30%
+                              {t("booking.payAdvance")}
                             </span>
                           </div>
                           {totalPrice > 0 && (
@@ -635,7 +625,9 @@ const Booking = () => {
                                 {advanceAmount} RON
                               </span>
                               <span className="text-xs text-muted-foreground block">
-                                + {remainingAmount} RON la check-in
+                                {t("booking.payAdvanceDesc", {
+                                  amount: remainingAmount,
+                                })}
                               </span>
                             </div>
                           )}
@@ -645,7 +637,7 @@ const Booking = () => {
                   )}
                 </div>
 
-                {/* Transfer bancar */}
+                {/* Bank transfer */}
                 <label
                   className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === "bank_transfer" ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-primary/40"}`}
                 >
@@ -663,17 +655,17 @@ const Booking = () => {
                   <Building2 size={15} className="text-primary shrink-0" />
                   <div className="min-w-0">
                     <span className="text-sm font-semibold block">
-                      Transfer bancar
+                      {t("booking.bankTransfer")}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      Plată integrală · datele contului pe email
+                      {t("booking.bankTransferDesc")}
                     </span>
                   </div>
                 </label>
               </div>
             </div>
 
-            {/* B2B */}
+            {/* B2B Invoice */}
             <div className="pt-1">
               <label
                 className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${needsInvoice ? "border-primary bg-primary/5" : "border-border bg-muted/20 hover:border-primary/30"}`}
@@ -688,11 +680,11 @@ const Booking = () => {
                   <div className="flex items-center gap-2">
                     <Receipt size={15} className="text-primary shrink-0" />
                     <span className="text-sm font-semibold">
-                      Doresc factură pe firmă / persoană juridică
+                      {t("booking.invoice")}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Completează datele firmei pentru emiterea facturii fiscale.
+                    {t("booking.invoiceDesc")}
                   </p>
                 </div>
               </label>
@@ -701,7 +693,8 @@ const Booking = () => {
                 <div className="mt-3 space-y-3 px-1">
                   <div>
                     <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                      Denumire firmă <span className="text-destructive">*</span>
+                      {t("booking.companyName")}{" "}
+                      <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="text"
@@ -715,7 +708,8 @@ const Booking = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                        CUI / CIF <span className="text-destructive">*</span>
+                        {t("booking.companyCui")}{" "}
+                        <span className="text-destructive">*</span>
                       </label>
                       <input
                         type="text"
@@ -728,7 +722,7 @@ const Booking = () => {
                     </div>
                     <div>
                       <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                        Nr. Reg. Comerțului{" "}
+                        {t("booking.companyRegNo")}{" "}
                         <span className="text-destructive">*</span>
                       </label>
                       <input
@@ -743,7 +737,7 @@ const Booking = () => {
                   </div>
                   <div>
                     <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                      Adresa sediului social{" "}
+                      {t("booking.companyAddress")}{" "}
                       <span className="text-destructive">*</span>
                     </label>
                     <input
@@ -760,7 +754,7 @@ const Booking = () => {
             </div>
           </div>
 
-          {/* ── Sidebar sumar ── */}
+          {/* Sidebar summary */}
           {room && (
             <div className="bg-card border border-border rounded-lg p-6 h-fit lg:sticky lg:top-24">
               <h2 className="font-heading text-lg mb-4">
@@ -782,13 +776,13 @@ const Booking = () => {
                 !dateErrors.checkOut && (
                   <div className="text-xs text-muted-foreground mb-3 space-y-1">
                     <p>
-                      📅 Check-in:{" "}
+                      📅 {t("booking.checkIn")}:{" "}
                       <span className="font-medium text-foreground">
                         {formatDate(form.checkIn)}
                       </span>
                     </p>
                     <p>
-                      📅 Check-out:{" "}
+                      📅 {t("booking.checkOut")}:{" "}
                       <span className="font-medium text-foreground">
                         {formatDate(form.checkOut)}
                       </span>
@@ -797,7 +791,6 @@ const Booking = () => {
                 )}
 
               <div className="border-t border-border pt-4 mb-5 space-y-2">
-                {/* Preț cameră */}
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>
                     {room.price} RON × {nights}{" "}
@@ -806,11 +799,10 @@ const Booking = () => {
                   <span>{roomPrice} RON</span>
                 </div>
 
-                {/* Extras breakdown */}
                 {extras.breakfast && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>
-                      ☕ Mic dejun × {form.guests} pers × {nights} nopți
+                      ☕ {t("booking.breakfast")} × {form.guests} × {nights}
                     </span>
                     <span>
                       {settings.price_breakfast * form.guests * nights} RON
@@ -820,7 +812,7 @@ const Booking = () => {
                 {extras.dinner && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>
-                      🍽️ Cină × {form.guests} pers × {nights} nopți
+                      🍽️ {t("booking.dinner")} × {form.guests} × {nights}
                     </span>
                     <span>
                       {settings.price_dinner * form.guests * nights} RON
@@ -830,7 +822,7 @@ const Booking = () => {
                 {extras.extra_beds > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>
-                      🛏️ +{extras.extra_beds} pat(uri) × {nights} nopți
+                      🛏️ +{extras.extra_beds} × {nights}
                     </span>
                     <span>
                       {settings.price_extra_bed * extras.extra_beds * nights}{" "}
@@ -840,7 +832,7 @@ const Booking = () => {
                 )}
                 {extras.jacuzzi && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>🌊 Ciubăr (1 sesiune)</span>
+                    <span>🌊 {t("booking.jacuzzi")}</span>
                     <span>{settings.price_jacuzzi} RON</span>
                   </div>
                 )}
@@ -856,7 +848,7 @@ const Booking = () => {
                     <div className="mt-3 pt-3 border-t border-dashed border-border space-y-1.5">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
-                          Acum online
+                          {t("booking.payOnline")}
                         </span>
                         <span className="font-semibold text-primary">
                           {advanceAmount} RON
@@ -864,7 +856,7 @@ const Booking = () => {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
-                          La check-in
+                          {t("booking.payAtCheckin")}
                         </span>
                         <span className="font-semibold">
                           {remainingAmount} RON
@@ -882,17 +874,17 @@ const Booking = () => {
               >
                 {submitting ? (
                   <span className="flex items-center gap-2">
-                    <Loader2 size={16} className="animate-spin" /> Se
-                    procesează...
+                    <Loader2 size={16} className="animate-spin" />{" "}
+                    {t("booking.processing")}
                   </span>
                 ) : paymentMethod === "card" ? (
                   paymentSplit === "advance" ? (
-                    `Avans ${advanceAmount} RON · Rezervă`
+                    t("booking.advanceReserve", { amount: advanceAmount })
                   ) : (
                     t("booking.payNow")
                   )
                 ) : (
-                  "Rezervă Acum"
+                  t("booking.reserveNow")
                 )}
               </Button>
             </div>

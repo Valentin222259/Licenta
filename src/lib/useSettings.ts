@@ -1,98 +1,107 @@
-// src/lib/useSettings.ts
-// Hook React pentru citirea setărilor configurabile din admin
+import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { apiGet } from "@/lib/api";
 
-import { useState, useEffect } from "react";
-import { apiGet } from "./api";
-
-export interface SiteSettings {
-  // Prețuri
-  price_breakfast: number;
-  price_dinner: number;
-  price_extra_bed: number;
-  price_jacuzzi: number;
-  // Home
-  home_story_title: string;
-  home_story_p1: string;
-  home_story_p2: string;
-  // About
-  about_story_title: string;
-  about_story_p1: string;
-  about_story_p2: string;
-  about_story_p3: string;
-  // Facilități — titluri
-  facility_jacuzzi_title: string;
-  facility_bikes_title: string;
-  facility_pingpong_title: string;
-  facility_sleds_title: string;
-  facility_grill_title: string;
-  facility_parking_title: string;
-  facility_playground_title: string;
-  facility_traditional_title: string;
-  // Facilități — descrieri
-  facility_jacuzzi_desc: string;
-  facility_bikes_desc: string;
-  facility_pingpong_desc: string;
-  facility_sleds_desc: string;
-  facility_grill_desc: string;
-  facility_parking_desc: string;
-  facility_playground_desc: string;
-  facility_traditional_desc: string;
-  [key: string]: string | number;
+interface SettingsRow {
+  key: string;
+  value: string;
+  type: string;
+  group_name: string;
 }
 
-// Valori implicite (fallback dacă backend-ul nu răspunde)
-const DEFAULTS: SiteSettings = {
+// 1. ADAUGĂ DEFAULTS AICI PENTRU A AVEA TEXT ÎNAINTE DE RĂSPUNSUL API-ULUI
+const DEFAULTS: Record<string, any> = {
   price_breakfast: 50,
   price_dinner: 80,
   price_extra_bed: 50,
   price_jacuzzi: 100,
   home_story_title: "Povestea Noastră",
-  home_story_p1:
-    "Situată pe dealurile Maramureșului — una dintre ultimele regiuni cu adevărat nespoilate din Europa — Belvedere s-a născut din dragostea pentru acest pământ și tradițiile sale eterne.",
-  home_story_p2:
-    "Fiecare detaliu, de la balcoanele sculptate manual la micul dejun cu produse locale, reflectă sufletul Maramureșului.",
+  home_story_p1: "Situată pe dealurile Maramureșului — una dintre ultimele regiuni cu adevărat nespoilate din Europa — Belvedere s-a născut din dragostea pentru acest pământ și tradițiile sale eterne.",
+  home_story_p2: "Fiecare detaliu, de la balcoanele sculptate manual la micul dejun cu produse locale, reflectă sufletul Maramureșului.",
   about_story_title: "Povestea Pensiunii",
-  about_story_p1:
-    "Pensiunea Maramureș Belvedere este situată pe un vârf de deal, la intrarea în Petrova dinspre Sighetu Marmației.",
-  about_story_p2:
-    "Accesul este facil — la doar 100 m de pe DN 18.",
-  about_story_p3:
-    "Primii vecini se află la 500–700 m distanță.",
-  facility_jacuzzi_title: "Jacuzzi / Ciubăr",
-  facility_bikes_title: "Biciclete Gratuite",
-  facility_pingpong_title: "Masă de Ping Pong",
-  facility_sleds_title: "Săniuțe (Iarnă)",
-  facility_grill_title: "Grătar & Ceaun",
-  facility_parking_title: "Parcare Gratuită",
-  facility_playground_title: "Loc de Joacă Copii",
-  facility_traditional_title: "Port Tradițional",
-  facility_jacuzzi_desc:
-    "Ciubăr cu sistem de jacuzzi și iluminat ambiental. Poate fi rezervat contra cost.",
-  facility_bikes_desc: "8 biciclete disponibile gratuit pentru oaspeți.",
-  facility_pingpong_desc: "Masă de ping pong disponibilă gratuit.",
-  facility_sleds_desc: "Săniuțe gratuite și derdeluș în curtea pensiunii.",
-  facility_grill_desc: "Zonă pentru grătar și gătit la ceaun în aer liber.",
-  facility_parking_desc: "Parcare privată gratuită pentru toți oaspeții.",
-  facility_playground_desc:
-    "Loc de joacă cu trambulină, leagăn și tobogan.",
-  facility_traditional_desc:
-    "Posibilitate de a îmbrăca portul tradițional maramureșean.",
+  // Adaugă și restul textelor de care ai nevoie...
 };
 
 export function useSettings() {
-  const [settings, setSettings] = useState<SiteSettings>(DEFAULTS);
+  const { i18n } = useTranslation();
+  
+  // 2. FOLOSEȘTE DEFAULTS AICI ÎN LOC DE {}
+  const [rawSettings, setRawSettings] = useState<Record<string, any>>(DEFAULTS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiGet<{ success: boolean; data: Partial<SiteSettings> }>("/api/settings")
+    apiGet<{ data: SettingsRow[] }>("/api/settings")
       .then((res) => {
-        setSettings({ ...DEFAULTS, ...res.data });
+        // 3. COMBINĂ DEFAULTS CU DATELE PRIMITE DE LA BAZA DE DATE
+        const map: Record<string, any> = { ...DEFAULTS }; 
+        for (const row of res.data) {
+          map[row.key] = row.value;
+        }
+        setRawSettings(map);
       })
-      .catch(() => {
-        // Folosim valorile implicite dacă backend-ul nu răspunde
+      .catch((err) => {
+        console.error("useSettings error:", err);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Build the localized settings map
+  const settings = useMemo(() => {
+    const lang = i18n.language?.startsWith("en") ? "en" : "ro";
+    const resolved: Record<string, any> = {};
+
+    // Collect all base keys (strip _ro/_en suffixes)
+    const baseKeys = new Set<string>();
+    const allKeys = Object.keys(rawSettings);
+
+    for (const key of allKeys) {
+      if (key.endsWith("_ro")) {
+        baseKeys.add(key.slice(0, -3));
+      } else if (key.endsWith("_en")) {
+        baseKeys.add(key.slice(0, -3));
+      }
+    }
+
+    // For each bilingual base key, resolve the correct language
+    for (const base of baseKeys) {
+      const localizedKey = `${base}_${lang}`;
+      const fallbackKey = `${base}_ro`; // fallback to Romanian if EN is empty
+
+      const value = rawSettings[localizedKey];
+      const fallback = rawSettings[fallbackKey];
+
+      // Use localized value if it exists and is non-empty, otherwise fallback
+      resolved[base] = value && value.trim() !== "" ? value : fallback || "";
+    }
+
+    // Copy all non-bilingual keys (those that don't have _ro/_en variants)
+    for (const key of allKeys) {
+      if (key.endsWith("_ro") || key.endsWith("_en")) continue;
+
+      // Only add if not already resolved as a bilingual base
+      const possibleBase = key;
+      if (!baseKeys.has(possibleBase)) {
+        // Convert numeric strings to numbers for price fields
+        if (key.startsWith("price_")) {
+          resolved[key] = Number(rawSettings[key]) || 0;
+        } else {
+          resolved[key] = rawSettings[key];
+        }
+      }
+    }
+
+    // Also convert price fields that might have been in the raw settings
+    for (const key of allKeys) {
+      if (key.startsWith("price_") && !(key in resolved)) {
+        resolved[key] = Number(rawSettings[key]) || 0;
+      }
+    }
+
+    // Expose raw settings for admin panel (which needs both _ro and _en)
+    resolved._raw = rawSettings;
+
+    return resolved;
+  }, [rawSettings, i18n.language]);
 
   return { settings, loading };
 }
