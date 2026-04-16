@@ -249,9 +249,11 @@ const AdminSettings = () => {
           Textele din secțiunea "Povestea Noastră" de pe pagina principală. Poza
           rămâne cea de copertă (hero).
         </p>
-        {byGroup("content_home").map((row) => (
-          <Field key={row.key} row={row} />
-        ))}
+        {byGroup("content_home")
+          .filter((r) => !r.key.endsWith("_en"))
+          .map((row) => (
+            <Field key={row.key} row={row} />
+          ))}
       </Section>
 
       {/* ── 3. CONȚINUT ABOUT — Povestea Pensiunii ──────────────────────────── */}
@@ -264,9 +266,11 @@ const AdminSettings = () => {
           Textele din secțiunea "Povestea Pensiunii" de pe pagina Despre Noi.
           Poza se schimbă din secțiunea Imagini → Despre Noi.
         </p>
-        {byGroup("content_about").map((row) => (
-          <Field key={row.key} row={row} />
-        ))}
+        {byGroup("content_about")
+          .filter((r) => !r.key.endsWith("_en"))
+          .map((row) => (
+            <Field key={row.key} row={row} />
+          ))}
       </Section>
 
       {/* ── 4. FACILITĂȚI — titluri & descrieri ─────────────────────────────── */}
@@ -291,18 +295,17 @@ const AdminSettings = () => {
             "traditional",
           ].map((key) => {
             const titleRow = rows.find(
-              (r) => r.key === `facility_${key}_title`,
+              (r) => r.key === `facility_${key}_title_ro`,
             );
-            const descRow = rows.find((r) => r.key === `facility_${key}_desc`);
+            const descRow = rows.find(
+              (r) => r.key === `facility_${key}_desc_ro`,
+            );
             if (!titleRow || !descRow) return null;
             return (
               <div
                 key={key}
                 className="border border-border rounded-xl p-4 space-y-3"
               >
-                <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                  {titleRow.label.replace("Facilitate: Titlu ", "")}
-                </p>
                 <Field row={titleRow} />
                 <Field row={descRow} />
               </div>
