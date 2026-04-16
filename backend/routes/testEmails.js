@@ -318,6 +318,21 @@ router.get("/test-all-emails", async (req, res) => {
     ),
   );
 
+  results.push(
+    await run("A8-EN | Review confirmation (auto-approved)", () =>
+      email.sendClientReviewConfirmation(
+        TEST_CLIENT_EMAIL,
+        {
+          guestName: "Test Guest",
+          rating: 5,
+          roomName: "Camera 4 — Comfort",
+          autoApproved: true,
+        },
+        "en",
+      ),
+    ),
+  );
+
   // A8b. Confirmare recenzie — necesită moderare (rating 2)
   results.push(
     await run("A8b-RO | Confirmare recenzie (moderare necesară)", () =>
@@ -330,6 +345,21 @@ router.get("/test-all-emails", async (req, res) => {
           autoApproved: false,
         },
         "ro",
+      ),
+    ),
+  );
+
+  results.push(
+    await run("A8b-EN | Review confirmation (pending moderation)", () =>
+      email.sendClientReviewConfirmation(
+        TEST_CLIENT_EMAIL,
+        {
+          guestName: "Test Guest",
+          rating: 2,
+          roomName: "Camera 4 — Comfort",
+          autoApproved: false,
+        },
+        "en",
       ),
     ),
   );
@@ -453,7 +483,7 @@ router.get("/test-all-emails", async (req, res) => {
         guestEmail: TEST_CLIENT_EMAIL,
         rating: 2,
         text: "A fost ok, dar camera era mai mică decât în poze și curentul nu funcționa.",
-        roomName: "Camera 1 — Comfort",
+        roomName: "Camera 1 — Confort",
         autoApproved: false,
       }),
     ),
@@ -603,7 +633,7 @@ const SCENARIOS = {
         {
           guestName: "Test Guest",
           rating: 5,
-          roomName: "Camera 4 — Comfort",
+          roomName: "Camera 4 — Confort",
           autoApproved: true,
         },
         "ro",

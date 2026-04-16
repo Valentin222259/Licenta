@@ -30,10 +30,10 @@ function translateRoomName(roomName, lang) {
   );
 
   const dictionary = {
-    "Camera 1 — Comfort": "Room 1 — Comfort",
+    "Camera 1 — Confort": "Room 1 — Comfort",
     "Camera 2 — Balcon & Belvedere": "Room 2 — Balcony & Panoramic View",
     "Camera 3 — Balcon & Pădure": "Room 3 — Balcony & Forest View",
-    "Camera 4 — Comfort": "Room 4 — Comfort",
+    "Camera 4 — Confort": "Room 4 — Comfort",
     "Camera 5 — Suite cu Cadă": "Room 5 — Suite with Bathtub",
     "Camera 6 — Balcon & Belvedere": "Room 6 — Balcony & Panoramic View",
     "Camera 7 — Balcon & Pădure": "Room 7 — Balcony & Forest View",
@@ -602,16 +602,7 @@ async function sendBookingCancellation(clientEmail, d, lang = "ro") {
   const tx = t(lang).cancellation;
 
   // TRADUCEM NUMELE CAMEREI
-  let roomNameTrans = d.roomName;
-  if (lang === "en" && roomNameTrans) {
-    roomNameTrans = roomNameTrans
-      .replace("Camera", "Room")
-      .replace("Pădure", "Forest View")
-      .replace("Cadă", "Bathtub")
-      .replace("Belvedere", "Panoramic View")
-      .replace("Confort", "Comfort")
-      .replace("Balcon", "Balcony");
-  }
+  const roomNameTrans = translateRoomName(d.roomName, lang);
 
   // NOU: TRADUCEM MOTIVUL ANULĂRII
   let reasonTrans = d.reason;
@@ -921,16 +912,7 @@ async function sendBookingExpired(clientEmail, d, lang = "ro") {
 
   const l = i18n[safeLang] || i18n.ro;
 
-  let roomNameTrans = d.roomName;
-  if (safeLang === "en" && roomNameTrans) {
-    roomNameTrans = roomNameTrans
-      .replace("Camera", "Room")
-      .replace("Pădure", "Forest View")
-      .replace("Cadă", "Bathtub")
-      .replace("Belvedere", "Panoramic View")
-      .replace("Confort", "Comfort")
-      .replace("Balcon", "Balcony");
-  }
+  const roomNameTrans = translateRoomName(d.roomName, safeLang);
 
   const bookingRows = [
     [
