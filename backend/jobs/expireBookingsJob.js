@@ -76,7 +76,7 @@ function startExpireBookingsJob() {
                 bookingRef: booking.booking_ref,
                 expireDays: EXPIRE_AFTER_DAYS,
               },
-              booking.preferred_language || "ro",
+              (booking.preferred_language || "ro").toLowerCase(),
             );
           }),
         );

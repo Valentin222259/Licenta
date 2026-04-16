@@ -349,21 +349,13 @@
  *     summary: "🌱 [RO] Seed test bookings"
  *     tags: [Test Jobs]
  *     description: |
- *       Creates 2 Romanian test bookings:
+ *       Creates 3 Romanian test bookings (preferred_language = 'ro'):
  *       - **BLV-TEST-001** — confirmed, check-out yesterday → Job 3 + Job 2
- *       - **BLV-TEST-002** — pending, created 4 days ago → Job 4
+ *       - **BLV-TEST-002** — confirmed, check-in tomorrow → Job 1
+ *       - **BLV-TEST-003** — pending, created 4 days ago → Job 4
  *     responses:
  *       200:
- *         description: Test bookings created
- *         content:
- *           application/json:
- *             example:
- *               status: "done"
- *               nextSteps:
- *                 - "1. /trigger-finalize"
- *                 - "2. /trigger-reviews"
- *                 - "3. /trigger-expire"
- *                 - "4. /cleanup"
+ *         description: RO test bookings created
  */
 
 /**
@@ -380,16 +372,6 @@
  *     responses:
  *       200:
  *         description: EN test bookings created
- *         content:
- *           application/json:
- *             example:
- *               status: "done"
- *               nextSteps:
- *                 - "1. /trigger-reminders → EN-002 gets reminder in English"
- *                 - "2. /trigger-finalize  → EN-001 becomes finished"
- *                 - "3. /trigger-reviews   → EN-001 gets review request in English"
- *                 - "4. /trigger-expire    → EN-003 gets cancelled"
- *                 - "5. /cleanup-en"
  */
 
 /**
@@ -422,7 +404,18 @@
  *   get:
  *     summary: "▶️ Job 1 — Check-in reminder"
  *     tags: [Test Jobs]
- *     description: Sends check-in reminder emails to guests arriving tomorrow. Runs daily at 10:00.
+ *     description: |
+ *       Sends check-in reminder emails to guests arriving on the target date.
+ *       Runs automatically daily at 10:00 (targets tomorrow).
+ *       Use `?date` to override — useful for testing with existing bookings.
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: "Check-in date to target (default: tomorrow)"
+ *         example: "2026-04-17"
  *     responses:
  *       200:
  *         description: OK
@@ -430,11 +423,12 @@
  *           application/json:
  *             example:
  *               status: "done"
+ *               targetDate: "2026-04-17"
  *               emailsSent: 1
  *               emailsFailed: 0
  *               bookings:
- *                 - ref: "BLV-TEST-EN-002"
- *                   lang: "en"
+ *                 - ref: "BLV-TEST-002"
+ *                   lang: "ro"
  */
 
 /**
@@ -443,7 +437,18 @@
  *   get:
  *     summary: "▶️ Job 2 — Review request"
  *     tags: [Test Jobs]
- *     description: Sends review request emails to guests who checked out yesterday. Runs daily at 12:00.
+ *     description: |
+ *       Sends review request emails to guests who checked out on the target date.
+ *       Runs automatically daily at 12:00 (targets yesterday).
+ *       Use `?date` to override — useful for testing with existing bookings.
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: "Check-out date to target (default: yesterday)"
+ *         example: "2026-04-15"
  *     responses:
  *       200:
  *         description: OK
@@ -451,8 +456,12 @@
  *           application/json:
  *             example:
  *               status: "done"
+ *               targetDate: "2026-04-15"
  *               emailsSent: 1
  *               emailsFailed: 0
+ *               bookings:
+ *                 - ref: "BLV-TEST-001"
+ *                   lang: "ro"
  */
 
 /**
@@ -488,9 +497,6 @@
  *               status: "done"
  *               cancelled: 1
  *               failed: 0
- *               bookings:
- *                 - ref: "BLV-TEST-EN-003"
- *                   lang: "en"
  */
 
 /**
@@ -499,7 +505,7 @@
  *   get:
  *     summary: "🗑️ [RO] Delete test bookings"
  *     tags: [Test Jobs]
- *     description: Deletes BLV-TEST-001 and BLV-TEST-002 from the database.
+ *     description: Deletes BLV-TEST-001, BLV-TEST-002 and BLV-TEST-003.
  *     responses:
  *       200:
  *         description: OK
@@ -511,7 +517,7 @@
  *   get:
  *     summary: "🗑️ [EN] Delete test bookings"
  *     tags: [Test Jobs]
- *     description: Deletes BLV-TEST-EN-001, BLV-TEST-EN-002 and BLV-TEST-EN-003 from the database.
+ *     description: Deletes BLV-TEST-EN-001, BLV-TEST-EN-002 and BLV-TEST-EN-003.
  *     responses:
  *       200:
  *         description: OK

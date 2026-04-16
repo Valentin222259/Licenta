@@ -23,6 +23,23 @@ const transporter = nodemailer.createTransport({
   rateLimit: 5,
 });
 
+function translateRoomName(roomName, lang) {
+  if (lang !== "en" || !roomName) return roomName;
+
+  const dictionary = {
+    "Camera 1 — Comfort": "Room 1 — Comfort",
+    "Camera 2 — Balcon & Belvedere": "Room 2 — Balcony & Panoramic View",
+    "Camera 3 — Balcon & Pădure": "Room 3 — Balcony & Forest View",
+    "Camera 4 — Comfort": "Room 4 — Comfort",
+    "Camera 5 — Suite cu Cadă": "Room 5 — Suite with Bathtub",
+    "Camera 6 — Balcon & Belvedere": "Room 6 — Balcony & Panoramic View",
+    "Camera 7 — Balcon & Pădure": "Room 7 — Balcony & Forest View",
+    "Camera 8 — Suite cu Cadă": "Room 8 — Suite with Bathtub",
+  };
+
+  // Returnează varianta în engleză sau face un fallback simplu (Camera -> Room)
+  return dictionary[roomName] || roomName.replace("Camera", "Room");
+}
 console.log(
   `📧 Email service: ${EMAIL_SERVICE} (${EMAIL_USER || "neconfigurat"})`,
 );
@@ -280,6 +297,9 @@ async function sendClientBookingConfirmation(clientEmail, d, lang = "ro") {
   const stripeAmount = d.stripeAmount || d.totalPrice;
   const remaining = d.remainingAmount || 0;
 
+  // TRADUCEM NUMELE CAMEREI
+  const roomNameTranslated = translateRoomName(d.roomName, lang);
+
   const paymentBlock = isAdvance
     ? `
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
@@ -342,16 +362,15 @@ ${banner(
   </table>
 </div>`;
 
-  // bookingTable e hardcodat în română — facem unul inline cu tx
   const bookingRows = [
     [
       tx.reference,
       `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
     ],
-    [tx.room, d.roomName],
+    [tx.room, roomNameTranslated], // Aici folosim varianta tradusă
     [
       tx.checkIn,
-      `${fmtDate(d.checkIn)}&nbsp;<span style="color:${B.textM};font-size:12px;">· ${lang === "en" ? "after 14:00" : "după ora 14:00"}</span>`,
+      `${fmtDate(d.checkIn)}&nbsp;<span style="color:${B.textM};font-size:12px;">· ${lang === "en" ? "after 14:00" : "începând cu ora 14:00"}</span>`,
     ],
     [
       tx.checkOut,
@@ -423,16 +442,16 @@ async function sendAdminNewBookingAlert(adminEmail, d) {
     "—";
 
   const body = `
-${title("🔔", "Rezervare Nouă!", pmLabel)}
+${title("🔔", "Notificare Rezervare Nouă", pmLabel)}
 <p style="text-align:center;margin:0 0 28px;font-size:15px;color:${B.textB};">
-  Ai primit o nouă rezervare prin intermediul site-ului.
+  Sistemul a înregistrat o nouă rezervare prin intermediul platformei online.
 </p>
 
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:0 0 24px;">
   ${[
     ["👤 Oaspete", d.guestName],
     [
-      "✉️ Email",
+      "✉️ E-mail",
       `<a href="mailto:${d.guestEmail}" style="color:${B.green};">${d.guestEmail}</a>`,
     ],
     ["📞 Telefon", d.guestPhone || "—"],
@@ -459,10 +478,10 @@ ${
 <div style="border-radius:12px;overflow:hidden;border:2px solid #d97706;margin:20px 0;">
   <div style="background:#92400e;padding:10px 20px;">
     <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
-      letter-spacing:1px;color:#fef3c7;">🧾 Facturare pe Firmă — Date Fiscale</p>
+      letter-spacing:1px;color:#fef3c7;">🧾 Solicitare Factură Fiscală</p>
   </div>
   ${[
-    ["Denumire Firmă", d.companyName || "—"],
+    ["Denumire Companie", d.companyName || "—"],
     ["CUI / CIF", d.companyCui || "—"],
     ["Nr. Reg. Com.", d.companyRegNo || "—"],
     ["Adresă Sediu", d.companyAddress || "—"],
@@ -485,25 +504,27 @@ ${
     .join("")}
   <div style="background:#fffbeb;padding:10px 20px;border-top:1px solid #fde68a;">
     <p style="margin:0;font-size:12px;color:#92400e;">
-      ⚠️ <strong>Acțiune necesară:</strong> Emite factura fiscală în SmartBill după check-in
-      și trimite-o pe email la <strong>${d.guestEmail}</strong>.
+      ⚠️ <strong>Acțiune necesară:</strong> Vă rugăm să emiteți factura fiscală în sistemul SmartBill ulterior procedurii de check-in și să o transmiteți la adresa <strong>${d.guestEmail}</strong>.
     </p>
   </div>
 </div>
 `
     : ""
 }
-${btn("Deschide Panoul de Administrare", `${B.site}/admin/bookings`)}
+${btn("Accesare Panou de Administrare", `${B.site}/admin/bookings`)}
 <p style="margin:16px 0 0;font-size:11px;color:${B.textM};text-align:center;">
-  Generat automat · ${new Date().toLocaleString("ro-RO")}
+  Mesaj generat automat · ${new Date().toLocaleString("ro-RO")}
 </p>`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: adminEmail,
     replyTo: `"${d.guestName}" <${d.guestEmail}>`,
-    subject: `🔔 Rezervare nouă · ${d.bookingRef} · ${d.guestName}`,
-    html: layout(body, `Rezervare nouă de la ${d.guestName} — ${d.roomName}`),
+    subject: `🔔 Rezervare nouă · Ref: ${d.bookingRef} · ${d.guestName}`,
+    html: layout(
+      body,
+      `Rezervare nouă recepționată de la ${d.guestName} — ${d.roomName}`,
+    ),
   });
   console.log(`📧 [ADMIN] Alertă rezervare → ${adminEmail} (${d.bookingRef})`);
 }
@@ -512,12 +533,15 @@ ${btn("Deschide Panoul de Administrare", `${B.site}/admin/bookings`)}
 async function sendBookingCancellation(clientEmail, d, lang = "ro") {
   const tx = t(lang).cancellation;
 
+  // TRADUCEM NUMELE CAMEREI
+  const roomNameTranslated = translateRoomName(d.roomName, lang);
+
   const bookingRows = [
     [
       tx.reference || "Referință",
       `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
     ],
-    [tx.room || "Cameră", d.roomName],
+    [tx.room || "Cameră", roomNameTranslated], // Aici folosim varianta tradusă
     [tx.checkIn || "Check-in", fmtDate(d.checkIn)],
     [tx.checkOut || "Check-out", fmtDate(d.checkOut)],
     [
@@ -578,20 +602,20 @@ ${btn(tx.newBooking, `${B.site}/rooms`)}`;
 // 4. Notificare anulare → ADMIN (simplă, fără motiv lung)
 async function sendAdminCancellationAlert(adminEmail, d) {
   const body = `
-${title("📋", "Rezervare Anulată", d.bookingRef)}
+${title("📋", "Notificare Anulare Rezervare", d.bookingRef)}
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:0 0 24px;">
   ${[
     ["Referință", `<strong style="color:${B.green};">${d.bookingRef}</strong>`],
     ["Oaspete", d.guestName],
     [
-      "Email",
+      "E-mail",
       `<a href="mailto:${d.guestEmail}" style="color:${B.green};">${d.guestEmail}</a>`,
     ],
     ["Cameră", d.roomName],
-    ["Check-in", fmtDate(d.checkIn)],
-    ["Check-out", fmtDate(d.checkOut)],
+    ["Dată Check-in", fmtDate(d.checkIn)],
+    ["Dată Check-out", fmtDate(d.checkOut)],
     [
-      "Motiv",
+      "Motiv Anulare",
       `<strong style="color:${B.orange};">${d.reason || "Nespecificat"}</strong>`,
     ],
   ]
@@ -608,16 +632,19 @@ ${title("📋", "Rezervare Anulată", d.bookingRef)}
     )
     .join("")}
 </div>
-${btn("Deschide Panoul de Administrare", `${B.site}/admin/bookings`)}
+${btn("Accesare Panou de Administrare", `${B.site}/admin/bookings`)}
 <p style="margin:16px 0 0;font-size:11px;color:${B.textM};text-align:center;">
-  Generat automat · ${new Date().toLocaleString("ro-RO")}
+  Mesaj generat automat · ${new Date().toLocaleString("ro-RO")}
 </p>`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: adminEmail,
-    subject: `Anulare rezervare · ${d.bookingRef} · ${d.guestName}`,
-    html: layout(body, `Rezervarea ${d.bookingRef} a fost anulată.`),
+    subject: `Anulare rezervare · Ref: ${d.bookingRef} · ${d.guestName}`,
+    html: layout(
+      body,
+      `Rezervarea cu referința ${d.bookingRef} a fost anulată din sistem.`,
+    ),
   });
   console.log(
     `📧 [ADMIN] Notificare anulare → ${adminEmail} (${d.bookingRef})`,
@@ -628,12 +655,15 @@ ${btn("Deschide Panoul de Administrare", `${B.site}/admin/bookings`)}
 async function sendBankTransferInstructions(clientEmail, d, lang = "ro") {
   const tx = t(lang).bankTransfer;
 
+  // TRADUCEM NUMELE CAMEREI
+  const roomNameTranslated = translateRoomName(d.roomName, lang);
+
   const bookingRows = [
     [
       tx.reference || "Referință",
       `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
     ],
-    [tx.room || "Cameră", d.roomName],
+    [tx.room || "Cameră", roomNameTranslated], // Aici folosim varianta tradusă
     [tx.checkIn || "Check-in", fmtDate(d.checkIn)],
     [tx.checkOut || "Check-out", fmtDate(d.checkOut)],
     [
@@ -714,7 +744,7 @@ ${
 </div>`
     : ""
 }
-${btn(lang === "en" ? "Manage Your Booking" : "Gestionați Rezervarea", `${B.site}/account`)}`;
+${btn(lang === "en" ? "Manage Your Reservation" : "Gestionați Rezervarea", `${B.site}/account`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
@@ -727,38 +757,190 @@ ${btn(lang === "en" ? "Manage Your Booking" : "Gestionați Rezervarea", `${B.sit
   );
 }
 
+// 6. Rezervare expirată (neplata avansului/transferului) → CLIENT
+async function sendBookingExpired(clientEmail, d, lang = "ro") {
+  // CURĂȚĂM LIMBA: forțăm litere mici și tăiem spațiile
+  const safeLang = String(lang || "ro")
+    .trim()
+    .toLowerCase();
+
+  // PRINTĂM ÎN CONSOLĂ PENTRU DEBUG:
+  console.log(
+    `\n🐛 [DEBUG EMAIL EXPIRARE] Ref: ${d.bookingRef} | Limba trimisă: "${lang}" | Limba curățată: "${safeLang}"\n`,
+  );
+
+  const tx = t(safeLang).expired;
+
+  const i18n = {
+    en: {
+      ref: "Reference",
+      room: "Room",
+      checkIn: "Check-in",
+      checkOut: "Check-out",
+      nights: "Nights",
+      total: "Total",
+      nightsVal: `${d.nights} ${d.nights === 1 ? "night" : "nights"}`,
+      subheading: "Payment could not be confirmed",
+      warning: `⚠️ Reservation with reference ${d.bookingRef} has been automatically cancelled.`,
+      contact:
+        "If you have already made the payment or believe this cancellation is an error, please contact us urgently:",
+      welcomeBack:
+        "We remain at your disposal and hope to have the honor of hosting you on a future occasion.",
+      phone: "Phone",
+      email: "Email",
+      footer: `Questions? Contact us anytime at <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a> or call us at ${B.phone}.`,
+      preview: `Reservation ${d.bookingRef} has expired — payment was not confirmed within the allotted ${d.expireDays} days.`,
+    },
+    ro: {
+      ref: "Referință",
+      room: "Cameră",
+      checkIn: "Check-in",
+      checkOut: "Check-out",
+      nights: "Nopți",
+      total: "Total",
+      nightsVal: `${d.nights} ${d.nights === 1 ? "noapte" : "nopți"}`,
+      subheading: "Plata nu a putut fi confirmată",
+      warning: `⚠️ Rezervarea cu numărul de referință ${d.bookingRef} a fost anulată automat din sistem.`,
+      contact:
+        "Dacă ați efectuat deja plata sau considerați că această anulare s-a produs dintr-o eroare, vă rugăm să ne contactați cât mai curând posibil:",
+      welcomeBack:
+        "Dacă totuși doriți să ne vizitați cu o altă ocazie, sunteți mai mult decât binevenit să plasați o nouă rezervare.",
+      phone: "Telefon",
+      email: "Email",
+      footer: `Aveți întrebări? Ne puteți scrie oricând la <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a> sau ne puteți suna la ${B.phone}.`,
+      preview: `Rezervarea ${d.bookingRef} a expirat — plata nu a fost confirmată în cele ${d.expireDays} zile acordate.`,
+    },
+  };
+
+  const l = i18n[safeLang] || i18n.ro;
+
+  let roomNameTrans = d.roomName;
+  if (safeLang === "en" && roomNameTrans) {
+    roomNameTrans = roomNameTrans
+      .replace("Camera", "Room")
+      .replace("Pădure", "Forest View")
+      .replace("Cadă", "Bathtub")
+      .replace("Belvedere", "Panoramic View")
+      .replace("Balcon", "Balcony");
+  }
+
+  const bookingRows = [
+    [
+      l.ref,
+      `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
+    ],
+    [l.room, roomNameTrans],
+    [l.checkIn, fmtDate(d.checkIn)],
+    [l.checkOut, fmtDate(d.checkOut)],
+    [l.nights, l.nightsVal],
+    [
+      l.total,
+      `<strong style="font-size:16px;color:${B.textH};">${d.totalPrice} RON</strong>`,
+    ],
+  ];
+
+  const bookingTableI18n = `
+<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:28px 0;">
+  ${bookingRows
+    .map(
+      ([label, value], i) => `
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.9px;color:${B.textM};width:40%;border-right:1px solid ${B.border};">${label}</td>
+    <td style="padding:13px 20px;font-size:14px;color:${B.textB};">${value}</td>
+  </tr>
+  </table>`,
+    )
+    .join("")}
+</div>`;
+
+  const body = `
+${title("⏰", tx.heading, l.subheading)}
+<p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
+  ${lang === "en" ? `Dear <strong style="color:${B.textH};">${d.guestName}</strong>,` : `Bună ziua, <strong style="color:${B.textH};">${d.guestName}</strong>,`}
+</p>
+<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
+  ${tx.body(d.expireDays)}
+</p>
+ 
+${bookingTableI18n}
+ 
+<div style="border-radius:10px;border:1px solid #fca5a5;background:#fef2f2;
+  padding:14px 20px;margin:20px 0;">
+  <p style="margin:0;font-size:14px;color:#b91c1c;font-weight:600;">
+    ${l.warning}
+  </p>
+</div>
+ 
+<p style="margin:0 0 16px;font-size:14px;color:${B.textB};line-height:1.8;">
+  ${l.contact}
+</p>
+${infoRow("📞", l.phone, B.phone)}
+${infoRow("✉️", l.email, `<a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>`)}
+<p style="margin:24px 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
+  ${l.welcomeBack}
+</p>
+ 
+${hr()}
+${btn(tx.newBooking, `${B.site}/booking`)}
+<p style="margin:22px 0 0;font-size:12px;color:${B.textM};text-align:center;">
+  ${l.footer}
+</p>`;
+
+  await transporter.sendMail({
+    from: `"${B.name}" <${EMAIL_USER}>`,
+    to: clientEmail,
+    subject: tx.subject(d.bookingRef),
+    html: layout(body, l.preview),
+  });
+  console.log(
+    `📧 [CLIENT] Expirare rezervare (${safeLang}) → ${clientEmail} (${d.bookingRef})`,
+  );
+}
+
 // 7. Reminder check-in → CLIENT
 async function sendCheckInReminder(clientEmail, d, lang = "ro") {
   const tx = t(lang).checkinReminder;
 
+  // TRADUCEM NUMELE CAMEREI
+  const roomNameTranslated = translateRoomName(d.roomName, lang);
+
+  const checkInLabel = lang === "en" ? "Check-in Date" : "Dată Check-in";
+  const confirmText =
+    lang === "en"
+      ? "We formally confirm your reservation for"
+      : "Vă confirmăm rezervarea pentru";
+
   const body = `
-${title("🏔️", tx.heading, `Check-in: ${fmtDate(d.checkIn)}`)}
+${title("🏔️", tx.heading, `${checkInLabel}: ${fmtDate(d.checkIn)}`)}
 <p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
   ${tx.greeting(d.guestName)}
 </p>
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  ${tx.body} <strong>${d.roomName}</strong>.
+  ${tx.body} ${confirmText} <strong>${roomNameTranslated}</strong>.
 </p>
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:0 0 28px;">
   ${[
     [
       "🕑",
-      lang === "en" ? "Check-in" : "Check-in",
-      `${fmtDate(d.checkIn)} · <strong>${lang === "en" ? "after 14:00" : "după ora 14:00"}</strong>`,
+      "Check-in",
+      `${fmtDate(d.checkIn)} · <strong>${lang === "en" ? "after 14:00" : "începând cu ora 14:00"}</strong>`,
     ],
     [
       "🚗",
-      lang === "en" ? "Parking" : "Parcare",
+      lang === "en" ? "Private Parking" : "Parcare Privată",
       lang === "en"
-        ? "Free and supervised — direct access to the courtyard"
-        : "Gratuită — acces direct cu mașina în curtea interioară",
+        ? "Complimentary access with video surveillance — direct courtyard access for your comfort."
+        : "Acces gratuit și supravegheat video — parcare în curtea interioară pentru un plus de confort.",
     ],
     [
       "📶",
       "Wi-Fi",
       lang === "en"
-        ? "Free throughout the guesthouse"
-        : "Internet gratuit în toată incinta pensiunii",
+        ? "Complimentary high-speed Wi-Fi connection throughout the premises"
+        : "Conexiune de mare viteză gratuită în întreaga incintă a pensiunii",
     ],
     ["📞", lang === "en" ? "Reception" : "Recepție", B.phone],
   ]
@@ -775,7 +957,7 @@ ${title("🏔️", tx.heading, `Check-in: ${fmtDate(d.checkIn)}`)}
     )
     .join("")}
 </div>
-${btn(lang === "en" ? "View Your Booking" : "Vedeți Rezervarea", `${B.site}/account`)}`;
+${btn(lang === "en" ? "Manage Your Reservation" : "Detalii Rezervare", `${B.site}/account`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
@@ -789,7 +971,10 @@ ${btn(lang === "en" ? "View Your Booking" : "Vedeți Rezervarea", `${B.site}/acc
 // 8. Solicitare recenzie → CLIENT
 async function sendReviewRequest(clientEmail, d, lang = "ro") {
   const tx = t(lang).reviewRequest;
-  const { guestName, roomName, checkIn, checkOut, bookingRef } = d;
+  const { guestName, checkIn, checkOut, bookingRef } = d;
+
+  // TRADUCEM NUMELE CAMEREI
+  const roomNameTranslated = translateRoomName(d.roomName, lang);
 
   const stars5 = [1, 2, 3, 4, 5]
     .map(
@@ -801,7 +986,7 @@ async function sendReviewRequest(clientEmail, d, lang = "ro") {
     .join("");
 
   const body = `
-${title("⭐", tx.heading, roomName)}
+${title("⭐", tx.heading, roomNameTranslated)}
 <p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
   ${tx.greeting(guestName)}
 </p>
@@ -835,7 +1020,7 @@ async function sendClientReviewConfirmation(clientEmail, d) {
     .join("");
 
   const body = `
-${title("🙏", `Vă mulțumim, ${guestName}!`, "Am primit recenzia dumneavoastră")}
+${title("🙏", `Vă mulțumim pentru feedback, ${guestName}!`, "Am înregistrat cu succes evaluarea dumneavoastră")}
 <div style="background:${B.rowEven};border-radius:14px;padding:28px;
   text-align:center;margin:0 0 28px;border:1px solid ${B.border};">
   <div>${stars}</div>
@@ -845,11 +1030,11 @@ ${title("🙏", `Vă mulțumim, ${guestName}!`, "Am primit recenzia dumneavoastr
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;text-align:center;">
   ${
     autoApproved
-      ? "Vă mulțumim din suflet pentru recenzie și pentru timpul acordat! Cuvintele frumoase ne motivează să fim și mai buni în ceea ce facem."
-      : "Vă mulțumim din suflet pentru recenzie! Părerea dumneavoastră a fost înregistrată cu succes și urmează să fie publicată pe site în scurt timp."
+      ? "Vă mulțumim deosebit pentru evaluarea acordată și pentru timpul prețios alocat! Aprecierile dumneavoastră reprezintă o onoare și ne motivează să menținem cele mai înalte standarde de confort și ospitalitate."
+      : "Vă mulțumim pentru feedback-ul oferit! Evaluarea dumneavoastră a fost înregistrată cu succes și urmează să fie publicată pe platforma noastră în cel mai scurt timp."
   }
 </p>
-${btn("Rezervați din Nou", `${B.site}/booking`)}`;
+${btn("Inițiere Rezervare Nouă", `${B.site}/booking`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
@@ -857,7 +1042,7 @@ ${btn("Rezervați din Nou", `${B.site}/booking`)}`;
     subject: `🙏 Vă mulțumim pentru recenzie, ${guestName}!`,
     html: layout(
       body,
-      `Am primit recenzia dumneavoastră de ${rating} stele. Vă mulțumim pentru feedback!`,
+      `Am primit evaluarea dumneavoastră de ${rating} stele. Vă mulțumim pentru încredere!`,
     ),
   });
   console.log(`📧 [CLIENT] Confirmare recenzie → ${clientEmail}`);
@@ -874,7 +1059,7 @@ async function sendAdminNewReviewAlert(adminEmail, d) {
     .join("");
 
   const body = `
-${title("⭐", "Recenzie Nouă", autoApproved ? "Publicată automat" : "Necesită aprobare")}
+${title("⭐", "Evaluare Nouă", autoApproved ? "Aprobată și publicată automat" : "Necesită moderare manuală")}
 <div style="text-align:center;margin:0 0 28px;">
   ${stars}
   <p style="margin:8px 0 0;font-size:14px;font-weight:700;color:#d4a547;">${rating}/5 stele</p>
@@ -883,11 +1068,11 @@ ${title("⭐", "Recenzie Nouă", autoApproved ? "Publicată automat" : "Necesit�
   ${[
     ["Oaspete", guestName],
     [
-      "Email",
+      "E-mail",
       `<a href="mailto:${guestEmail}" style="color:${B.green};">${guestEmail}</a>`,
     ],
     ["Cameră", roomName || "—"],
-    ["Rating", `${rating}/5 stele`],
+    ["Punctaj", `${rating}/5 stele`],
   ]
     .map(
       ([l, v], i) => `
@@ -905,7 +1090,7 @@ ${title("⭐", "Recenzie Nouă", autoApproved ? "Publicată automat" : "Necesit�
 <div style="background:${B.rowEven};border-left:4px solid #d4a547;border-radius:0 10px 10px 0;
   padding:20px 24px;margin:0 0 20px;">
   <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;
-    letter-spacing:0.8px;color:${B.textM};">Recenzie</p>
+    letter-spacing:0.8px;color:${B.textM};">Conținut Recenzie</p>
   <p style="margin:0;font-size:15px;color:${B.textB};line-height:1.9;font-style:italic;">
     "${text}"
   </p>
@@ -913,29 +1098,26 @@ ${title("⭐", "Recenzie Nouă", autoApproved ? "Publicată automat" : "Necesit�
 ${
   autoApproved
     ? banner(
-        "✅ Recenzia a fost <strong>publicată automat</strong> (rating ≥ 4 stele).",
+        "✅ Prezenta evaluare a fost <strong>publicată automat</strong> pe platformă (punctaj ≥ 4 stele).",
         B.greenLight,
         B.greenBorder,
         B.green,
       )
     : banner(
-        "⏳ Recenzia <strong>necesită aprobare</strong> manuală — rating &lt; 4 stele.",
+        "⏳ Această evaluare <strong>necesită aprobare manuală</strong> înainte de publicare (punctaj &lt; 4 stele).",
         B.orangeLight,
         B.orangeBorder,
         B.orange,
       )
 }
-${!autoApproved ? btn("Aprobă Recenzia", `${B.site}/admin/reviews`) : ""}`;
+${!autoApproved ? btn("Aprobare Recenzie", `${B.site}/admin/reviews`) : ""}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: adminEmail,
     replyTo: `"${guestName}" <${guestEmail}>`,
-    subject: `${autoApproved ? "⭐" : "⏳"} Recenzie ${rating}/5 · ${guestName}`,
-    html: layout(
-      body,
-      `${guestName}: ${rating} stele — ${(text || "").substring(0, 80)}`,
-    ),
+    subject: `${autoApproved ? "⭐" : "⏳"} Evaluare ${rating}/5 · ${guestName}`,
+    html: layout(body, `Evaluare nouă de la ${guestName}: ${rating} stele.`),
   });
   console.log(`📧 [ADMIN] Recenzie nouă → ${adminEmail}`);
 }
@@ -943,15 +1125,15 @@ ${!autoApproved ? btn("Aprobă Recenzia", `${B.site}/admin/reviews`) : ""}`;
 // 11. Bun venit → CLIENT
 async function sendWelcomeEmail(userEmail, name) {
   const items = [
-    "Rezervați camere rapid, fără să reintroduceți datele",
-    "Urmăriți toate rezervările dumneavoastră într-un singur loc",
-    "Primiți confirmări și reminder-uri automate",
-    "Lăsați recenzii rapid după fiecare sejur",
+    "Efectuarea rapidă a rezervărilor, fără necesitatea reintroducerii datelor personale",
+    "Gestionarea centralizată a tuturor rezervărilor dumneavoastră",
+    "Recepționarea automată a confirmărilor și a detaliilor privind sejurul",
+    "Posibilitatea de a oferi feedback rapid la finalul fiecărei șederi",
   ];
   const body = `
-${title("🌿", `Bun venit, ${name}!`, "Contul dumneavoastră a fost creat")}
+${title("🌿", `Bun venit, ${name}!`, "Contul dumneavoastră a fost creat cu succes")}
 <p style="margin:0 0 28px;font-size:15px;color:${B.textB};line-height:1.85;text-align:center;">
-  Ne bucurăm să vă avem alături! De acum, planificarea vacanțelor la <strong>${B.name}</strong> va fi mult mai simplă:
+  Este o deosebită plăcere să vă urăm bun venit! Începând de acum, planificarea sejururilor dumneavoastră la <strong>${B.name}</strong> devine o experiență simplificată și mai plăcută:
 </p>
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:0 0 32px;">
   ${items
@@ -972,7 +1154,7 @@ ${title("🌿", `Bun venit, ${name}!`, "Contul dumneavoastră a fost creat")}
     )
     .join("")}
 </div>
-${btn("Explorați Camerele Noastre", `${B.site}/rooms`)}`;
+${btn("Explorare Camere Disponibile", `${B.site}/rooms`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
@@ -980,7 +1162,7 @@ ${btn("Explorați Camerele Noastre", `${B.site}/rooms`)}`;
     subject: `Bun venit la ${B.name}! 🌿`,
     html: layout(
       body,
-      `Bun venit, ${name}! Contul dumneavoastră a fost creat cu succes.`,
+      `Bun venit, ${name}! Contul dumneavoastră a fost creat și este gata de utilizare.`,
     ),
   });
   console.log(`📧 [CLIENT] Welcome → ${userEmail}`);
@@ -989,20 +1171,20 @@ ${btn("Explorați Camerele Noastre", `${B.site}/rooms`)}`;
 // 12. Schimbare parolă → CLIENT
 async function sendPasswordChangedEmail(userEmail, name) {
   const body = `
-${title("🔐", "Parolă Actualizată", "Securitatea contului dumneavoastră")}
+${title("🔐", "Parolă Actualizată", "Notificare de securitate")}
 ${hi(name)}
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă confirmăm pe această cale că parola contului dumneavoastră a fost actualizată cu succes.
+  Vă aducem la cunoștință faptul că parola asociată contului dumneavoastră a fost actualizată cu succes.
 </p>
 ${banner(
-  `⚠️ Dacă nu dumneavoastră ați inițiat această schimbare, vă rugăm să ne contactați imediat la
-  <strong>${B.phone}</strong> sau
-  <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>`,
+  `⚠️ Dacă nu dumneavoastră ați autorizat această modificare, vă rugăm imperativ să ne contactați de urgență la
+  <strong>${B.phone}</strong> sau prin e-mail la
+  <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>.`,
   B.orangeLight,
   B.orangeBorder,
   B.orange,
 )}
-${btn("Către Contul Meu", `${B.site}/account`)}`;
+${btn("Accesare Contul Meu", `${B.site}/account`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
@@ -1019,19 +1201,18 @@ ${btn("Către Contul Meu", `${B.site}/account`)}`;
 // 13. Ștergere cont → CLIENT
 async function sendAccountDeletedEmail(userEmail, name) {
   const body = `
-${title("👋", "Cont Șters", "Ați ales să ne părăsiți")}
+${title("👋", "Confirmare Ștergere Cont", "Procedură finalizată cu succes")}
 ${hi(name)}
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă confirmăm că procesul de ștergere a contului a fost finalizat. Toate datele dumneavoastră personale au fost eliminate definitiv din sistemul nostru.
+  Vă confirmăm oficial finalizarea procedurii de închidere și ștergere a contului dumneavoastră. Toate datele cu caracter personal au fost eliminate definitiv din sistemele noastre, în deplină conformitate cu politicile de confidențialitate.
 </p>
 ${banner(
-  `Vă mulțumim pentru timpul petrecut alături de noi! Dacă vă răzgândiți, sunteți oricând binevenit să vă creați un cont nou.
-  Vă mulțumim că ați ales <strong>${B.name}</strong>!`,
+  `Vă mulțumim pentru încrederea acordată și pentru vizitele dumneavoastră! În cazul în care doriți să reveniți ca oaspete la <strong>${B.name}</strong>, veți fi oricând binevenit să vă reînregistrați.`,
   B.greenLight,
   B.greenBorder,
   B.green,
 )}
-${btn("Vizitați Site-ul Nostru", B.site)}`;
+${btn("Vizitare Website", B.site)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
@@ -1039,7 +1220,7 @@ ${btn("Vizitați Site-ul Nostru", B.site)}`;
     subject: `Contul dumneavoastră ${B.name} a fost șters`,
     html: layout(
       body,
-      "Contul dumneavoastră a fost șters. Vă mulțumim pentru vizită!",
+      "Contul dumneavoastră a fost șters cu succes din sistemul nostru.",
     ),
   });
   console.log(`📧 [CLIENT] Ștergere cont → ${userEmail}`);
@@ -1048,12 +1229,12 @@ ${btn("Vizitați Site-ul Nostru", B.site)}`;
 // 14. Mesaj contact → ADMIN
 async function sendAdminContactMessage(adminEmail, c) {
   const body = `
-${title("✉️", "Mesaj Nou de Contact", "de pe site")}
+${title("✉️", "Mesaj Nou de Contact", "Solicitare recepționată via website")}
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:0 0 24px;">
   ${[
-    ["Nume", c.name],
+    ["Nume Expeditor", c.name],
     [
-      "Email",
+      "E-mail",
       `<a href="mailto:${c.email}" style="color:${B.green};">${c.email}</a>`,
     ],
     ["Telefon", c.phone || "—"],
@@ -1073,21 +1254,21 @@ ${title("✉️", "Mesaj Nou de Contact", "de pe site")}
     .join("")}
 </div>
 <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;
-  letter-spacing:0.8px;color:${B.textM};">Mesaj</p>
+  letter-spacing:0.8px;color:${B.textM};">Conținut Mesaj</p>
 <div style="background:${B.rowEven};border-left:4px solid ${B.green};
   border-radius:0 10px 10px 0;padding:20px 24px;margin:0 0 28px;">
   <p style="margin:0;font-size:15px;color:${B.textB};line-height:1.9;white-space:pre-wrap;">${c.message}</p>
 </div>
-${btn(`Răspunde-i lui ${c.name}`, `mailto:${c.email}`)}
+${btn(`Răspunde către ${c.name}`, `mailto:${c.email}`)}
 <p style="margin:16px 0 0;font-size:12px;color:${B.textM};text-align:center;">
-  Apasă Reply pentru a răspunde direct vizitatorului.
+  Puteți utiliza funcția Reply a clientului dumneavoastră de e-mail pentru a răspunde direct expeditorului.
 </p>`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: adminEmail,
     replyTo: `"${c.name}" <${c.email}>`,
-    subject: `✉️ Mesaj de la ${c.name}${c.subject ? ` · ${c.subject}` : ""}`,
+    subject: `✉️ Solicitare Contact: ${c.name}${c.subject ? ` · ${c.subject}` : ""}`,
     html: layout(
       body,
       `Mesaj de la ${c.name}: ${(c.message || "").substring(0, 80)}`,
@@ -1099,26 +1280,26 @@ ${btn(`Răspunde-i lui ${c.name}`, `mailto:${c.email}`)}
 // 15. Confirmare contact → CLIENT
 async function sendClientContactConfirmation(clientEmail, name) {
   const body = `
-${title("✉️", "Mesaj Primit!", "Vă mulțumim că ne-ați contactat")}
+${title("✉️", "Mesaj Recepționat", "Vă mulțumim pentru contact!")}
 ${hi(name)}
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă confirmăm recepționarea mesajului dumneavoastră. Colegii noștri îl vor analiza și vă vom răspunde în cel mai scurt timp (de regulă, în maximum <strong>24 de ore</strong>).
+  Vă confirmăm prin prezenta recepționarea mesajului dumneavoastră. Echipa noastră va analiza solicitarea și va formula un răspuns detaliat în cel mai scurt timp posibil (în mod standard, în decurs de maximum <strong>24 de ore</strong>).
 </p>
 ${banner(
-  `Pentru întrebări urgente, ne puteți contacta direct la numărul de telefon <strong>${B.phone}</strong>`,
+  `Pentru situații care necesită asistență imediată, vă stăm la dispoziție direct la numărul de telefon <strong>${B.phone}</strong>.`,
   B.greenLight,
   B.greenBorder,
   B.green,
 )}
-${btn("Explorați Camerele Noastre", `${B.site}/rooms`)}`;
+${btn("Explorare Camere Disponibile", `${B.site}/rooms`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `Mesajul dumneavoastră a fost primit · ${B.name}`,
+    subject: `Mesajul dumneavoastră a fost înregistrat · ${B.name}`,
     html: layout(
       body,
-      "Am primit mesajul dumneavoastră. Vă vom răspunde în curând!",
+      "Am recepționat mesajul dumneavoastră și vă vom răspunde în cel mai scurt timp posibil.",
     ),
   });
   console.log(`📧 [CLIENT] Confirmare contact → ${clientEmail}`);
@@ -1138,54 +1319,6 @@ async function verifyConnection() {
     console.error("❌ Email SMTP error:", err.message);
     return false;
   }
-}
-
-async function sendBookingExpired(clientEmail, d) {
-  const body = `
-${title("⏰", "Rezervare Expirată", "Plata nu a fost confirmată în termenul alocat")}
-${hi(d.guestName)}
-<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă informăm că rezervarea dumneavoastră la <strong>${B.name}</strong> a fost anulată automat, deoarece nu am recepționat confirmarea plății prin transfer bancar în intervalul alocat de <strong>${d.expireDays} zile</strong>.
-</p>
- 
-${bookingTable(d)}
- 
-<div style="border-radius:10px;border:1px solid #fca5a5;background:#fef2f2;
-  padding:14px 20px;margin:20px 0;">
-  <p style="margin:0;font-size:14px;color:#b91c1c;font-weight:600;">
-    ⚠️ Rezervarea ${d.bookingRef} a fost anulată automat din sistem.
-  </p>
-</div>
- 
-<p style="margin:0 0 16px;font-size:14px;color:${B.textB};line-height:1.8;">
-  Dacă ați efectuat deja plata sau considerați că această anulare s-a produs dintr-o eroare, vă rugăm să ne contactați cât mai curând posibil:
-</p>
-${infoRow("📞", "Telefon", B.phone)}
-${infoRow("✉️", "Email", `<a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>`)}
-<p style="margin:24px 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Dacă totuși doriți să ne vizitați cu o altă ocazie, sunteți mai mult decât binevenit să plasați o nouă rezervare.
-</p>
- 
-${hr()}
-${btn("Efectuați o Nouă Rezervare", `${B.site}/booking`)}
-<p style="margin:22px 0 0;font-size:12px;color:${B.textM};text-align:center;">
-  Aveți întrebări? Ne puteți scrie oricând la
-  <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>
-  sau ne puteți suna la ${B.phone}.
-</p>`;
-
-  await transporter.sendMail({
-    from: `"${B.name}" <${EMAIL_USER}>`,
-    to: clientEmail,
-    subject: `⏰ Rezervare expirată · ${d.bookingRef} · ${B.name}`,
-    html: layout(
-      body,
-      `Rezervarea ${d.bookingRef} a expirat — plata nu a fost confirmată în cele ${d.expireDays} zile acordate.`,
-    ),
-  });
-  console.log(
-    `📧 [CLIENT] Expirare rezervare → ${clientEmail} (${d.bookingRef})`,
-  );
 }
 
 async function sendAdminExpiredBookingsAlert(adminEmail, d) {
