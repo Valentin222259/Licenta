@@ -25,6 +25,9 @@ const transporter = nodemailer.createTransport({
 
 function translateRoomName(roomName, lang) {
   if (lang !== "en" || !roomName) return roomName;
+  console.log(
+    `🔍 roomName primit: "${roomName}" | lungime: ${roomName.length}`,
+  );
 
   const dictionary = {
     "Camera 1 — Comfort": "Room 1 — Comfort",
@@ -85,9 +88,14 @@ function fmtDate(s) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /** Wrapper complet HTML — header gradient + footer */
-function layout(body, preview = "") {
+function layout(body, preview = "", lang = "ro") {
+  const isEn = lang === "en";
+  const rightsText = isEn
+    ? "All rights reserved"
+    : "Toate drepturile rezervate";
+
   return `<!DOCTYPE html>
-<html lang="ro">
+<html lang="${isEn ? "en" : "ro"}">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -154,7 +162,7 @@ function layout(body, preview = "") {
           <a href="mailto:${B.email}" style="color:${B.textM};text-decoration:none;">${B.email}</a>
         </p>
         <p style="margin:0;font-size:11px;color:${B.border};">
-          © ${new Date().getFullYear()} ${B.name} · Toate drepturile rezervate
+          © ${new Date().getFullYear()} ${B.name} · ${rightsText}
         </p>
       </td>
     </tr>
@@ -184,10 +192,11 @@ function title(icon, heading, sub = "") {
 </div>`;
 }
 
-/** Salut personalizat */
-function hi(name) {
+/** Salut personalizat bilingv*/
+function hi(name, lang = "ro") {
+  const greeting = lang === "en" ? "Hello" : "Bună ziua";
   return `<p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
-    Bună ziua, <strong style="color:${B.textH};">${name}</strong>,
+    ${greeting}, <strong style="color:${B.textH};">${name}</strong>,
   </p>`;
 }
 
@@ -286,6 +295,61 @@ function infoRow(emoji, label, value) {
 </table>`;
 }
 
+/** Bloc servicii suplimentare (Apare doar dacă există extra-uri) */
+function buildExtrasHtml(extras, lang = "ro") {
+  // Verificăm dacă există obiectul și dacă are cel puțin o opțiune selectată
+  if (!extras || typeof extras !== "object") return "";
+
+  const { breakfast, dinner, extra_beds, jacuzzi } = extras;
+  if (!breakfast && !dinner && !extra_beds && !jacuzzi) return "";
+
+  const title =
+    lang === "en"
+      ? "Servicii Suplimentare Solicitate"
+      : "Servicii Suplimentare Solicitate"; // Folosim engleză pentru en
+  const titleText =
+    lang === "en"
+      ? "Requested Extra Services"
+      : "Servicii Suplimentare Solicitate";
+
+  const items = [];
+  if (breakfast)
+    items.push(
+      lang === "en" ? "🥞 Traditional Breakfast" : "🥞 Mic dejun tradițional",
+    );
+  if (dinner)
+    items.push(
+      lang === "en"
+        ? "🍲 Traditional Dinner (3 courses)"
+        : "🍲 Cină tradițională (3 feluri)",
+    );
+  if (extra_beds)
+    items.push(
+      lang === "en"
+        ? `🛏️ Extra Bed (${extra_beds})`
+        : `🛏️ Pat suplimentar (${extra_beds})`,
+    );
+  if (jacuzzi)
+    items.push(
+      lang === "en"
+        ? "🫧 Outdoor Jacuzzi / Hot Tub Access"
+        : "🫧 Acces Ciubăr / Jacuzzi exterior",
+    );
+
+  return `
+<div style="border-radius:12px;overflow:hidden;border:2px solid ${B.goldBorder};margin:0 0 28px 0;">
+  <div style="background:${B.gold};padding:10px 20px;">
+    <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
+      letter-spacing:1px;color:#fff;">${titleText}</p>
+  </div>
+  <div style="background:${B.goldLight};padding:16px 20px;">
+    <ul style="margin:0;padding:0 0 0 20px;font-size:14px;color:${B.textB};line-height:1.8;">
+      ${items.map((item) => `<li><strong>${item}</strong></li>`).join("")}
+    </ul>
+  </div>
+</div>`;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  FUNCȚII PRINCIPALE
 // ═════════════════════════════════════════════════════════════════════════════
@@ -298,14 +362,26 @@ async function sendClientBookingConfirmation(clientEmail, d, lang = "ro") {
   const remaining = d.remainingAmount || 0;
 
   // TRADUCEM NUMELE CAMEREI
-  const roomNameTranslated = translateRoomName(d.roomName, lang);
+  let roomNameTrans = d.roomName;
+  if (lang === "en" && roomNameTrans) {
+    roomNameTrans = roomNameTrans
+      .replace("Camera", "Room")
+      .replace("Pădure", "Forest View")
+      .replace("Cadă", "with bathtub")
+      .replace("Belvedere", "Panoramic View")
+      .replace("Balcon", "Balcony")
+      .replace("Confort", "Comfort");
+  }
+
+  // TRADUCERE PENTRU HEADER-UL VERDE DE PLATĂ
+  const lblPaymentDetails = lang === "en" ? "Payment Details" : "Detalii plată";
 
   const paymentBlock = isAdvance
     ? `
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
   <div style="background:${B.green};padding:12px 20px;">
     <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
-      letter-spacing:1px;color:rgba(255,255,255,0.8);">Detalii plată</p>
+      letter-spacing:1px;color:rgba(255,255,255,0.8);">${lblPaymentDetails}</p>
   </div>
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${B.cardBg};">
   <tr>
@@ -367,7 +443,7 @@ ${banner(
       tx.reference,
       `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
     ],
-    [tx.room, roomNameTranslated], // Aici folosim varianta tradusă
+    [tx.room, roomNameTrans],
     [
       tx.checkIn,
       `${fmtDate(d.checkIn)}&nbsp;<span style="color:${B.textM};font-size:12px;">· ${lang === "en" ? "after 14:00" : "începând cu ora 14:00"}</span>`,
@@ -409,6 +485,7 @@ ${title("✓", tx.heading, tx.subheading(isAdvance))}
   ${tx.body}
 </p>
 ${bookingTableI18n}
+${buildExtrasHtml(d.extras, lang)}
 ${paymentBlock}
 ${hr()}
 ${infoRow("🚗", tx.parking, tx.parkingDesc)}
@@ -423,7 +500,7 @@ ${btn(tx.manageBooking, `${B.site}/account`)}
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
     subject: tx.subject(d.bookingRef),
-    html: layout(body),
+    html: layout(body, "", lang),
   });
   console.log(
     `📧 [CLIENT] Confirmare (${lang}) → ${clientEmail} (${d.bookingRef})`,
@@ -472,6 +549,7 @@ ${title("🔔", "Notificare Rezervare Nouă", pmLabel)}
 </div>
 
 ${bookingTable(d)}
+${buildExtrasHtml(d.extras, "ro")}
 ${
   d.needsInvoice
     ? `
@@ -534,22 +612,54 @@ async function sendBookingCancellation(clientEmail, d, lang = "ro") {
   const tx = t(lang).cancellation;
 
   // TRADUCEM NUMELE CAMEREI
-  const roomNameTranslated = translateRoomName(d.roomName, lang);
+  let roomNameTrans = d.roomName;
+  if (lang === "en" && roomNameTrans) {
+    roomNameTrans = roomNameTrans
+      .replace("Camera", "Room")
+      .replace("Pădure", "Forest View")
+      .replace("Cadă", "Bathtub")
+      .replace("Belvedere", "Panoramic View")
+      .replace("Confort", "Comfort")
+      .replace("Balcon", "Balcony");
+  }
+
+  // NOU: TRADUCEM MOTIVUL ANULĂRII
+  let reasonTrans = d.reason;
+  if (lang === "en" && reasonTrans) {
+    const reasonsDict = {
+      "Planuri schimbate": "Plans changed",
+      "Probleme de sănătate": "Health issues",
+      "Eroare la rezervare": "Booking error",
+      "Forță majoră": "Force majeure",
+      "Neplata avansului": "Advance payment not received",
+      "Neplata transferului bancar": "Bank transfer payment not received",
+      "Cererea clientului": "Customer request",
+      "Motiv personal": "Personal reasons",
+    };
+    // Traducem dacă găsim în dicționar, altfel îl lăsăm cum e
+    reasonTrans = reasonsDict[reasonTrans] || reasonTrans;
+  }
+
+  // TRADUCEM ETICHETELE TABELULUI
+  const lblRef = lang === "en" ? "Reference" : "Referință";
+  const lblRoom = lang === "en" ? "Room" : "Cameră";
+  const lblCheckIn = "Check-in";
+  const lblCheckOut = "Check-out";
+  const lblNights = lang === "en" ? "Nights" : "Nopți";
+  const valNights = `${d.nights} ${d.nights === 1 ? (lang === "en" ? "night" : "noapte") : lang === "en" ? "nights" : "nopți"}`;
+  const lblTotal = lang === "en" ? "Total" : "Total";
 
   const bookingRows = [
     [
-      tx.reference || "Referință",
+      lblRef,
       `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
     ],
-    [tx.room || "Cameră", roomNameTranslated], // Aici folosim varianta tradusă
-    [tx.checkIn || "Check-in", fmtDate(d.checkIn)],
-    [tx.checkOut || "Check-out", fmtDate(d.checkOut)],
+    [lblRoom, roomNameTrans],
+    [lblCheckIn, fmtDate(d.checkIn)],
+    [lblCheckOut, fmtDate(d.checkOut)],
+    [lblNights, valNights],
     [
-      lang === "en" ? "Nights" : "Nopți",
-      `${d.nights} ${d.nights === 1 ? (lang === "en" ? "night" : "noapte") : lang === "en" ? "nights" : "nopți"}`,
-    ],
-    [
-      tx.total || "Total",
+      lblTotal,
       `<strong style="font-size:16px;color:${B.textH};">${d.totalPrice} RON</strong>`,
     ],
   ];
@@ -580,7 +690,7 @@ ${title("📋", tx.heading, d.bookingRef)}
   ${tx.body}
 </p>
 ${bookingTableI18n}
-${d.reason ? banner(`<strong>${tx.cancelReason}:</strong> ${d.reason}`, B.orangeLight, B.orangeBorder, B.orange) : ""}
+${reasonTrans ? banner(`<strong>${tx.cancelReason}:</strong> ${reasonTrans}`, B.orangeLight, B.orangeBorder, B.orange) : ""}
 <p style="margin:24px 0 8px;font-size:14px;color:${B.textB};line-height:1.8;">
   ${lang === "en" ? "If you have any questions, please contact us:" : "Dacă aveți întrebări sau considerați că s-a produs o eroare, vă rugăm să ne contactați:"}
 </p>
@@ -592,7 +702,7 @@ ${btn(tx.newBooking, `${B.site}/rooms`)}`;
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
     subject: tx.subject(d.bookingRef),
-    html: layout(body),
+    html: layout(body, "", lang),
   });
   console.log(
     `📧 [CLIENT] Anulare (${lang}) → ${clientEmail} (${d.bookingRef})`,
@@ -655,23 +765,37 @@ ${btn("Accesare Panou de Administrare", `${B.site}/admin/bookings`)}
 async function sendBankTransferInstructions(clientEmail, d, lang = "ro") {
   const tx = t(lang).bankTransfer;
 
-  // TRADUCEM NUMELE CAMEREI
-  const roomNameTranslated = translateRoomName(d.roomName, lang);
+  // TRADUCEM NUMELE CAMEREI (Helper intern curat)
+  let roomNameTrans = d.roomName;
+  if (lang === "en" && roomNameTrans) {
+    roomNameTrans = roomNameTrans
+      .replace("Camera", "Room")
+      .replace("Pădure", "Forest View")
+      .replace("Cadă", "Bathtub")
+      .replace("Belvedere", "Panoramic View")
+      .replace("Balcon", "Balcony");
+  }
+
+  // TRADUCEM ETICHETELE TABELULUI (evităm lipsa lor din emailBilingual.js)
+  const lblRef = lang === "en" ? "Reference" : "Referință";
+  const lblRoom = lang === "en" ? "Room" : "Cameră";
+  const lblCheckIn = "Check-in";
+  const lblCheckOut = "Check-out";
+  const lblNights = lang === "en" ? "Nights" : "Nopți";
+  const valNights = `${d.nights} ${d.nights === 1 ? (lang === "en" ? "night" : "noapte") : lang === "en" ? "nights" : "nopți"}`;
+  const lblTotal = lang === "en" ? "Total" : "Total";
 
   const bookingRows = [
     [
-      tx.reference || "Referință",
+      lblRef,
       `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
     ],
-    [tx.room || "Cameră", roomNameTranslated], // Aici folosim varianta tradusă
-    [tx.checkIn || "Check-in", fmtDate(d.checkIn)],
-    [tx.checkOut || "Check-out", fmtDate(d.checkOut)],
+    [lblRoom, roomNameTrans],
+    [lblCheckIn, fmtDate(d.checkIn)],
+    [lblCheckOut, fmtDate(d.checkOut)],
+    [lblNights, valNights],
     [
-      lang === "en" ? "Nights" : "Nopți",
-      `${d.nights} ${d.nights === 1 ? (lang === "en" ? "night" : "noapte") : lang === "en" ? "nights" : "nopți"}`,
-    ],
-    [
-      tx.amount || "Total",
+      lblTotal,
       `<strong style="font-size:16px;color:${B.textH};">${d.totalPrice} RON</strong>`,
     ],
   ];
@@ -702,6 +826,7 @@ ${title("🏦", tx.heading, tx.subheading)}
   ${tx.body}
 </p>
 ${bookingTableI18n}
+${buildExtrasHtml(d.extras, lang)}
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
   <div style="background:${B.green};padding:12px 20px;">
     <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
@@ -744,13 +869,13 @@ ${
 </div>`
     : ""
 }
-${btn(lang === "en" ? "Manage Your Reservation" : "Gestionați Rezervarea", `${B.site}/account`)}`;
+${btn(lang === "en" ? "Manage Your Booking" : "Gestionați Rezervarea", `${B.site}/account`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
     subject: tx.subject(d.bookingRef),
-    html: layout(body),
+    html: layout(body, "", lang),
   });
   console.log(
     `📧 [CLIENT] Transfer bancar (${lang}) → ${clientEmail} (${d.bookingRef})`,
@@ -821,6 +946,7 @@ async function sendBookingExpired(clientEmail, d, lang = "ro") {
       .replace("Pădure", "Forest View")
       .replace("Cadă", "Bathtub")
       .replace("Belvedere", "Panoramic View")
+      .replace("Confort", "Comfort")
       .replace("Balcon", "Balcony");
   }
 
@@ -893,7 +1019,7 @@ ${btn(tx.newBooking, `${B.site}/booking`)}
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
     subject: tx.subject(d.bookingRef),
-    html: layout(body, l.preview),
+    html: layout(body, l.preview, safeLang),
   });
   console.log(
     `📧 [CLIENT] Expirare rezervare (${safeLang}) → ${clientEmail} (${d.bookingRef})`,
@@ -1123,20 +1249,49 @@ ${!autoApproved ? btn("Aprobare Recenzie", `${B.site}/admin/reviews`) : ""}`;
 }
 
 // 11. Bun venit → CLIENT
-async function sendWelcomeEmail(userEmail, name) {
-  const items = [
-    "Efectuarea rapidă a rezervărilor, fără necesitatea reintroducerii datelor personale",
-    "Gestionarea centralizată a tuturor rezervărilor dumneavoastră",
-    "Recepționarea automată a confirmărilor și a detaliilor privind sejurul",
-    "Posibilitatea de a oferi feedback rapid la finalul fiecărei șederi",
-  ];
+async function sendWelcomeEmail(userEmail, name, lang = "ro") {
+  const safeLang = String(lang || "ro")
+    .trim()
+    .toLowerCase();
+
+  const i18n = {
+    en: {
+      heading: `Welcome, ${name}!`,
+      subheading: "Your account has been successfully created",
+      body: `It is a great pleasure to welcome you! From now on, planning your stays at <strong>${B.name}</strong> becomes a simplified and more enjoyable experience:`,
+      items: [
+        "Fast booking process without the need to re-enter your personal details",
+        "Centralized management of all your reservations",
+        "Automatic receipt of confirmations and stay details",
+        "The ability to quickly provide feedback at the end of each stay",
+      ],
+      btn: "Explore Available Rooms",
+      preview: `Welcome, ${name}! Your account has been created and is ready to use.`,
+    },
+    ro: {
+      heading: `Bun venit, ${name}!`,
+      subheading: "Contul dumneavoastră a fost creat cu succes",
+      body: `Este o deosebită plăcere să vă urăm bun venit! Începând de acum, planificarea sejururilor dumneavoastră la <strong>${B.name}</strong> devine o experiență simplificată și mai plăcută:`,
+      items: [
+        "Efectuarea rapidă a rezervărilor, fără necesitatea reintroducerii datelor personale",
+        "Gestionarea centralizată a tuturor rezervărilor dumneavoastră",
+        "Recepționarea automată a confirmărilor și a detaliilor privind sejurul",
+        "Posibilitatea de a oferi feedback rapid la finalul fiecărei șederi",
+      ],
+      btn: "Explorare Camere Disponibile",
+      preview: `Bun venit, ${name}! Contul dumneavoastră a fost creat și este gata de utilizare.`,
+    },
+  };
+
+  const l = i18n[safeLang] || i18n.ro;
+
   const body = `
-${title("🌿", `Bun venit, ${name}!`, "Contul dumneavoastră a fost creat cu succes")}
+${title("🌿", l.heading, l.subheading)}
 <p style="margin:0 0 28px;font-size:15px;color:${B.textB};line-height:1.85;text-align:center;">
-  Este o deosebită plăcere să vă urăm bun venit! Începând de acum, planificarea sejururilor dumneavoastră la <strong>${B.name}</strong> devine o experiență simplificată și mai plăcută:
+  ${l.body}
 </p>
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:0 0 32px;">
-  ${items
+  ${l.items
     .map(
       (text, i) => `
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
@@ -1154,76 +1309,115 @@ ${title("🌿", `Bun venit, ${name}!`, "Contul dumneavoastră a fost creat cu su
     )
     .join("")}
 </div>
-${btn("Explorare Camere Disponibile", `${B.site}/rooms`)}`;
+${btn(l.btn, `${B.site}/rooms`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: userEmail,
-    subject: `Bun venit la ${B.name}! 🌿`,
-    html: layout(
-      body,
-      `Bun venit, ${name}! Contul dumneavoastră a fost creat și este gata de utilizare.`,
-    ),
+    subject:
+      safeLang === "en"
+        ? `Welcome to ${B.name}! 🌿`
+        : `Bun venit la ${B.name}! 🌿`,
+    html: layout(body, l.preview, safeLang),
   });
-  console.log(`📧 [CLIENT] Welcome → ${userEmail}`);
+  console.log(`📧 [CLIENT] Welcome (${safeLang}) → ${userEmail}`);
 }
 
 // 12. Schimbare parolă → CLIENT
-async function sendPasswordChangedEmail(userEmail, name) {
+async function sendPasswordChangedEmail(userEmail, name, lang = "ro") {
+  const safeLang = String(lang || "ro")
+    .trim()
+    .toLowerCase();
+
+  const i18n = {
+    en: {
+      heading: "Password Updated",
+      subheading: "Security notification",
+      body: "Please be advised that the password associated with your account has been successfully updated.",
+      warning: `⚠️ If you did not authorize this change, it is imperative that you contact us urgently at <strong>${B.phone}</strong> or by email at <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>.`,
+      btn: "Access My Account",
+      preview: "The password for your account has been successfully updated.",
+    },
+    ro: {
+      heading: "Parolă Actualizată",
+      subheading: "Notificare de securitate",
+      body: "Vă aducem la cunoștință faptul că parola asociată contului dumneavoastră a fost actualizată cu succes.",
+      warning: `⚠️ Dacă nu dumneavoastră ați autorizat această modificare, vă rugăm imperativ să ne contactați de urgență la <strong>${B.phone}</strong> sau prin e-mail la <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>.`,
+      btn: "Accesare Contul Meu",
+      preview: "Parola contului dumneavoastră a fost actualizată cu succes.",
+    },
+  };
+
+  const l = i18n[safeLang] || i18n.ro;
+
   const body = `
-${title("🔐", "Parolă Actualizată", "Notificare de securitate")}
-${hi(name)}
+${title("🔐", l.heading, l.subheading)}
+${hi(name, safeLang)}
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă aducem la cunoștință faptul că parola asociată contului dumneavoastră a fost actualizată cu succes.
+  ${l.body}
 </p>
-${banner(
-  `⚠️ Dacă nu dumneavoastră ați autorizat această modificare, vă rugăm imperativ să ne contactați de urgență la
-  <strong>${B.phone}</strong> sau prin e-mail la
-  <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>.`,
-  B.orangeLight,
-  B.orangeBorder,
-  B.orange,
-)}
-${btn("Accesare Contul Meu", `${B.site}/account`)}`;
+${banner(l.warning, B.orangeLight, B.orangeBorder, B.orange)}
+${btn(l.btn, `${B.site}/account`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: userEmail,
-    subject: `🔐 Parola a fost actualizată · ${B.name}`,
-    html: layout(
-      body,
-      "Parola contului dumneavoastră a fost actualizată cu succes.",
-    ),
+    subject:
+      safeLang === "en"
+        ? `🔐 Password has been updated · ${B.name}`
+        : `🔐 Parola a fost actualizată · ${B.name}`,
+    html: layout(body, l.preview, safeLang),
   });
-  console.log(`📧 [CLIENT] Schimbare parolă → ${userEmail}`);
+  console.log(`📧 [CLIENT] Schimbare parolă (${safeLang}) → ${userEmail}`);
 }
 
 // 13. Ștergere cont → CLIENT
-async function sendAccountDeletedEmail(userEmail, name) {
+async function sendAccountDeletedEmail(userEmail, name, lang = "ro") {
+  const safeLang = String(lang || "ro")
+    .trim()
+    .toLowerCase();
+
+  const i18n = {
+    en: {
+      heading: "Account Deletion Confirmation",
+      subheading: "Procedure successfully completed",
+      body: "We formally confirm the completion of the closure and deletion procedure for your account. All personal data has been permanently removed from our systems, in strict compliance with our privacy policies.",
+      banner: `Thank you for your trust and for your visits! Should you wish to return as a guest to <strong>${B.name}</strong>, you will always be welcome to re-register.`,
+      btn: "Visit Website",
+      preview: "Your account has been successfully deleted from our system.",
+    },
+    ro: {
+      heading: "Confirmare Ștergere Cont",
+      subheading: "Procedură finalizată cu succes",
+      body: "Vă confirmăm oficial finalizarea procedurii de închidere și ștergere a contului dumneavoastră. Toate datele cu caracter personal au fost eliminate definitiv din sistemele noastre, în deplină conformitate cu politicile de confidențialitate.",
+      banner: `Vă mulțumim pentru încrederea acordată și pentru vizitele dumneavoastră! În cazul în care doriți să reveniți ca oaspete la <strong>${B.name}</strong>, veți fi oricând binevenit să vă reînregistrați.`,
+      btn: "Vizitare Website",
+      preview:
+        "Contul dumneavoastră a fost șters cu succes din sistemul nostru.",
+    },
+  };
+
+  const l = i18n[safeLang] || i18n.ro;
+
   const body = `
-${title("👋", "Confirmare Ștergere Cont", "Procedură finalizată cu succes")}
-${hi(name)}
+${title("👋", l.heading, l.subheading)}
+${hi(name, safeLang)}
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă confirmăm oficial finalizarea procedurii de închidere și ștergere a contului dumneavoastră. Toate datele cu caracter personal au fost eliminate definitiv din sistemele noastre, în deplină conformitate cu politicile de confidențialitate.
+  ${l.body}
 </p>
-${banner(
-  `Vă mulțumim pentru încrederea acordată și pentru vizitele dumneavoastră! În cazul în care doriți să reveniți ca oaspete la <strong>${B.name}</strong>, veți fi oricând binevenit să vă reînregistrați.`,
-  B.greenLight,
-  B.greenBorder,
-  B.green,
-)}
-${btn("Vizitare Website", B.site)}`;
+${banner(l.banner, B.greenLight, B.greenBorder, B.green)}
+${btn(l.btn, B.site)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: userEmail,
-    subject: `Contul dumneavoastră ${B.name} a fost șters`,
-    html: layout(
-      body,
-      "Contul dumneavoastră a fost șters cu succes din sistemul nostru.",
-    ),
+    subject:
+      safeLang === "en"
+        ? `Your ${B.name} account has been deleted`
+        : `Contul dumneavoastră ${B.name} a fost șters`,
+    html: layout(body, l.preview, safeLang),
   });
-  console.log(`📧 [CLIENT] Ștergere cont → ${userEmail}`);
+  console.log(`📧 [CLIENT] Ștergere cont (${safeLang}) → ${userEmail}`);
 }
 
 // 14. Mesaj contact → ADMIN
@@ -1278,31 +1472,53 @@ ${btn(`Răspunde către ${c.name}`, `mailto:${c.email}`)}
 }
 
 // 15. Confirmare contact → CLIENT
-async function sendClientContactConfirmation(clientEmail, name) {
+async function sendClientContactConfirmation(clientEmail, name, lang = "ro") {
+  const safeLang = String(lang || "ro")
+    .trim()
+    .toLowerCase();
+
+  const i18n = {
+    en: {
+      heading: "Message Received",
+      subheading: "Thank you for contacting us!",
+      body: "We hereby confirm the receipt of your message. Our team will review your request and provide a detailed response as soon as possible (typically within a maximum of <strong>24 hours</strong>).",
+      banner: `For situations requiring immediate assistance, we remain at your disposal directly at our phone number <strong>${B.phone}</strong>.`,
+      btn: "Explore Available Rooms",
+      preview:
+        "We have received your message and will reply as soon as possible.",
+    },
+    ro: {
+      heading: "Mesaj Recepționat",
+      subheading: "Vă mulțumim pentru contact!",
+      body: "Vă confirmăm recepționarea mesajului dumneavoastră. Echipa noastră va analiza solicitarea și va formula un răspuns detaliat în cel mai scurt timp posibil (în mod standard, în decurs de maximum <strong>24 de ore</strong>).",
+      banner: `Pentru situații care necesită asistență imediată, vă stăm la dispoziție direct la numărul de telefon <strong>${B.phone}</strong>.`,
+      btn: "Explorare Camere Disponibile",
+      preview:
+        "Am recepționat mesajul dumneavoastră și vă vom răspunde în cel mai scurt timp posibil.",
+    },
+  };
+
+  const l = i18n[safeLang] || i18n.ro;
+
   const body = `
-${title("✉️", "Mesaj Recepționat", "Vă mulțumim pentru contact!")}
-${hi(name)}
+${title("✉️", l.heading, l.subheading)}
+${hi(name, safeLang)}
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă confirmăm prin prezenta recepționarea mesajului dumneavoastră. Echipa noastră va analiza solicitarea și va formula un răspuns detaliat în cel mai scurt timp posibil (în mod standard, în decurs de maximum <strong>24 de ore</strong>).
+  ${l.body}
 </p>
-${banner(
-  `Pentru situații care necesită asistență imediată, vă stăm la dispoziție direct la numărul de telefon <strong>${B.phone}</strong>.`,
-  B.greenLight,
-  B.greenBorder,
-  B.green,
-)}
-${btn("Explorare Camere Disponibile", `${B.site}/rooms`)}`;
+${banner(l.banner, B.greenLight, B.greenBorder, B.green)}
+${btn(l.btn, `${B.site}/rooms`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `Mesajul dumneavoastră a fost înregistrat · ${B.name}`,
-    html: layout(
-      body,
-      "Am recepționat mesajul dumneavoastră și vă vom răspunde în cel mai scurt timp posibil.",
-    ),
+    subject:
+      safeLang === "en"
+        ? `Your message has been registered · ${B.name}`
+        : `Mesajul dumneavoastră a fost înregistrat · ${B.name}`,
+    html: layout(body, l.preview, safeLang),
   });
-  console.log(`📧 [CLIENT] Confirmare contact → ${clientEmail}`);
+  console.log(`📧 [CLIENT] Confirmare contact (${safeLang}) → ${clientEmail}`);
 }
 
 // ─── Verificare conexiune SMTP ────────────────────────────────────────────────

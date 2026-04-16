@@ -15,7 +15,7 @@ const directions = [
 ];
 
 const Contact = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -39,6 +39,7 @@ const Contact = () => {
         phone: form.phone || undefined,
         subject: form.subject || undefined,
         message: form.message,
+        lang: i18n.language,
       });
 
       toast({

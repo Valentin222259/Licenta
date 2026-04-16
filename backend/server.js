@@ -132,6 +132,10 @@ if (process.env.NODE_ENV !== "production") {
   app.use("/api/test-jobs", require("./routes/testJobs"));
 }
 
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api/test-emails", require("./routes/testEmails"));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  GESTIONARE ERORI
 // ─────────────────────────────────────────────────────────────────────────────

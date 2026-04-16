@@ -522,3 +522,28 @@
  *       200:
  *         description: OK
  */
+
+/**
+ * @swagger
+ * /api/test-emails/test-all-emails:
+ *   get:
+ *     summary: "🧪 Run all email scenarios (RO + EN)"
+ *     tags: [Test Jobs]
+ *     description: Sends all 32 email scenarios to the test address. No DB changes. Returns a pass/fail summary.
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             example:
+ *               summary:
+ *                 total: 32
+ *                 passed: 32
+ *                 failed: 0
+ *                 duration: "14.2s"
+ *               results:
+ *                 - label: "A1-RO | Confirmare Stripe integral"
+ *                   status: "✅ OK"
+ *                 - label: "B10-EN | Welcome (account created)"
+ *                   status: "✅ OK"
+ */

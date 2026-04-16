@@ -27,7 +27,8 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 // ─── POST /api/contact ────────────────────────────────────────────────────────
 router.post("/", async (req, res) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    // 1. AM ADĂUGAT 'lang' AICI:
+    const { name, email, phone, subject, message, lang } = req.body;
 
     // ── Validare câmpuri obligatorii ──────────────────────────────────────
     if (!name?.trim() || !email?.trim() || !message?.trim()) {
@@ -54,12 +55,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ── Trimitere email admin (non-blocking) ──────────────────────────────
-    /**
-     * Trimitem emailul FĂRĂ await în răspunsul HTTP.
-     * Dacă SMTP-ul e lent, clientul nu așteaptă — primește succes imediat.
-     * Erorile sunt prinse în .catch() și logate, fără să afecteze UX-ul.
-     */
     const contactData = {
       name: name.trim(),
       email: email.trim(),
@@ -71,7 +66,8 @@ router.post("/", async (req, res) => {
     // Trimitem simultan: notificare admin + confirmare client
     Promise.allSettled([
       sendAdminContactMessage(ADMIN_EMAIL, contactData),
-      sendClientContactConfirmation(email.trim(), name.trim()),
+      // 2. AM ADĂUGAT 'lang' LA FINALUL ACESTEI FUNCȚII:
+      sendClientContactConfirmation(email.trim(), name.trim(), lang),
     ]).then((results) => {
       results.forEach((r, i) => {
         if (r.status === "rejected") {

@@ -74,7 +74,8 @@ router.post("/login", async (req, res) => {
 // ─── POST /api/auth/register ─────────────────────────────────────────────────
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    // 1. AM ADĂUGAT 'lang' AICI:
+    const { name, email, phone, password, lang } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -112,8 +113,8 @@ router.post("/register", async (req, res) => {
     const user = rows[0];
 
     // ── Email bun venit (non-blocking) ────────────────────────────────────
-    // Trimitem DUPĂ ce răspunsul e pregătit — contul e creat indiferent de email
-    sendWelcomeEmail(user.email, user.name).catch((err) =>
+    // 2. AM ADĂUGAT 'lang' AICI:
+    sendWelcomeEmail(user.email, user.name, lang).catch((err) =>
       console.error(
         "⚠️  Welcome email eșuat (contul e creat OK):",
         err.message,
@@ -175,7 +176,8 @@ router.post("/change-password", async (req, res) => {
 
   try {
     const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
-    const { current_password, new_password } = req.body;
+    // 1. AM ADĂUGAT 'lang' AICI:
+    const { current_password, new_password, lang } = req.body;
 
     if (!current_password || !new_password) {
       return res
@@ -229,9 +231,11 @@ router.post("/change-password", async (req, res) => {
     );
     if (userResult.rows.length > 0) {
       const { sendPasswordChangedEmail } = require("../services/email");
+      // 2. AM ADĂUGAT 'lang' AICI:
       sendPasswordChangedEmail(
         userResult.rows[0].email,
         userResult.rows[0].name,
+        lang,
       ).catch((err) =>
         console.error("⚠️ Email schimbare parolă eșuat:", err.message),
       );
@@ -253,15 +257,14 @@ router.delete("/account", async (req, res) => {
 
   try {
     const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
-    const { password } = req.body;
+    // 1. AM ADĂUGAT 'lang' AICI:
+    const { password, lang } = req.body;
 
     if (!password) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Parola este obligatorie pentru ștergerea contului",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Parola este obligatorie pentru ștergerea contului",
+      });
     }
 
     // Verificăm parola înainte de ștergere
@@ -294,7 +297,8 @@ router.delete("/account", async (req, res) => {
 
     // Email confirmare ștergere cont
     const { sendAccountDeletedEmail } = require("../services/email");
-    sendAccountDeletedEmail(decoded.email, decoded.name).catch((err) =>
+    // 2. AM ADĂUGAT 'lang' AICI:
+    sendAccountDeletedEmail(decoded.email, decoded.name, lang).catch((err) =>
       console.error("⚠️ Email ștergere cont eșuat:", err.message),
     );
 

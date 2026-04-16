@@ -48,7 +48,7 @@ const GoogleIcon = () => (
 );
 
 const Login = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -149,6 +149,7 @@ const Login = () => {
         email: registerForm.email,
         phone: registerForm.phone,
         password: registerForm.password,
+        lang: i18n.language,
       });
       sessionStorage.setItem("token", res.token);
       sessionStorage.setItem("userId", res.user.id);

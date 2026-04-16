@@ -23,7 +23,7 @@ import { apiGet, apiPatch } from "@/lib/api";
 type TabType = "bookings" | "profile" | "security";
 
 const Account = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabType>("bookings");
   const [editMode, setEditMode] = useState(false);
@@ -199,7 +199,10 @@ const Account = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ password: deletePassword }),
+          body: JSON.stringify({
+            password: deletePassword,
+            lang: i18n.language,
+          }),
         },
       );
       const data = await res.json();
@@ -241,6 +244,7 @@ const Account = () => {
           body: JSON.stringify({
             current_password: pwForm.current,
             new_password: pwForm.next,
+            lang: i18n.language,
           }),
         },
       );

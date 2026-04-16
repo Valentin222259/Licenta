@@ -15,11 +15,15 @@ function fmtISO(val) {
 
 async function generateBookingRef() {
   const year = new Date().getFullYear();
+  // Folosim MAX în loc de COUNT pentru a evita coliziunile
   const result = await query(
-    `SELECT COUNT(*) as count FROM bookings WHERE EXTRACT(YEAR FROM created_at) = $1`,
-    [year],
+    `SELECT MAX(CAST(SPLIT_PART(booking_ref, '-', 3) AS INTEGER)) as max_seq
+     FROM bookings
+     WHERE booking_ref LIKE $1`,
+    [`BLV-${year}-%`],
   );
-  const seq = (parseInt(result.rows[0].count) + 1).toString().padStart(3, "0");
+  const maxSeq = result.rows[0]?.max_seq || 0;
+  const seq = (maxSeq + 1).toString().padStart(3, "0");
   return `BLV-${year}-${seq}`;
 }
 
@@ -217,42 +221,34 @@ router.post("/", async (req, res) => {
     today.setHours(0, 0, 0, 0);
 
     if (checkInDate < today)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Data de check-in nu poate fi în trecut",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Data de check-in nu poate fi în trecut",
+      });
     if (checkOutDate <= checkInDate)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Data de check-out trebuie să fie după check-in",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Data de check-out trebuie să fie după check-in",
+      });
 
     const roomResult = await query(
       `SELECT id, price, capacity FROM rooms WHERE id = $1 AND status = 'active'`,
       [room_id],
     );
     if (roomResult.rows.length === 0)
-      return res
-        .status(404)
-        .json({
-          success: false,
-          error: "Camera nu există sau nu este disponibilă",
-        });
+      return res.status(404).json({
+        success: false,
+        error: "Camera nu există sau nu este disponibilă",
+      });
 
     const room = roomResult.rows[0];
     const extraBeds = extras?.extra_beds || 0;
 
     if (extraBeds < 0 || extraBeds > 2)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Numărul de paturi suplimentare poate fi 0, 1 sau 2",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Numărul de paturi suplimentare poate fi 0, 1 sau 2",
+      });
 
     const totalGuests = 2 + extraBeds;
     if (guests > totalGuests)
@@ -263,12 +259,10 @@ router.post("/", async (req, res) => {
 
     const available = await isRoomAvailable(room_id, check_in, check_out);
     if (!available)
-      return res
-        .status(409)
-        .json({
-          success: false,
-          error: "Camera nu este disponibilă în perioada selectată",
-        });
+      return res.status(409).json({
+        success: false,
+        error: "Camera nu este disponibilă în perioada selectată",
+      });
 
     const nights = Math.ceil(
       (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24),
@@ -452,12 +446,10 @@ router.put("/:id/status", async (req, res) => {
 
     const validStatuses = ["pending", "confirmed", "cancelled", "finished"];
     if (!validStatuses.includes(status))
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: `Status invalid: ${validStatuses.join(", ")}`,
-        });
+      return res.status(400).json({
+        success: false,
+        error: `Status invalid: ${validStatuses.join(", ")}`,
+      });
 
     const current = await query(
       `SELECT id, status, booking_ref FROM bookings WHERE id = $1`,
@@ -477,12 +469,10 @@ router.put("/:id/status", async (req, res) => {
     };
 
     if (!allowedTransitions[currentStatus]?.includes(status))
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: `Nu se poate trece din "${currentStatus}" în "${status}"`,
-        });
+      return res.status(400).json({
+        success: false,
+        error: `Nu se poate trece din "${currentStatus}" în "${status}"`,
+      });
 
     const { rows } = await query(
       `UPDATE bookings SET status = $1, updated_at = NOW()
@@ -522,6 +512,7 @@ router.put("/:id/status", async (req, res) => {
           companyName: b.company_name,
           companyCui: b.company_cui,
           companyRegNo: b.company_reg_no,
+          extras: b.extras_json,
           companyAddress: b.company_address,
         };
 
@@ -715,12 +706,10 @@ router.delete("/:id", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Rezervarea nu există" });
     if (!["cancelled", "finished"].includes(check.rows[0].status))
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Poți șterge doar rezervările anulate sau finalizate",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Poți șterge doar rezervările anulate sau finalizate",
+      });
 
     await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);
     await query(`DELETE FROM bookings WHERE id = $1`, [id]);
