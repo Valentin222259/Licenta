@@ -1,29 +1,25 @@
 /**
- * routes/swaggerDocs.js — Documentația Swagger pentru toate rutele
- *
- * Acest fișier conține DOAR comentarii JSDoc cu @swagger.
- * Nu exportă nimic, nu are logică — e citit automat de swagger-jsdoc.
- *
- * Nu trebuie montat în server.js — swagger.js îl găsește prin glob apis: ["./routes/*.js"]
+ * routes/swaggerDocs.js
+ * Swagger JSDoc definitions — read automatically via apis: ["./routes/*.js"]
+ * No exports, no logic.
  */
 
-// ═══════════════════════════════════════════════════════════════════
-// REZERVĂRI
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// BOOKINGS
+// ═══════════════════════════════════════════════════════
 
 /**
  * @swagger
  * /api/bookings:
  *   get:
- *     summary: Listă toate rezervările
- *     tags: [Rezervări]
+ *     summary: List all bookings
+ *     tags: [Bookings]
  *     parameters:
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
  *           enum: [pending, confirmed, cancelled, finished]
- *         description: Filtrează după status
  *       - in: query
  *         name: limit
  *         schema:
@@ -36,30 +32,11 @@
  *           default: 0
  *     responses:
  *       200:
- *         description: Listă rezervări
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Booking'
- *                 total:
- *                   type: integer
- *                   example: 12
- */
-
-/**
- * @swagger
- * /api/bookings:
+ *         description: OK
+ *
  *   post:
- *     summary: Creează o rezervare nouă
- *     tags: [Rezervări]
+ *     summary: Create a new booking
+ *     tags: [Bookings]
  *     requestBody:
  *       required: true
  *       content:
@@ -70,13 +47,13 @@
  *             properties:
  *               room_id:
  *                 type: string
- *                 example: "uuid-camera"
+ *                 example: "uuid-room"
  *               guest_name:
  *                 type: string
- *                 example: "Ion Popescu"
+ *                 example: "John Doe"
  *               guest_email:
  *                 type: string
- *                 example: "ion@example.com"
+ *                 example: "john@example.com"
  *               guest_phone:
  *                 type: string
  *                 example: "+40758077433"
@@ -91,6 +68,10 @@
  *               guests:
  *                 type: integer
  *                 example: 2
+ *               preferred_language:
+ *                 type: string
+ *                 enum: [ro, en]
+ *                 example: "en"
  *               payment_method:
  *                 type: string
  *                 enum: [card, bank_transfer, reception]
@@ -104,7 +85,7 @@
  *                 example: false
  *               company_name:
  *                 type: string
- *                 example: "SC Exemplu SRL"
+ *                 example: "Example SRL"
  *               company_cui:
  *                 type: string
  *                 example: "RO12345678"
@@ -113,48 +94,39 @@
  *                 example: "J40/1234/2020"
  *               company_address:
  *                 type: string
- *                 example: "Str. Exemplu nr. 1, București"
+ *                 example: "Str. Exemplu nr. 1, Bucharest"
  *     responses:
  *       201:
- *         description: Rezervare creată cu succes
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Success'
+ *         description: Booking created
  *       400:
- *         description: Date invalide
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Invalid data
  *       409:
- *         description: Camera nu este disponibilă în perioada selectată
+ *         description: Room not available
  */
 
 /**
  * @swagger
  * /api/bookings/availability:
  *   get:
- *     summary: Disponibilitate camere (rezervările active)
- *     tags: [Rezervări]
+ *     summary: Get active bookings for calendar
+ *     tags: [Bookings]
  *     responses:
  *       200:
- *         description: Lista rezervărilor active pentru calendar
+ *         description: OK
  */
 
 /**
  * @swagger
  * /api/bookings/{id}/status:
  *   put:
- *     summary: Schimbă statusul unei rezervări (admin)
- *     tags: [Rezervări]
+ *     summary: Update booking status (admin)
+ *     tags: [Bookings]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID-ul rezervării
  *     requestBody:
  *       required: true
  *       content:
@@ -169,30 +141,27 @@
  *                 example: "confirmed"
  *               reason:
  *                 type: string
- *                 example: "Anulat de către client"
- *                 description: Motivul anulării (opțional, pentru cancelled)
+ *                 example: "Cancelled by guest"
  *     responses:
  *       200:
- *         description: Status actualizat cu succes
+ *         description: Status updated
  *       400:
- *         description: Tranziție de status invalidă
+ *         description: Invalid transition
  *       404:
- *         description: Rezervarea nu există
+ *         description: Booking not found
  */
 
-// ═══════════════════════════════════════════════════════════════════
-// PLĂȚI
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// PAYMENTS
+// ═══════════════════════════════════════════════════════
 
 /**
  * @swagger
  * /api/payments/create-checkout:
  *   post:
- *     summary: Creează sesiune Stripe Checkout
- *     tags: [Plăți]
- *     description: |
- *       Generează un link de plată Stripe pentru o rezervare existentă.
- *       Suma este preluată din DB (nu din request) — securitate împotriva manipulării.
+ *     summary: Create a Stripe Checkout session
+ *     tags: [Payments]
+ *     description: Amount is read from DB — not from the request body.
  *     requestBody:
  *       required: true
  *       content:
@@ -203,33 +172,26 @@
  *             properties:
  *               booking_id:
  *                 type: string
- *                 example: "uuid-rezervare"
+ *                 example: "uuid-booking"
  *     responses:
  *       200:
- *         description: Link Stripe generat
+ *         description: Checkout URL generated
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 checkout_url:
- *                   type: string
- *                   example: "https://checkout.stripe.com/pay/cs_..."
- *                 session_id:
- *                   type: string
+ *             example:
+ *               success: true
+ *               checkout_url: "https://checkout.stripe.com/pay/cs_..."
+ *               session_id: "cs_test_..."
  *       503:
- *         description: Stripe nu este configurat (lipsește STRIPE_SECRET_KEY)
+ *         description: Stripe not configured
  */
 
 /**
  * @swagger
  * /api/payments/verify/{sessionId}:
  *   get:
- *     summary: Verifică statusul unei sesiuni Stripe
- *     tags: [Plăți]
+ *     summary: Verify a Stripe session status
+ *     tags: [Payments]
  *     parameters:
  *       - in: path
  *         name: sessionId
@@ -239,159 +201,26 @@
  *         example: "cs_test_..."
  *     responses:
  *       200:
- *         description: Detalii sesiune Stripe
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 paid:
- *                   type: boolean
- *                 payment_split:
- *                   type: string
- *                 charge_amount:
- *                   type: integer
- *                 remaining_amount:
- *                   type: integer
- */
-
-// ═══════════════════════════════════════════════════════════════════
-// TEST JOBS
-// ═══════════════════════════════════════════════════════════════════
-
-/**
- * @swagger
- * /api/test-jobs:
- *   get:
- *     summary: Lista endpoint-urilor de test disponibile
- *     tags: [Test Jobs]
- *     responses:
- *       200:
- *         description: Lista tuturor endpoint-urilor de test
- */
-
-/**
- * @swagger
- * /api/test-jobs/preview-reminders:
- *   get:
- *     summary: "Preview: ce rezervări ar primi reminder mâine"
- *     tags: [Test Jobs]
- *     description: |
- *       **Nu trimite niciun email.**
- *       Returnează lista rezervărilor cu check-in mâine care ar fi notificate de Job 1.
- *       Util pentru a verifica că jobul are date de procesat înainte de a-l declanșa.
- *     responses:
- *       200:
- *         description: Lista rezervărilor vizate de Job 1
+ *         description: Session details
  *         content:
  *           application/json:
  *             example:
- *               job: "Job 1 — Reminder check-in"
- *               targetDate: "2026-05-11"
- *               count: 2
- *               wouldSendTo:
- *                 - booking_ref: "BLV-2026-019"
- *                   guest_name: "Ion Popescu"
- *                   guest_email: "ion@example.com"
- *                   room_name: "Camera 3 — Balcon & Pădure"
+ *               paid: true
+ *               payment_split: "full"
+ *               charge_amount: 300
+ *               remaining_amount: 0
  */
 
-/**
- * @swagger
- * /api/test-jobs/trigger-reminders:
- *   get:
- *     summary: "▶️ Declanșează Job 1 — Reminder check-in"
- *     tags: [Test Jobs]
- *     description: |
- *       **Trimite efectiv emailuri** de reminder pentru rezervările cu check-in mâine.
- *       Echivalent cu ce face Job 1 automat zilnic la 10:00.
- *     responses:
- *       200:
- *         description: Rezultatul execuției
- *         content:
- *           application/json:
- *             example:
- *               job: "Job 1 — Reminder check-in"
- *               status: "done"
- *               emailsSent: 2
- *               emailsFailed: 0
- */
-
-/**
- * @swagger
- * /api/test-jobs/trigger-reviews:
- *   get:
- *     summary: "▶️ Declanșează Job 2 — Cerere recenzie"
- *     tags: [Test Jobs]
- *     description: |
- *       **Trimite efectiv emailuri** de cerere recenzie pentru rezervările
- *       finalizate cu check-out ieri. Echivalent cu Job 2 (zilnic 12:00).
- *     responses:
- *       200:
- *         description: Rezultatul execuției
- */
-
-/**
- * @swagger
- * /api/test-jobs/trigger-finalize:
- *   get:
- *     summary: "▶️ Declanșează Job 3 — Finalizare rezervări"
- *     tags: [Test Jobs]
- *     description: |
- *       **Marchează ca 'finished'** rezervările confirmate cu check-out trecut.
- *       Echivalent cu Job 3 (zilnic 01:00).
- *     responses:
- *       200:
- *         description: Rezervările finalizate
- */
-
-/**
- * @swagger
- * /api/test-jobs/preview-expire:
- *   get:
- *     summary: "Preview: ce rezervări ar expira azi"
- *     tags: [Test Jobs]
- *     description: |
- *       **Nu anulează nimic.**
- *       Arată rezervările bank_transfer pending mai vechi de 3 zile
- *       care ar fi anulate de Job 4.
- *     responses:
- *       200:
- *         description: Lista rezervărilor vizate de Job 4
- */
-
-/**
- * @swagger
- * /api/test-jobs/trigger-expire:
- *   get:
- *     summary: "▶️ Declanșează Job 4 — Expirare rezervări bank_transfer"
- *     tags: [Test Jobs]
- *     description: |
- *       **Anulează efectiv** rezervările bank_transfer pending mai vechi de 3 zile
- *       și trimite emailuri clientului + alertă admin.
- *       Echivalent cu Job 4 (zilnic 09:00).
- *     responses:
- *       200:
- *         description: Rezultatul execuției
- *         content:
- *           application/json:
- *             example:
- *               job: "Job 4 — Expirare bank_transfer"
- *               status: "done"
- *               cancelled: 1
- *               failed: 0
- */
-
-// ═══════════════════════════════════════════════════════════════════
-// AUTENTIFICARE
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════
 
 /**
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Înregistrare cont nou
- *     tags: [Autentificare]
+ *     summary: Register a new account
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -402,26 +231,26 @@
  *             properties:
  *               name:
  *                 type: string
- *                 example: "Ion Popescu"
+ *                 example: "John Doe"
  *               email:
  *                 type: string
- *                 example: "ion@example.com"
+ *                 example: "john@example.com"
  *               password:
  *                 type: string
- *                 example: "parola123"
+ *                 example: "password123"
  *     responses:
  *       201:
- *         description: Cont creat cu succes
+ *         description: Account created
  *       409:
- *         description: Email deja înregistrat
+ *         description: Email already registered
  */
 
 /**
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Autentificare
- *     tags: [Autentificare]
+ *     summary: Login
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -432,104 +261,58 @@
  *             properties:
  *               email:
  *                 type: string
- *                 example: "ion@example.com"
+ *                 example: "john@example.com"
  *               password:
  *                 type: string
- *                 example: "parola123"
+ *                 example: "password123"
  *     responses:
  *       200:
- *         description: Autentificare reușită — returnează token JWT
+ *         description: JWT token returned
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                 user:
- *                   type: object
+ *             example:
+ *               token: "eyJ..."
+ *               user:
+ *                 id: "uuid"
+ *                 name: "John Doe"
+ *                 email: "john@example.com"
  *       401:
- *         description: Credențiale invalide
+ *         description: Invalid credentials
  */
 
-// ═══════════════════════════════════════════════════════════════════
-// CAMERE
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// ROOMS
+// ═══════════════════════════════════════════════════════
 
 /**
  * @swagger
  * /api/rooms:
  *   get:
- *     summary: Lista tuturor camerelor active
- *     tags: [Camere]
+ *     summary: List all active rooms
+ *     tags: [Rooms]
  *     responses:
  *       200:
- *         description: Lista camerelor
+ *         description: OK
  */
 
-/**
- * @swagger
- * /api/test-jobs/seed:
- *   get:
- *     summary: "🌱 Creează rezervări de test în DB"
- *     tags: [Test Jobs]
- *     description: |
- *       Inserează 2 rezervări fictive pentru testarea joburilor:
- *       - **BLV-TEST-001** — confirmed, check-out ieri → testează Job 3 și Job 2
- *       - **BLV-TEST-002** — pending, creat acum 4 zile → testează Job 4
- *
- *       **Rulează PRIMUL** înainte de orice trigger.
- *     responses:
- *       200:
- *         description: Rezervări create cu succes
- *         content:
- *           application/json:
- *             example:
- *               status: "done"
- *               message: "Rezervări de test create cu succes."
- *               nextSteps:
- *                 - "1. /api/test-jobs/trigger-finalize"
- *                 - "2. /api/test-jobs/trigger-reviews"
- *                 - "3. /api/test-jobs/trigger-expire"
- *                 - "4. /api/test-jobs/cleanup"
- */
-
-/**
- * @swagger
- * /api/test-jobs/cleanup:
- *   get:
- *     summary: "🗑️ Șterge rezervările de test din DB"
- *     tags: [Test Jobs]
- *     description: |
- *       Șterge BLV-TEST-001 și BLV-TEST-002 din baza de date.
- *       **Rulează ULTIMUL** după ce ai terminat testele.
- *       Datele reale ale pensiunii nu sunt afectate.
- *     responses:
- *       200:
- *         description: Rezervări de test șterse
- *         content:
- *           application/json:
- *             example:
- *               status: "done"
- *               message: "2 rezervare(i) de test șterse."
- */
-
-// ═══════════════════════════════════════════════════════════════════
-// RECENZII
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// REVIEWS
+// ═══════════════════════════════════════════════════════
 
 /**
  * @swagger
  * /api/reviews:
  *   get:
- *     summary: Lista recenziilor aprobate
- *     tags: [Recenzii]
+ *     summary: List approved reviews
+ *     tags: [Reviews]
  *     responses:
  *       200:
- *         description: Lista recenziilor
+ *         description: OK
+ *
  *   post:
- *     summary: Adaugă o recenzie (necesită booking_id valid și finalizat)
- *     tags: [Recenzii]
+ *     summary: Submit a review
+ *     tags: [Reviews]
+ *     description: Requires a valid finished booking.
  *     requestBody:
  *       required: true
  *       content:
@@ -550,7 +333,186 @@
  *                 type: string
  *     responses:
  *       201:
- *         description: Recenzie adăugată (în așteptare aprobare)
+ *         description: Review submitted (pending approval)
  *       400:
- *         description: Recenzie deja existentă sau sejur nefinalizat
+ *         description: Already reviewed or stay not finished
+ */
+
+// ═══════════════════════════════════════════════════════
+// TEST JOBS
+// ═══════════════════════════════════════════════════════
+
+/**
+ * @swagger
+ * /api/test-jobs/seed:
+ *   get:
+ *     summary: "🌱 [RO] Seed test bookings"
+ *     tags: [Test Jobs]
+ *     description: |
+ *       Creates 2 Romanian test bookings:
+ *       - **BLV-TEST-001** — confirmed, check-out yesterday → Job 3 + Job 2
+ *       - **BLV-TEST-002** — pending, created 4 days ago → Job 4
+ *     responses:
+ *       200:
+ *         description: Test bookings created
+ *         content:
+ *           application/json:
+ *             example:
+ *               status: "done"
+ *               nextSteps:
+ *                 - "1. /trigger-finalize"
+ *                 - "2. /trigger-reviews"
+ *                 - "3. /trigger-expire"
+ *                 - "4. /cleanup"
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/seed-en:
+ *   get:
+ *     summary: "🌱 [EN] Seed test bookings"
+ *     tags: [Test Jobs]
+ *     description: |
+ *       Creates 3 English test bookings (preferred_language = 'en'):
+ *       - **BLV-TEST-EN-001** — confirmed, check-out yesterday → Job 3 + Job 2
+ *       - **BLV-TEST-EN-002** — confirmed, check-in tomorrow → Job 1
+ *       - **BLV-TEST-EN-003** — pending, created 4 days ago → Job 4
+ *     responses:
+ *       200:
+ *         description: EN test bookings created
+ *         content:
+ *           application/json:
+ *             example:
+ *               status: "done"
+ *               nextSteps:
+ *                 - "1. /trigger-reminders → EN-002 gets reminder in English"
+ *                 - "2. /trigger-finalize  → EN-001 becomes finished"
+ *                 - "3. /trigger-reviews   → EN-001 gets review request in English"
+ *                 - "4. /trigger-expire    → EN-003 gets cancelled"
+ *                 - "5. /cleanup-en"
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/preview-reminders:
+ *   get:
+ *     summary: "👁 Preview — check-in reminders"
+ *     tags: [Test Jobs]
+ *     description: Shows bookings with check-in tomorrow. No emails sent.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/preview-expire:
+ *   get:
+ *     summary: "👁 Preview — expiring bookings"
+ *     tags: [Test Jobs]
+ *     description: Shows pending bank_transfer bookings older than 3 days. No changes made.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/trigger-reminders:
+ *   get:
+ *     summary: "▶️ Job 1 — Check-in reminder"
+ *     tags: [Test Jobs]
+ *     description: Sends check-in reminder emails to guests arriving tomorrow. Runs daily at 10:00.
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             example:
+ *               status: "done"
+ *               emailsSent: 1
+ *               emailsFailed: 0
+ *               bookings:
+ *                 - ref: "BLV-TEST-EN-002"
+ *                   lang: "en"
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/trigger-reviews:
+ *   get:
+ *     summary: "▶️ Job 2 — Review request"
+ *     tags: [Test Jobs]
+ *     description: Sends review request emails to guests who checked out yesterday. Runs daily at 12:00.
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             example:
+ *               status: "done"
+ *               emailsSent: 1
+ *               emailsFailed: 0
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/trigger-finalize:
+ *   get:
+ *     summary: "▶️ Job 3 — Finalize bookings"
+ *     tags: [Test Jobs]
+ *     description: Marks confirmed bookings with past check-out as 'finished'. Runs daily at 01:00.
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             example:
+ *               status: "done"
+ *               finalized: 1
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/trigger-expire:
+ *   get:
+ *     summary: "▶️ Job 4 — Expire bank_transfer bookings"
+ *     tags: [Test Jobs]
+ *     description: Cancels pending bank_transfer bookings older than 3 days and notifies guests. Runs daily at 09:00.
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             example:
+ *               status: "done"
+ *               cancelled: 1
+ *               failed: 0
+ *               bookings:
+ *                 - ref: "BLV-TEST-EN-003"
+ *                   lang: "en"
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/cleanup:
+ *   get:
+ *     summary: "🗑️ [RO] Delete test bookings"
+ *     tags: [Test Jobs]
+ *     description: Deletes BLV-TEST-001 and BLV-TEST-002 from the database.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+
+/**
+ * @swagger
+ * /api/test-jobs/cleanup-en:
+ *   get:
+ *     summary: "🗑️ [EN] Delete test bookings"
+ *     tags: [Test Jobs]
+ *     description: Deletes BLV-TEST-EN-001, BLV-TEST-EN-002 and BLV-TEST-EN-003 from the database.
+ *     responses:
+ *       200:
+ *         description: OK
  */

@@ -59,12 +59,10 @@ router.post("/create-checkout", async (req, res) => {
     const booking = result.rows[0];
 
     if (booking.status !== "pending")
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: `Rezervarea nu poate fi plătită (status: ${booking.status})`,
-        });
+      return res.status(400).json({
+        success: false,
+        error: `Rezervarea nu poate fi plătită (status: ${booking.status})`,
+      });
 
     const FRONTEND_URL =
       process.env.FRONTEND_URL?.split(",")[0] || "http://localhost:5173";
@@ -200,12 +198,16 @@ router.post(
                RETURNING booking_ref, guest_name, guest_email, guest_phone,
                          check_in, check_out, nights, total_price,
                          payment_split, stripe_amount, remaining_amount, room_id,
-                         needs_invoice, company_name, company_cui, company_reg_no, company_address`,
+                         needs_invoice, company_name, company_cui, company_reg_no, company_address,
+                         preferred_language`,
               [bookingId, paidAmount],
             );
 
             if (result.rows.length > 0) {
               const booking = result.rows[0];
+              console.log(
+                `🌐 preferred_language din DB: ${booking.preferred_language}`,
+              );
               const roomResult = await query(
                 `SELECT name FROM rooms WHERE id = $1`,
                 [booking.room_id],
@@ -246,7 +248,11 @@ router.post(
                 : `💳 Card online — Integral ${paidAmount} RON`;
 
               Promise.allSettled([
-                sendClientBookingConfirmation(booking.guest_email, bookingData),
+                sendClientBookingConfirmation(
+                  booking.guest_email,
+                  bookingData,
+                  booking.preferred_language || "ro",
+                ),
                 sendAdminNewBookingAlert(
                   process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
                   { ...bookingData, paymentMethod: paymentMethodLabel },

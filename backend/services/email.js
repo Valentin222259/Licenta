@@ -12,6 +12,7 @@ function detectEmailService(email = "") {
 
 const EMAIL_USER = process.env.EMAIL_USER || "";
 const EMAIL_SERVICE = detectEmailService(EMAIL_USER);
+const { t } = require("./emailBilingual");
 
 const transporter = nodemailer.createTransport({
   service: EMAIL_SERVICE,
@@ -273,12 +274,12 @@ function infoRow(emoji, label, value) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // 1. Confirmare rezervare → CLIENT
-async function sendClientBookingConfirmation(clientEmail, d) {
+async function sendClientBookingConfirmation(clientEmail, d, lang = "ro") {
+  const tx = t(lang).confirmation;
   const isAdvance = d.paymentSplit === "advance";
   const stripeAmount = d.stripeAmount || d.totalPrice;
   const remaining = d.remainingAmount || 0;
 
-  // ── Bloc plată — diferit pentru avans vs integral ──────────────────────────
   const paymentBlock = isAdvance
     ? `
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
@@ -286,36 +287,33 @@ async function sendClientBookingConfirmation(clientEmail, d) {
     <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
       letter-spacing:1px;color:rgba(255,255,255,0.8);">Detalii plată</p>
   </div>
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-    style="background:${B.cardBg};">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${B.cardBg};">
   <tr>
     <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
       letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
-      Plătit acum online
+      ${tx.paidOnline}
     </td>
     <td style="padding:13px 20px;font-size:15px;font-weight:700;color:#16a34a;">
       ${stripeAmount} RON ✓
     </td>
   </tr>
   </table>
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-    style="background:${B.rowEven};">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${B.rowEven};">
   <tr>
     <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
       letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
-      Rest de achitat la check-in
+      ${tx.remainingAtCheckin}
     </td>
     <td style="padding:13px 20px;font-size:15px;font-weight:700;color:${B.textH};">
       ${remaining} RON
     </td>
   </tr>
   </table>
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-    style="background:${B.cardBg};">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${B.cardBg};">
   <tr>
     <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
       letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
-      Total sejur
+      ${tx.totalStay}
     </td>
     <td style="padding:13px 20px;font-size:15px;font-weight:700;color:${B.textH};">
       ${d.totalPrice} RON
@@ -324,19 +322,18 @@ async function sendClientBookingConfirmation(clientEmail, d) {
   </table>
 </div>
 ${banner(
-  `💡 La sosire, vă rugăm să achitați diferența de <strong>${remaining} RON</strong> (plata se poate face cu cardul sau cash).`,
+  `💡 ${tx.arrivalNote} <strong>${remaining} RON</strong>.`,
   B.goldLight,
   B.goldBorder,
   B.gold,
 )}`
     : `
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-    style="background:${B.cardBg};">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${B.cardBg};">
   <tr>
     <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
       letter-spacing:0.8px;color:${B.textM};width:45%;border-right:1px solid ${B.border};">
-      Plătit integral online
+      ${tx.paidOnline}
     </td>
     <td style="padding:13px 20px;font-size:15px;font-weight:700;color:#16a34a;">
       ${d.totalPrice} RON ✓
@@ -345,61 +342,72 @@ ${banner(
   </table>
 </div>`;
 
+  // bookingTable e hardcodat în română — facem unul inline cu tx
+  const bookingRows = [
+    [
+      tx.reference,
+      `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
+    ],
+    [tx.room, d.roomName],
+    [
+      tx.checkIn,
+      `${fmtDate(d.checkIn)}&nbsp;<span style="color:${B.textM};font-size:12px;">· ${lang === "en" ? "after 14:00" : "după ora 14:00"}</span>`,
+    ],
+    [
+      tx.checkOut,
+      `${fmtDate(d.checkOut)}&nbsp;<span style="color:${B.textM};font-size:12px;">· ${lang === "en" ? "by 11:00" : "până la 11:00"}</span>`,
+    ],
+    [lang === "en" ? "Nights" : "Nopți", tx.nights(d.nights)],
+    [
+      tx.total,
+      `<strong style="font-size:16px;color:${B.textH};">${d.totalPrice} RON</strong>`,
+    ],
+  ];
+
+  const bookingTableI18n = `
+<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:28px 0;">
+  ${bookingRows
+    .map(
+      ([l, v], i) => `
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.9px;color:${B.textM};width:40%;border-right:1px solid ${B.border};">${l}</td>
+    <td style="padding:13px 20px;font-size:14px;color:${B.textB};">${v}</td>
+  </tr>
+  </table>`,
+    )
+    .join("")}
+</div>`;
+
   const body = `
-${title("✓", "Rezervare Confirmată!", isAdvance ? "Avansul de 30% a fost plătit cu succes" : "Plata a fost procesată cu succes")}
-${hi(d.guestName)}
-<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă mulțumim că ați ales <strong>${B.name}</strong>! Rezervarea dumneavoastră este confirmată. Abia așteptăm să vă primim și să vă oferim o ședere relaxantă în inima Maramureșului.
+${title("✓", tx.heading, tx.subheading(isAdvance))}
+<p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
+  ${tx.greeting(d.guestName)}
 </p>
-${bookingTable(d)}
+<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
+  ${tx.body}
+</p>
+${bookingTableI18n}
 ${paymentBlock}
-${
-  d.needsInvoice
-    ? `
-<div style="border-radius:10px;border:1px solid #fde68a;background:#fffbeb;
-  padding:14px 20px;margin:16px 0;">
-  <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#92400e;">
-    🧾 Factura pe firmă va fi emisă pe numele:
-  </p>
-  <p style="margin:0;font-size:14px;color:#1c1917;font-weight:600;">
-    ${d.companyName}
-  </p>
-  <p style="margin:4px 0 0;font-size:12px;color:#78716c;">
-    CUI: ${d.companyCui}${d.companyRegNo ? ` · ${d.companyRegNo}` : ""}
-  </p>
-  <p style="margin:8px 0 0;font-size:12px;color:#92400e;">
-    Factura vă va fi trimisă pe email în termen de 24h de la check-in.
-    Dacă observați vreo neconcordanță în datele de mai sus, vă rugăm să ne contactați.
-  </p>
-</div>
-`
-    : ""
-}
 ${hr()}
-${infoRow("🚗", "Parcare", "Gratuită și supravegheată — acces direct în curtea pensiunii")}
-${infoRow("📶", "Wi-Fi", "Gratuit în toată pensiunea — parola este disponibilă la recepție")}
-${infoRow("📞", "Recepție", B.phone)}
-${btn("Gestionați Rezervarea", `${B.site}/account`)}
+${infoRow("🚗", tx.parking, tx.parkingDesc)}
+${infoRow("📶", tx.wifi, tx.wifiDesc)}
+${infoRow("📞", lang === "en" ? "Reception" : "Recepție", B.phone)}
+${btn(tx.manageBooking, `${B.site}/account`)}
 <p style="margin:22px 0 0;font-size:12px;color:${B.textM};text-align:center;">
-  Aveți întrebări? Ne puteți scrie oricând la
   <a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>
 </p>`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: isAdvance
-      ? `✓ Avans confirmat · ${d.bookingRef} · ${B.name}`
-      : `✓ Rezervare confirmată · ${d.bookingRef} · ${B.name}`,
-    html: layout(
-      body,
-      isAdvance
-        ? `Avans de ${stripeAmount} RON plătit cu succes! Restul de ${remaining} RON se va achita la sosire · ${fmtDate(d.checkIn)}`
-        : `Rezervarea ${d.bookingRef} a fost confirmată! Vă așteptăm în data de ${fmtDate(d.checkIn)}`,
-    ),
+    subject: tx.subject(d.bookingRef),
+    html: layout(body),
   });
   console.log(
-    `📧 [CLIENT] Confirmare${isAdvance ? " avans" : ""} → ${clientEmail} (${d.bookingRef})`,
+    `📧 [CLIENT] Confirmare (${lang}) → ${clientEmail} (${d.bookingRef})`,
   );
 }
 
@@ -501,39 +509,69 @@ ${btn("Deschide Panoul de Administrare", `${B.site}/admin/bookings`)}
 }
 
 // 3. Anulare rezervare → CLIENT (cu motiv detaliat)
-async function sendBookingCancellation(clientEmail, d) {
+async function sendBookingCancellation(clientEmail, d, lang = "ro") {
+  const tx = t(lang).cancellation;
+
+  const bookingRows = [
+    [
+      tx.reference || "Referință",
+      `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
+    ],
+    [tx.room || "Cameră", d.roomName],
+    [tx.checkIn || "Check-in", fmtDate(d.checkIn)],
+    [tx.checkOut || "Check-out", fmtDate(d.checkOut)],
+    [
+      lang === "en" ? "Nights" : "Nopți",
+      `${d.nights} ${d.nights === 1 ? (lang === "en" ? "night" : "noapte") : lang === "en" ? "nights" : "nopți"}`,
+    ],
+    [
+      tx.total || "Total",
+      `<strong style="font-size:16px;color:${B.textH};">${d.totalPrice} RON</strong>`,
+    ],
+  ];
+
+  const bookingTableI18n = `
+<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:28px 0;">
+  ${bookingRows
+    .map(
+      ([l, v], i) => `
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.9px;color:${B.textM};width:40%;border-right:1px solid ${B.border};">${l}</td>
+    <td style="padding:13px 20px;font-size:14px;color:${B.textB};">${v}</td>
+  </tr>
+  </table>`,
+    )
+    .join("")}
+</div>`;
+
   const body = `
-${title("📋", "Rezervare Anulată", d.bookingRef)}
-${hi(d.guestName)}
+${title("📋", tx.heading, d.bookingRef)}
+<p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
+  ${tx.greeting(d.guestName)}
+</p>
 <p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă confirmăm pe această cale anularea rezervării dumneavoastră. Ne pare rău că nu ne vom putea vedea de această dată, dar sperăm să vă avem ca oaspete cu o altă ocazie.
+  ${tx.body}
 </p>
-${bookingTable(d)}
-${
-  d.reason
-    ? banner(
-        `<strong>Motivul anulării:</strong> ${d.reason}`,
-        B.orangeLight,
-        B.orangeBorder,
-        B.orange,
-      )
-    : ""
-}
+${bookingTableI18n}
+${d.reason ? banner(`<strong>${tx.cancelReason}:</strong> ${d.reason}`, B.orangeLight, B.orangeBorder, B.orange) : ""}
 <p style="margin:24px 0 8px;font-size:14px;color:${B.textB};line-height:1.8;">
-  Dacă aveți întrebări sau considerați că s-a produs o eroare, vă rugăm să ne contactați:
+  ${lang === "en" ? "If you have any questions, please contact us:" : "Dacă aveți întrebări sau considerați că s-a produs o eroare, vă rugăm să ne contactați:"}
 </p>
-${infoRow("📞", "Telefon", B.phone)}
+${infoRow("📞", lang === "en" ? "Phone" : "Telefon", B.phone)}
 ${infoRow("✉️", "Email", `<a href="mailto:${B.email}" style="color:${B.green};">${B.email}</a>`)}
-${btn("Efectuați o Nouă Rezervare", `${B.site}/rooms`)}`;
+${btn(tx.newBooking, `${B.site}/rooms`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `Rezervare anulată · ${d.bookingRef} · ${B.name}`,
-    html: layout(body, `Rezervarea ${d.bookingRef} a fost anulată.`),
+    subject: tx.subject(d.bookingRef),
+    html: layout(body),
   });
   console.log(
-    `📧 [CLIENT] Anulare cu motiv → ${clientEmail} (${d.bookingRef})`,
+    `📧 [CLIENT] Anulare (${lang}) → ${clientEmail} (${d.bookingRef})`,
   );
 }
 
@@ -587,30 +625,68 @@ ${btn("Deschide Panoul de Administrare", `${B.site}/admin/bookings`)}
 }
 
 // 5. Instrucțiuni transfer bancar → CLIENT
-async function sendBankTransferInstructions(clientEmail, d) {
-  const body = `
-${title("🏦", "Instrucțiuni Plată", "Transfer bancar")}
-${hi(d.guestName)}
-<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Vă mulțumim pentru rezervare! Pentru a o confirma definitiv, vă rugăm să efectuați plata prin transfer bancar în termen de <strong>48 de ore</strong>. Regăsiți mai jos detaliile contului nostru:
-</p>
-${bookingTable(d)}
+async function sendBankTransferInstructions(clientEmail, d, lang = "ro") {
+  const tx = t(lang).bankTransfer;
 
+  const bookingRows = [
+    [
+      tx.reference || "Referință",
+      `<span style="font-weight:700;color:${B.green};font-size:15px;">${d.bookingRef}</span>`,
+    ],
+    [tx.room || "Cameră", d.roomName],
+    [tx.checkIn || "Check-in", fmtDate(d.checkIn)],
+    [tx.checkOut || "Check-out", fmtDate(d.checkOut)],
+    [
+      lang === "en" ? "Nights" : "Nopți",
+      `${d.nights} ${d.nights === 1 ? (lang === "en" ? "night" : "noapte") : lang === "en" ? "nights" : "nopți"}`,
+    ],
+    [
+      tx.amount || "Total",
+      `<strong style="font-size:16px;color:${B.textH};">${d.totalPrice} RON</strong>`,
+    ],
+  ];
+
+  const bookingTableI18n = `
+<div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:28px 0;">
+  ${bookingRows
+    .map(
+      ([l, v], i) => `
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+    style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
+  <tr>
+    <td style="padding:13px 20px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:0.9px;color:${B.textM};width:40%;border-right:1px solid ${B.border};">${l}</td>
+    <td style="padding:13px 20px;font-size:14px;color:${B.textB};">${v}</td>
+  </tr>
+  </table>`,
+    )
+    .join("")}
+</div>`;
+
+  const body = `
+${title("🏦", tx.heading, tx.subheading)}
+<p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
+  ${tx.greeting(d.guestName)}
+</p>
+<p style="margin:0 0 6px;font-size:15px;color:${B.textB};line-height:1.85;">
+  ${tx.body}
+</p>
+${bookingTableI18n}
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:24px 0;">
   <div style="background:${B.green};padding:12px 20px;">
     <p style="margin:0;font-size:12px;font-weight:700;text-transform:uppercase;
-      letter-spacing:1px;color:rgba(255,255,255,0.8);">Date cont bancar</p>
+      letter-spacing:1px;color:rgba(255,255,255,0.8);">${tx.bankDetails}</p>
   </div>
   ${[
-    ["Beneficiar", "SC Ciclotur Impex SRL"],
-    ["IBAN", "RO49 BTRL 0130 1202 9574 3XXX"],
-    ["Bancă", "Banca Transilvania"],
+    [tx.beneficiary, "SC Ciclotur Impex SRL"],
+    [tx.iban, "RO49 BTRL 0130 1202 9574 3XXX"],
+    [tx.bank, "Banca Transilvania"],
     [
-      "Sumă",
+      tx.amount,
       `<strong style="font-size:16px;color:${B.textH};">${d.totalPrice} RON</strong>`,
     ],
     [
-      "Referință",
+      tx.reference,
       `<strong style="color:${B.green};font-size:15px;">${d.bookingRef}</strong>`,
     ],
   ]
@@ -627,106 +703,94 @@ ${bookingTable(d)}
     )
     .join("")}
 </div>
-
-${banner(
-  `⚠️ <strong>Important:</strong> Vă rugăm să menționați obligatoriu referința
-   <strong>${d.bookingRef}</strong> în detaliile transferului.
-   Rezervarea va fi confirmată oficial în maximum <strong>24 de ore</strong> de la recepționarea plății.`,
-  B.orangeLight,
-  B.orangeBorder,
-  B.orange,
-)}
-
+${banner(`⚠️ <strong>${lang === "en" ? "Important" : "Important"}:</strong> ${tx.importantNote(d.bookingRef)}`, B.orangeLight, B.orangeBorder, B.orange)}
 ${
   d.needsInvoice
     ? `
-<div style="border-radius:10px;border:1px solid #fde68a;background:#fffbeb;
-  padding:14px 20px;margin:16px 0;">
-  <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#92400e;">
-    🧾 Factură pe firmă solicitată
-  </p>
+<div style="border-radius:10px;border:1px solid #fde68a;background:#fffbeb;padding:14px 20px;margin:16px 0;">
+  <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#92400e;">🧾 ${lang === "en" ? "Company invoice requested" : "Factură pe firmă solicitată"}</p>
   <p style="margin:0;font-size:14px;color:#1c1917;font-weight:600;">${d.companyName}</p>
   <p style="margin:4px 0 0;font-size:12px;color:#78716c;">CUI: ${d.companyCui}</p>
-  <p style="margin:8px 0 0;font-size:12px;color:#92400e;">
-    Factura va fi emisă imediat după confirmarea plății și vă va fi expediată pe email.
-  </p>
-</div>
-`
+</div>`
     : ""
 }
-${btn("Gestionați Rezervarea", `${B.site}/account`)}`;
+${btn(lang === "en" ? "Manage Your Booking" : "Gestionați Rezervarea", `${B.site}/account`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `🏦 Instrucțiuni plată · ${d.bookingRef} · ${B.name}`,
-    html: layout(
-      body,
-      `Vă rugăm să efectuați plata prin transfer bancar pentru rezervarea ${d.bookingRef} — suma totală: ${d.totalPrice} RON`,
-    ),
+    subject: tx.subject(d.bookingRef),
+    html: layout(body),
   });
   console.log(
-    `📧 [CLIENT] Instrucțiuni transfer → ${clientEmail} (${d.bookingRef})`,
+    `📧 [CLIENT] Transfer bancar (${lang}) → ${clientEmail} (${d.bookingRef})`,
   );
 }
 
 // 7. Reminder check-in → CLIENT
-async function sendCheckInReminder(clientEmail, d) {
-  const body = `
-${title("🏔️", "Ne vedem mâine!", `Check-in: ${fmtDate(d.checkIn)}`)}
-${hi(d.guestName)}
-<p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Mai este foarte puțin până la vacanța dumneavoastră! Totul este pregătit pentru sosirea de mâine la <strong>${d.roomName}</strong>. Iată câteva detalii care v-ar putea fi de folos la drum:
-</p>
+async function sendCheckInReminder(clientEmail, d, lang = "ro") {
+  const tx = t(lang).checkinReminder;
 
+  const body = `
+${title("🏔️", tx.heading, `Check-in: ${fmtDate(d.checkIn)}`)}
+<p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
+  ${tx.greeting(d.guestName)}
+</p>
+<p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;">
+  ${tx.body} <strong>${d.roomName}</strong>.
+</p>
 <div style="border-radius:12px;overflow:hidden;border:1px solid ${B.border};margin:0 0 28px;">
   ${[
     [
       "🕑",
-      "Check-in",
-      `Mâine, ${fmtDate(d.checkIn)} &nbsp;·&nbsp; <strong>după ora 14:00</strong>`,
+      lang === "en" ? "Check-in" : "Check-in",
+      `${fmtDate(d.checkIn)} · <strong>${lang === "en" ? "after 14:00" : "după ora 14:00"}</strong>`,
     ],
     [
       "🚗",
-      "Parcare",
-      "Gratuită — aveți acces direct cu mașina în curtea interioară",
+      lang === "en" ? "Parking" : "Parcare",
+      lang === "en"
+        ? "Free and supervised — direct access to the courtyard"
+        : "Gratuită — acces direct cu mașina în curtea interioară",
     ],
-    ["📶", "Wi-Fi", "Internet gratuit în toată incinta pensiunii"],
-    ["📞", "Recepție", B.phone],
+    [
+      "📶",
+      "Wi-Fi",
+      lang === "en"
+        ? "Free throughout the guesthouse"
+        : "Internet gratuit în toată incinta pensiunii",
+    ],
+    ["📞", lang === "en" ? "Reception" : "Recepție", B.phone],
   ]
     .map(
       ([emoji, l, v], i) => `
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
     style="background:${i % 2 === 0 ? B.cardBg : B.rowEven};">
   <tr>
-    <td style="padding:14px 16px;font-size:22px;width:48px;text-align:center;
-      border-right:1px solid ${B.border};">${emoji}</td>
-    <td style="padding:14px 12px;font-size:11px;font-weight:700;text-transform:uppercase;
-      letter-spacing:0.8px;color:${B.textM};width:28%;border-right:1px solid ${B.border};">${l}</td>
+    <td style="padding:14px 16px;font-size:22px;width:48px;text-align:center;border-right:1px solid ${B.border};">${emoji}</td>
+    <td style="padding:14px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:${B.textM};width:28%;border-right:1px solid ${B.border};">${l}</td>
     <td style="padding:14px 16px;font-size:14px;color:${B.textB};">${v}</td>
   </tr>
   </table>`,
     )
     .join("")}
 </div>
-
-${btn("Vedeți Rezervarea", `${B.site}/account`)}`;
+${btn(lang === "en" ? "View Your Booking" : "Vedeți Rezervarea", `${B.site}/account`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `🏔️ Ne vedem mâine! Check-in ${fmtDate(d.checkIn)} · ${B.name}`,
-    html: layout(
-      body,
-      `Vă așteptăm mâine, după ora 14:00, la ${d.roomName}. Drum bun!`,
-    ),
+    subject: tx.subject(fmtDate(d.checkIn)),
+    html: layout(body),
   });
-  console.log(`📧 [CLIENT] Reminder check-in → ${clientEmail}`);
+  console.log(`📧 [CLIENT] Reminder check-in (${lang}) → ${clientEmail}`);
 }
 
 // 8. Solicitare recenzie → CLIENT
-async function sendReviewRequest(clientEmail, d) {
+async function sendReviewRequest(clientEmail, d, lang = "ro") {
+  const tx = t(lang).reviewRequest;
   const { guestName, roomName, checkIn, checkOut, bookingRef } = d;
+
   const stars5 = [1, 2, 3, 4, 5]
     .map(
       (n) => `
@@ -737,37 +801,27 @@ async function sendReviewRequest(clientEmail, d) {
     .join("");
 
   const body = `
-${title("⭐", "Cum a fost șederea dumneavoastră?", roomName)}
-${hi(guestName)}
-<p style="margin:0 0 28px;font-size:15px;color:${B.textB};line-height:1.85;">
-  Sperăm că v-ați simțit minunat la <strong>${B.name}</strong> și că ați plecat cu amintiri frumoase. Ne-ar ajuta foarte mult dacă ne-ați lăsa o scurtă părere despre experiența avută. Durează doar un minut!
+${title("⭐", tx.heading, roomName)}
+<p style="margin:0 0 22px;font-size:15px;line-height:1.8;color:${B.textB};">
+  ${tx.greeting(guestName)}
 </p>
-
-<div style="background:${B.rowEven};border-radius:14px;padding:28px;
-  text-align:center;margin:0 0 28px;border:1px solid ${B.border};">
-  <p style="margin:0 0 14px;font-size:12px;font-weight:700;text-transform:uppercase;
-    letter-spacing:1px;color:${B.textM};">Apăsați pe o stea pentru a lăsa recenzia</p>
+<p style="margin:0 0 28px;font-size:15px;color:${B.textB};line-height:1.85;">
+  ${tx.body}
+</p>
+<div style="background:${B.rowEven};border-radius:14px;padding:28px;text-align:center;margin:0 0 28px;border:1px solid ${B.border};">
+  <p style="margin:0 0 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${B.textM};">${tx.clickStar}</p>
   <div style="line-height:1;">${stars5}</div>
-  <p style="margin:14px 0 0;font-size:12px;color:${B.textM};">
-    ${fmtDate(checkIn)} → ${fmtDate(checkOut)}
-  </p>
+  <p style="margin:14px 0 0;font-size:12px;color:${B.textM};">${fmtDate(checkIn)} → ${fmtDate(checkOut)}</p>
 </div>
-
-${btn("Lăsați o Recenzie Completă", `${B.site}/reviews?ref=${bookingRef}&email=${encodeURIComponent(clientEmail)}&stars=5`)}
-<p style="margin:22px 0 0;font-size:13px;color:${B.textM};text-align:center;line-height:1.8;">
-  Vă mulțumim că ați ales ${B.name}.<br/>Abia așteptăm să ne revedem!
-</p>`;
+${btn(tx.leaveReview, `${B.site}/reviews?ref=${bookingRef}&email=${encodeURIComponent(clientEmail)}&stars=5`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `⭐ Cum v-ați simțit, ${guestName}? Părerea dumneavoastră contează!`,
-    html: layout(
-      body,
-      `Cum a fost șederea la ${roomName}? Vă rugăm să ne lăsați o scurtă recenzie!`,
-    ),
+    subject: tx.subject(guestName),
+    html: layout(body),
   });
-  console.log(`📧 [CLIENT] Solicitare recenzie → ${clientEmail}`);
+  console.log(`📧 [CLIENT] Solicitare recenzie (${lang}) → ${clientEmail}`);
 }
 
 // 9. Confirmare recenzie → CLIENT

@@ -1,24 +1,66 @@
+// backend/routes/rooms.js — versiune bilingvă
+// Returnează câmpurile în limba cerută prin query param ?lang=en|ro
+// sau Accept-Language header.
+
 const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
 
+// ─── Helper: alege valoarea corectă în funcție de limbă ──────────────────────
+function pick(roVal, enVal, lang) {
+  if (lang === "en" && enVal && enVal.trim() !== "") return enVal;
+  return roVal;
+}
+
+// ─── Helper: detectează limba din request ────────────────────────────────────
+function detectLang(req) {
+  // 1. Query param explicit: ?lang=en
+  if (req.query.lang === "en" || req.query.lang === "ro") return req.query.lang;
+  // 2. Header Accept-Language
+  const al = req.headers["accept-language"] || "";
+  if (al.startsWith("en")) return "en";
+  return "ro";
+}
+
+// ─── Helper: construiește obiect cameră localizat ─────────────────────────────
+function localizeRoom(room, lang) {
+  return {
+    ...room,
+    name: pick(room.name, room.name_en, lang),
+    short_description: pick(
+      room.short_description,
+      room.short_description_en,
+      lang,
+    ),
+    description: pick(room.description, room.description_en, lang),
+    amenities:
+      lang === "en" && room.amenities_en && room.amenities_en.length > 0
+        ? room.amenities_en
+        : room.amenities,
+    // Păstrăm și variantele raw pentru admin
+    _name_ro: room.name,
+    _name_en: room.name_en,
+  };
+}
+
 // ─── GET /api/rooms ──────────────────────────────────────────────────────────
-// Returnează toate camerele active cu imaginea primară
-// Folosit de: pagina publică /rooms și /rooms/:slug
 router.get("/", async (req, res) => {
   try {
+    const lang = detectLang(req);
     const { rows } = await query(`
       SELECT
         r.id,
         r.slug,
         r.name,
+        r.name_en,
         r.short_description,
+        r.short_description_en,
         r.price,
         r.capacity,
         r.status,
         r.amenities,
+        r.amenities_en,
         r.sort_order,
-        -- Imaginea primară (dacă există)
         (
           SELECT i.url
           FROM images i
@@ -27,7 +69,6 @@ router.get("/", async (req, res) => {
             AND i.is_primary = true
           LIMIT 1
         ) AS primary_image,
-        -- Numărul total de imagini
         (
           SELECT COUNT(*)
           FROM images i
@@ -38,7 +79,8 @@ router.get("/", async (req, res) => {
       ORDER BY r.sort_order ASC, r.created_at ASC
     `);
 
-    res.json({ success: true, data: rows });
+    const localized = rows.map((r) => localizeRoom(r, lang));
+    res.json({ success: true, data: localized });
   } catch (err) {
     console.error("❌ GET /api/rooms:", err.message);
     res.status(500).json({ success: false, error: "Eroare server" });
@@ -46,8 +88,6 @@ router.get("/", async (req, res) => {
 });
 
 // ─── GET /api/rooms/admin ────────────────────────────────────────────────────
-// Returnează TOATE camerele (inclusiv inactive) — pentru panoul admin
-// TODO: adaugă middleware requireAdmin după ce implementăm JWT
 router.get("/admin", async (req, res) => {
   try {
     const { rows } = await query(`
@@ -69,6 +109,7 @@ router.get("/admin", async (req, res) => {
       ORDER BY r.sort_order ASC, r.created_at ASC
     `);
 
+    // Admin primește toate câmpurile (RO + EN) pentru editare
     res.json({ success: true, data: rows });
   } catch (err) {
     console.error("❌ GET /api/rooms/admin:", err.message);
@@ -77,12 +118,11 @@ router.get("/admin", async (req, res) => {
 });
 
 // ─── GET /api/rooms/:slug ────────────────────────────────────────────────────
-// Returnează o cameră cu toate imaginile și recenziile
 router.get("/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
+    const lang = detectLang(req);
 
-    // Camera de bază
     const roomResult = await query(
       `SELECT * FROM rooms WHERE slug = $1 AND status = 'active'`,
       [slug],
@@ -94,25 +134,23 @@ router.get("/:slug", async (req, res) => {
         .json({ success: false, error: "Camera nu a fost găsită" });
     }
 
-    const room = roomResult.rows[0];
+    const room = localizeRoom(roomResult.rows[0], lang);
 
-    // Imaginile camerei (ordonate)
     const imagesResult = await query(
       `SELECT id, url, s3_key, caption, sort_order, is_primary
        FROM images
        WHERE room_id = $1 AND category = 'room'
        ORDER BY is_primary DESC, sort_order ASC`,
-      [room.id],
+      [roomResult.rows[0].id],
     );
 
-    // Recenziile vizibile
     const reviewsResult = await query(
       `SELECT id, guest_name, rating, text, created_at
        FROM reviews
        WHERE room_id = $1 AND is_visible = true
        ORDER BY created_at DESC
        LIMIT 10`,
-      [room.id],
+      [roomResult.rows[0].id],
     );
 
     res.json({
@@ -130,22 +168,23 @@ router.get("/:slug", async (req, res) => {
 });
 
 // ─── POST /api/rooms ─────────────────────────────────────────────────────────
-// Creează o cameră nouă — doar admin
-// TODO: requireAdmin middleware
 router.post("/", async (req, res) => {
   try {
     const {
       slug,
       name,
+      name_en,
       description,
+      description_en,
       short_description,
+      short_description_en,
       price,
       capacity = 2,
       amenities = [],
+      amenities_en = [],
       sort_order = 0,
     } = req.body;
 
-    // Validare câmpuri obligatorii
     if (!slug || !name || !price) {
       return res.status(400).json({
         success: false,
@@ -154,17 +193,28 @@ router.post("/", async (req, res) => {
     }
 
     const { rows } = await query(
-      `INSERT INTO rooms (slug, name, description, short_description, price, capacity, amenities, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO rooms (
+         slug, name, name_en,
+         description, description_en,
+         short_description, short_description_en,
+         price, capacity,
+         amenities, amenities_en,
+         sort_order
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [
         slug,
         name,
+        name_en || null,
         description,
+        description_en || null,
         short_description,
+        short_description_en || null,
         price,
         capacity,
         amenities,
+        amenities_en,
         sort_order,
       ],
     );
@@ -172,7 +222,6 @@ router.post("/", async (req, res) => {
     console.log(`✅ Cameră creată: ${name} (${slug})`);
     res.status(201).json({ success: true, data: rows[0] });
   } catch (err) {
-    // Slug duplicat → eroare uniqueness
     if (err.code === "23505") {
       return res.status(409).json({
         success: false,
@@ -185,42 +234,53 @@ router.post("/", async (req, res) => {
 });
 
 // ─── PUT /api/rooms/:id ──────────────────────────────────────────────────────
-// Actualizează o cameră — doar admin
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const {
       name,
+      name_en,
       description,
+      description_en,
       short_description,
+      short_description_en,
       price,
       capacity,
       status,
       amenities,
+      amenities_en,
       sort_order,
     } = req.body;
 
     const { rows } = await query(
       `UPDATE rooms SET
-        name              = COALESCE($1, name),
-        description       = COALESCE($2, description),
-        short_description = COALESCE($3, short_description),
-        price             = COALESCE($4, price),
-        capacity          = COALESCE($5, capacity),
-        status            = COALESCE($6, status),
-        amenities         = COALESCE($7, amenities),
-        sort_order        = COALESCE($8, sort_order),
-        updated_at        = NOW()
-       WHERE id = $9
+        name                  = COALESCE($1,  name),
+        name_en               = COALESCE($2,  name_en),
+        description           = COALESCE($3,  description),
+        description_en        = COALESCE($4,  description_en),
+        short_description     = COALESCE($5,  short_description),
+        short_description_en  = COALESCE($6,  short_description_en),
+        price                 = COALESCE($7,  price),
+        capacity              = COALESCE($8,  capacity),
+        status                = COALESCE($9,  status),
+        amenities             = COALESCE($10, amenities),
+        amenities_en          = COALESCE($11, amenities_en),
+        sort_order            = COALESCE($12, sort_order),
+        updated_at            = NOW()
+       WHERE id = $13
        RETURNING *`,
       [
         name,
+        name_en,
         description,
+        description_en,
         short_description,
+        short_description_en,
         price,
         capacity,
         status,
         amenities,
+        amenities_en,
         sort_order,
         id,
       ],
@@ -240,8 +300,6 @@ router.put("/:id", async (req, res) => {
 });
 
 // ─── DELETE /api/rooms/:id ───────────────────────────────────────────────────
-// Șterge o cameră (soft delete — setează status=inactive)
-// Nu ștergem fizic — păstrăm istoricul rezervărilor
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;

@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
 
-// ─── Helper: formatează data PostgreSQL → "YYYY-MM-DD" ───────────────────────
 function fmtISO(val) {
   if (!val) return "";
   if (val instanceof Date) {
@@ -14,7 +13,6 @@ function fmtISO(val) {
   return String(val).substring(0, 10);
 }
 
-// ─── Helper: generează referință rezervare (BLV-2025-001) ────────────────────
 async function generateBookingRef() {
   const year = new Date().getFullYear();
   const result = await query(
@@ -25,7 +23,6 @@ async function generateBookingRef() {
   return `BLV-${year}-${seq}`;
 }
 
-// ─── Helper: verifică disponibilitate cameră ─────────────────────────────────
 async function isRoomAvailable(
   roomId,
   checkIn,
@@ -169,9 +166,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ─── ÎNLOCUIEȘTE blocul POST /api/bookings din routes/bookings.js ────────────
-// Adaugă suportul pentru extras: mic dejun, cină, paturi suplimentare, ciubăr
-
+// ─── POST /api/bookings ───────────────────────────────────────────────────────
 router.post("/", async (req, res) => {
   try {
     const {
@@ -184,17 +179,15 @@ router.post("/", async (req, res) => {
       guests = 1,
       special_requests,
       source = "website",
+      preferred_language = "ro",
       user_id,
       payment_method = "card",
       payment_split = "full",
-      // ── B2B / Facturare ──────────────────────────────────────────────
       needs_invoice = false,
       company_name = null,
       company_cui = null,
       company_reg_no = null,
       company_address = null,
-      // ── EXTRAS NOI ───────────────────────────────────────────────────
-      // extras: { breakfast: bool, dinner: bool, extra_beds: 0|1|2, jacuzzi: bool }
       extras = null,
     } = req.body;
 
@@ -211,13 +204,12 @@ router.post("/", async (req, res) => {
     if (
       needs_invoice &&
       (!company_name || !company_cui || !company_reg_no || !company_address)
-    ) {
+    )
       return res.status(400).json({
         success: false,
         error:
           "Pentru facturare pe firmă sunt obligatorii: denumirea firmei, CUI, nr. Reg. Comerțului și adresa sediului.",
       });
-    }
 
     const checkInDate = new Date(check_in);
     const checkOutDate = new Date(check_out);
@@ -252,28 +244,22 @@ router.post("/", async (req, res) => {
         });
 
     const room = roomResult.rows[0];
-
-    // Validare paturi suplimentare (max 2 locuri extra per cameră)
     const extraBeds = extras?.extra_beds || 0;
-    if (extraBeds < 0 || extraBeds > 2) {
+
+    if (extraBeds < 0 || extraBeds > 2)
       return res
         .status(400)
         .json({
           success: false,
           error: "Numărul de paturi suplimentare poate fi 0, 1 sau 2",
         });
-    }
 
-    // guests = locuri de bază (2) + extra beds
     const totalGuests = 2 + extraBeds;
-    if (guests > totalGuests) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: `Camera acceptă maxim ${totalGuests} oaspeți cu ${extraBeds} pat(uri) suplimentar(e)`,
-        });
-    }
+    if (guests > totalGuests)
+      return res.status(400).json({
+        success: false,
+        error: `Camera acceptă maxim ${totalGuests} oaspeți cu ${extraBeds} pat(uri) suplimentar(e)`,
+      });
 
     const available = await isRoomAvailable(room_id, check_in, check_out);
     if (!available)
@@ -288,40 +274,25 @@ router.post("/", async (req, res) => {
       (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24),
     );
 
-    // ── Calcul preț extras din site_settings ────────────────────────────────
     let extrasPrice = 0;
     let extrasJson = null;
 
     if (extras && typeof extras === "object") {
-      // Citim prețurile din DB
       const settingsResult = await query(
-        `SELECT key, value FROM site_settings
-         WHERE key IN ('price_breakfast', 'price_dinner', 'price_extra_bed', 'price_jacuzzi')`,
+        `SELECT key, value FROM site_settings WHERE key IN ('price_breakfast', 'price_dinner', 'price_extra_bed', 'price_jacuzzi')`,
       );
       const prices = {};
       settingsResult.rows.forEach((r) => {
         prices[r.key] = parseFloat(r.value) || 0;
       });
 
-      // Mic dejun: preț × nr_persoane × nr_nopți
-      if (extras.breakfast) {
+      if (extras.breakfast)
         extrasPrice += (prices.price_breakfast || 50) * guests * nights;
-      }
-
-      // Cină: preț × nr_persoane × nr_nopți
-      if (extras.dinner) {
+      if (extras.dinner)
         extrasPrice += (prices.price_dinner || 80) * guests * nights;
-      }
-
-      // Paturi suplimentare: preț_per_loc × nr_locuri_extra × nr_nopți
-      if (extraBeds > 0) {
+      if (extraBeds > 0)
         extrasPrice += (prices.price_extra_bed || 50) * extraBeds * nights;
-      }
-
-      // Ciubăr: preț fix per sesiune (o singură dată, nu per noapte)
-      if (extras.jacuzzi) {
-        extrasPrice += prices.price_jacuzzi || 100;
-      }
+      if (extras.jacuzzi) extrasPrice += prices.price_jacuzzi || 100;
 
       extrasJson = {
         breakfast: !!extras.breakfast,
@@ -334,10 +305,8 @@ router.post("/", async (req, res) => {
     const room_price = room.price * nights;
     const total_price = room_price + extrasPrice;
 
-    // ── Split plată ───────────────────────────────────────────────────────────
     const ADVANCE_PERCENT = 0.3;
     const effectiveSplit = payment_method === "card" ? payment_split : "full";
-
     let effectiveStripeAmount = null;
     let effectiveRemainingAmount = 0;
 
@@ -362,8 +331,8 @@ router.post("/", async (req, res) => {
          check_in, check_out, guests, total_price, status, source, special_requests,
          payment_split, stripe_amount, remaining_amount,
          needs_invoice, company_name, company_cui, company_reg_no, company_address,
-         extras_json, extras_price)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+         extras_json, extras_price, preferred_language)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
        RETURNING *`,
       [
         booking_ref,
@@ -389,16 +358,15 @@ router.post("/", async (req, res) => {
         needs_invoice ? company_address : null,
         extrasJson ? JSON.stringify(extrasJson) : null,
         extrasPrice,
+        preferred_language || "ro",
       ],
     );
 
     const booking = rows[0];
-
     console.log(
       `✅ Rezervare: ${booking_ref} | ${guest_name} | ${nights} nopți | cameră: ${room_price} RON | extras: ${extrasPrice} RON | total: ${total_price} RON`,
     );
 
-    // Emailuri pentru non-Stripe
     if (payment_method === "bank_transfer" || payment_method === "reception") {
       try {
         const emailServices = require("../services/email");
@@ -430,7 +398,11 @@ router.post("/", async (req, res) => {
 
         if (payment_method === "bank_transfer") {
           emailServices
-            .sendBankTransferInstructions(guest_email, bookingEmailData)
+            .sendBankTransferInstructions(
+              guest_email,
+              bookingEmailData,
+              preferred_language || "ro",
+            )
             .catch((err) =>
               console.error("⚠️ Email transfer bancar eșuat:", err.message),
             );
@@ -480,10 +452,12 @@ router.put("/:id/status", async (req, res) => {
 
     const validStatuses = ["pending", "confirmed", "cancelled", "finished"];
     if (!validStatuses.includes(status))
-      return res.status(400).json({
-        success: false,
-        error: `Status invalid: ${validStatuses.join(", ")}`,
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: `Status invalid: ${validStatuses.join(", ")}`,
+        });
 
     const current = await query(
       `SELECT id, status, booking_ref FROM bookings WHERE id = $1`,
@@ -503,10 +477,12 @@ router.put("/:id/status", async (req, res) => {
     };
 
     if (!allowedTransitions[currentStatus]?.includes(status))
-      return res.status(400).json({
-        success: false,
-        error: `Nu se poate trece din "${currentStatus}" în "${status}"`,
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: `Nu se poate trece din "${currentStatus}" în "${status}"`,
+        });
 
     const { rows } = await query(
       `UPDATE bookings SET status = $1, updated_at = NOW()
@@ -521,13 +497,14 @@ router.put("/:id/status", async (req, res) => {
     try {
       const emailServices = require("../services/email");
       const bookingFull = await query(
-        `SELECT b.*, r.name AS room_name FROM bookings b
-         JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
+        `SELECT b.*, r.name AS room_name FROM bookings b JOIN rooms r ON r.id = b.room_id WHERE b.id = $1`,
         [id],
       );
 
       if (bookingFull.rows.length > 0) {
         const b = bookingFull.rows[0];
+        const lang = b.preferred_language || "ro";
+
         const emailData = {
           guestName: b.guest_name,
           guestEmail: b.guest_email,
@@ -541,7 +518,6 @@ router.put("/:id/status", async (req, res) => {
           paymentSplit: b.payment_split,
           stripeAmount: b.stripe_amount,
           remainingAmount: b.remaining_amount,
-          // ── Date B2B ─────────────────────────────────────────────────
           needsInvoice: b.needs_invoice,
           companyName: b.company_name,
           companyCui: b.company_cui,
@@ -551,7 +527,7 @@ router.put("/:id/status", async (req, res) => {
 
         if (status === "confirmed") {
           emailServices
-            .sendClientBookingConfirmation(b.guest_email, emailData)
+            .sendClientBookingConfirmation(b.guest_email, emailData, lang)
             .catch((err) =>
               console.error("⚠️ Email confirmare eșuat:", err.message),
             );
@@ -559,10 +535,11 @@ router.put("/:id/status", async (req, res) => {
 
         if (status === "cancelled") {
           emailServices
-            .sendBookingCancellation(b.guest_email, {
-              ...emailData,
-              reason: reason || null,
-            })
+            .sendBookingCancellation(
+              b.guest_email,
+              { ...emailData, reason: reason || null },
+              lang,
+            )
             .catch((err) =>
               console.error("⚠️ Email anulare client eșuat:", err.message),
             );
@@ -578,13 +555,17 @@ router.put("/:id/status", async (req, res) => {
 
         if (status === "finished") {
           emailServices
-            .sendReviewRequest(b.guest_email, {
-              guestName: b.guest_name,
-              roomName: b.room_name,
-              checkIn: fmtISO(b.check_in),
-              checkOut: fmtISO(b.check_out),
-              bookingRef: b.id,
-            })
+            .sendReviewRequest(
+              b.guest_email,
+              {
+                guestName: b.guest_name,
+                roomName: b.room_name,
+                checkIn: fmtISO(b.check_in),
+                checkOut: fmtISO(b.check_out),
+                bookingRef: b.id,
+              },
+              lang,
+            )
             .catch((err) =>
               console.error("⚠️ Email recenzie eșuat:", err.message),
             );
@@ -601,7 +582,7 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/bookings/:id/status (backward compat) ────────────────────────
+// ─── PATCH /api/bookings/:id/status ──────────────────────────────────────────
 router.patch("/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
@@ -632,17 +613,19 @@ router.patch("/:id/status", async (req, res) => {
       );
       if (full.rows.length > 0) {
         const b = full.rows[0];
-        sendBookingCancellation(b.guest_email, {
-          guestName: b.guest_name,
-          roomName: b.room_name,
-          checkIn: fmtISO(b.check_in),
-          checkOut: fmtISO(b.check_out),
-          nights: b.nights,
-          totalPrice: b.total_price,
-          bookingRef: b.booking_ref,
-        }).catch((err) =>
-          console.error("⚠️ Email anulare eșuat:", err.message),
-        );
+        sendBookingCancellation(
+          b.guest_email,
+          {
+            guestName: b.guest_name,
+            roomName: b.room_name,
+            checkIn: fmtISO(b.check_in),
+            checkOut: fmtISO(b.check_out),
+            nights: b.nights,
+            totalPrice: b.total_price,
+            bookingRef: b.booking_ref,
+          },
+          b.preferred_language || "ro",
+        ).catch((err) => console.error("⚠️ Email anulare eșuat:", err.message));
       }
     }
 
@@ -732,10 +715,12 @@ router.delete("/:id", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Rezervarea nu există" });
     if (!["cancelled", "finished"].includes(check.rows[0].status))
-      return res.status(400).json({
-        success: false,
-        error: "Poți șterge doar rezervările anulate sau finalizate",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "Poți șterge doar rezervările anulate sau finalizate",
+        });
 
     await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);
     await query(`DELETE FROM bookings WHERE id = $1`, [id]);
