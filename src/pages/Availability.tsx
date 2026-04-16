@@ -150,7 +150,7 @@ const RoomCalendar = ({ room, occupied, year, month }: RoomCalendarProps) => {
 };
 
 const Availability = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [occupied, setOccupied] = useState<OccupiedPeriod[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -161,7 +161,9 @@ const Availability = () => {
       apiGet<{ success: boolean; data: OccupiedPeriod[] }>(
         "/api/bookings/availability",
       ),
-      apiGet<{ success: boolean; data: Room[] }>("/api/rooms"),
+      apiGet<{ success: boolean; data: Room[] }>(
+        `/api/rooms?lang=${i18n.language === "en" ? "en" : "ro"}`,
+      ),
     ])
       .then(([avail, roomsRes]) => {
         setOccupied(avail.data || []);
@@ -169,7 +171,7 @@ const Availability = () => {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [i18n.language]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

@@ -30,20 +30,20 @@ export function useSettings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiGet<{ data: SettingsRow[] }>("/api/settings")
-      .then((res) => {
-        // 3. COMBINĂ DEFAULTS CU DATELE PRIMITE DE LA BAZA DE DATE
-        const map: Record<string, any> = { ...DEFAULTS }; 
-        for (const row of res.data) {
-          map[row.key] = row.value;
-        }
-        setRawSettings(map);
-      })
-      .catch((err) => {
-        console.error("useSettings error:", err);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  apiGet<{ data: Record<string, any>; rows: SettingsRow[] }>("/api/settings")
+    .then((res) => {
+      const map: Record<string, any> = { ...DEFAULTS };
+      // folosim rows (array) în loc de data (obiect plat)
+      for (const row of res.rows || []) {
+        map[row.key] = row.value;
+      }
+      setRawSettings(map);
+    })
+    .catch((err) => {
+      console.error("useSettings error:", err);
+    })
+    .finally(() => setLoading(false));
+}, []);
 
   // Build the localized settings map
   const settings = useMemo(() => {
