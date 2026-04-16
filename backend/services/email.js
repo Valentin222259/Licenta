@@ -361,17 +361,7 @@ async function sendClientBookingConfirmation(clientEmail, d, lang = "ro") {
   const stripeAmount = d.stripeAmount || d.totalPrice;
   const remaining = d.remainingAmount || 0;
 
-  // TRADUCEM NUMELE CAMEREI
-  let roomNameTrans = d.roomName;
-  if (lang === "en" && roomNameTrans) {
-    roomNameTrans = roomNameTrans
-      .replace("Camera", "Room")
-      .replace("Pădure", "Forest View")
-      .replace("Cadă", "with bathtub")
-      .replace("Belvedere", "Panoramic View")
-      .replace("Balcon", "Balcony")
-      .replace("Confort", "Comfort");
-  }
+  const roomNameTrans = translateRoomName(d.roomName, lang);
 
   // TRADUCERE PENTRU HEADER-UL VERDE DE PLATĂ
   const lblPaymentDetails = lang === "en" ? "Payment Details" : "Detalii plată";
@@ -766,15 +756,7 @@ async function sendBankTransferInstructions(clientEmail, d, lang = "ro") {
   const tx = t(lang).bankTransfer;
 
   // TRADUCEM NUMELE CAMEREI (Helper intern curat)
-  let roomNameTrans = d.roomName;
-  if (lang === "en" && roomNameTrans) {
-    roomNameTrans = roomNameTrans
-      .replace("Camera", "Room")
-      .replace("Pădure", "Forest View")
-      .replace("Cadă", "Bathtub")
-      .replace("Belvedere", "Panoramic View")
-      .replace("Balcon", "Balcony");
-  }
+  const roomNameTrans = translateRoomName(d.roomName, lang);
 
   // TRADUCEM ETICHETELE TABELULUI (evităm lipsa lor din emailBilingual.js)
   const lblRef = lang === "en" ? "Reference" : "Referință";
@@ -1089,7 +1071,7 @@ ${btn(lang === "en" ? "Manage Your Reservation" : "Detalii Rezervare", `${B.site
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
     subject: tx.subject(fmtDate(d.checkIn)),
-    html: layout(body),
+    html: layout(body, "", lang),
   });
   console.log(`📧 [CLIENT] Reminder check-in (${lang}) → ${clientEmail}`);
 }
@@ -1130,14 +1112,47 @@ ${btn(tx.leaveReview, `${B.site}/reviews?ref=${bookingRef}&email=${encodeURIComp
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
     subject: tx.subject(guestName),
-    html: layout(body),
+    html: layout(body, "", lang),
   });
   console.log(`📧 [CLIENT] Solicitare recenzie (${lang}) → ${clientEmail}`);
 }
 
 // 9. Confirmare recenzie → CLIENT
-async function sendClientReviewConfirmation(clientEmail, d) {
+async function sendClientReviewConfirmation(clientEmail, d, lang = "ro") {
+  const safeLang = String(lang || "ro")
+    .trim()
+    .toLowerCase();
   const { guestName, rating, roomName, autoApproved } = d;
+
+  const i18n = {
+    en: {
+      heading: `Thank you for your feedback, ${guestName}!`,
+      subheading: "Your review has been successfully recorded",
+      bodyApproved:
+        "Thank you sincerely for the rating provided and for the precious time allocated! Your kind words are an honor and motivate us to maintain the highest standards of comfort and hospitality.",
+      bodyPending:
+        "Thank you for the feedback provided! Your review has been successfully recorded and will be published on our platform shortly.",
+      btn: "Book Your Next Stay",
+      subject: `🙏 Thank you for your review, ${guestName}!`,
+      preview: `We have received your ${rating}-star review. Thank you for your trust!`,
+      stars_label: `${rating}/5 stars`,
+    },
+    ro: {
+      heading: `Vă mulțumim pentru feedback, ${guestName}!`,
+      subheading: "Am înregistrat cu succes evaluarea dumneavoastră",
+      bodyApproved:
+        "Vă mulțumim deosebit pentru evaluarea acordată și pentru timpul prețios alocat! Aprecierile dumneavoastră reprezintă o onoare și ne motivează să menținem cele mai înalte standarde de confort și ospitalitate.",
+      bodyPending:
+        "Vă mulțumim pentru feedback-ul oferit! Evaluarea dumneavoastră a fost înregistrată cu succes și urmează să fie publicată pe platforma noastră în cel mai scurt timp.",
+      btn: "Inițiere Rezervare Nouă",
+      subject: `🙏 Vă mulțumim pentru recenzie, ${guestName}!`,
+      preview: `Am primit evaluarea dumneavoastră de ${rating} stele. Vă mulțumim pentru încredere!`,
+      stars_label: `${rating}/5 ${safeLang === "en" ? "stars" : "stele"}`,
+    },
+  };
+
+  const l = i18n[safeLang] || i18n.ro;
+
   const stars = [1, 2, 3, 4, 5]
     .map(
       (i) =>
@@ -1146,32 +1161,25 @@ async function sendClientReviewConfirmation(clientEmail, d) {
     .join("");
 
   const body = `
-${title("🙏", `Vă mulțumim pentru feedback, ${guestName}!`, "Am înregistrat cu succes evaluarea dumneavoastră")}
+${title("🙏", l.heading, l.subheading)}
 <div style="background:${B.rowEven};border-radius:14px;padding:28px;
   text-align:center;margin:0 0 28px;border:1px solid ${B.border};">
   <div>${stars}</div>
-  <p style="margin:10px 0 4px;font-size:17px;font-weight:700;color:${B.textH};">${rating}/5 stele</p>
-  ${roomName ? `<p style="margin:0;font-size:13px;color:${B.textM};">${roomName}</p>` : ""}
+  <p style="margin:10px 0 4px;font-size:17px;font-weight:700;color:${B.textH};">${l.stars_label}</p>
+  ${roomName ? `<p style="margin:0;font-size:13px;color:${B.textM};">${translateRoomName(roomName, safeLang)}</p>` : ""}
 </div>
 <p style="margin:0 0 24px;font-size:15px;color:${B.textB};line-height:1.85;text-align:center;">
-  ${
-    autoApproved
-      ? "Vă mulțumim deosebit pentru evaluarea acordată și pentru timpul prețios alocat! Aprecierile dumneavoastră reprezintă o onoare și ne motivează să menținem cele mai înalte standarde de confort și ospitalitate."
-      : "Vă mulțumim pentru feedback-ul oferit! Evaluarea dumneavoastră a fost înregistrată cu succes și urmează să fie publicată pe platforma noastră în cel mai scurt timp."
-  }
+  ${autoApproved ? l.bodyApproved : l.bodyPending}
 </p>
-${btn("Inițiere Rezervare Nouă", `${B.site}/booking`)}`;
+${btn(l.btn, `${B.site}/booking`)}`;
 
   await transporter.sendMail({
     from: `"${B.name}" <${EMAIL_USER}>`,
     to: clientEmail,
-    subject: `🙏 Vă mulțumim pentru recenzie, ${guestName}!`,
-    html: layout(
-      body,
-      `Am primit evaluarea dumneavoastră de ${rating} stele. Vă mulțumim pentru încredere!`,
-    ),
+    subject: l.subject,
+    html: layout(body, l.preview, safeLang),
   });
-  console.log(`📧 [CLIENT] Confirmare recenzie → ${clientEmail}`);
+  console.log(`📧 [CLIENT] Confirmare recenzie (${safeLang}) → ${clientEmail}`);
 }
 
 // 10. Alertă recenzie nouă → ADMIN

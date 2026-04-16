@@ -77,21 +77,17 @@ router.post("/", async (req, res) => {
     }
 
     if (rating < 1 || rating > 5) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Rating-ul trebuie să fie între 1 și 5",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Rating-ul trebuie să fie între 1 și 5",
+      });
     }
 
     if (text.trim().length < 10) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Recenzia trebuie să aibă minim 10 caractere",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Recenzia trebuie să aibă minim 10 caractere",
+      });
     }
 
     // Verifică că rezervarea există
@@ -183,12 +179,23 @@ router.post("/", async (req, res) => {
         console.error("⚠️ Email recenzie admin eșuat:", err.message),
       );
 
-      sendClientReviewConfirmation(guest_email, {
-        guestName: guest_name,
-        rating,
-        roomName: booking.room_name,
-        autoApproved: autoApprove,
-      }).catch((err) =>
+      // Ia limba din DB
+      const bookingLang = await query(
+        `SELECT preferred_language FROM bookings WHERE id = $1`,
+        [booking_id],
+      );
+      const lang = bookingLang.rows[0]?.preferred_language || "ro";
+
+      sendClientReviewConfirmation(
+        guest_email,
+        {
+          guestName: guest_name,
+          rating,
+          roomName: booking.room_name,
+          autoApproved: autoApprove,
+        },
+        lang,
+      ).catch((err) =>
         console.error("⚠️ Email confirmare recenzie eșuat:", err.message),
       );
     } catch (emailErr) {
@@ -198,12 +205,10 @@ router.post("/", async (req, res) => {
     res.status(201).json({ success: true, data: { id: rows[0].id } });
   } catch (err) {
     if (err.code === "23505") {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          error: "Ați lăsat deja o recenzie pentru acest sejur",
-        });
+      return res.status(409).json({
+        success: false,
+        error: "Ați lăsat deja o recenzie pentru acest sejur",
+      });
     }
     console.error("❌ POST /api/reviews:", err.message);
     res.status(500).json({ success: false, error: "Eroare server" });
