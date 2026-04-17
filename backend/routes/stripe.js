@@ -5,6 +5,7 @@ const { query } = require("../config/db");
 const {
   sendClientBookingConfirmation,
   sendAdminNewBookingAlert,
+  translateRoomName,
 } = require("../services/email");
 
 // ─── Helper: formatează data PostgreSQL → "YYYY-MM-DD" ───────────────────────
@@ -74,14 +75,28 @@ router.post("/create-checkout", async (req, res) => {
     const checkInStr = fmtISO(booking.check_in);
     const checkOutStr = fmtISO(booking.check_out);
 
-    const productName = isAdvance
-      ? `Avans rezervare — ${booking.room_name}`
-      : `Cazare — ${booking.room_name}`;
+    const isEN = booking.preferred_language === "en";
+    const translatedRoomName = translateRoomName(
+      booking.room_name,
+      isEN ? "en" : "ro",
+    );
+    const nightsLabel =
+      booking.nights === 1
+        ? isEN
+          ? "night"
+          : "noapte"
+        : isEN
+          ? "nights"
+          : "nopți";
 
-    const productDescription = isAdvance
-      ? `Avans 30% · ${booking.room_name} · ${checkInStr} → ${checkOutStr} · ${booking.nights} nopți · Rest la check-in: ${remainingAmount} RON · Ref: ${booking.booking_ref}`
-      : `Cazare · ${booking.room_name} · ${checkInStr} → ${checkOutStr} · ${booking.nights} nopți · Ref: ${booking.booking_ref}`;
-
+    let productName, productDescription;
+    if (isAdvance) {
+      productName = `${isEN ? "Advance payment" : "Avans rezervare"} — ${translatedRoomName}`;
+      productDescription = `Check-in: ${checkInStr} · Check-out: ${checkOutStr} · ${booking.nights} ${nightsLabel} · ${isEN ? "30% advance · Remaining" : "Avans 30% · Rest"} ${remainingAmount} RON ${isEN ? "due at check-in" : "la sosire"}`;
+    } else {
+      productName = `${isEN ? "Accommodation" : "Cazare"} — ${translatedRoomName}`;
+      productDescription = `Check-in: ${checkInStr} · Check-out: ${checkOutStr} · ${booking.nights} ${nightsLabel}`;
+    }
     // ── Metadata Stripe — inclusiv datele B2B ─────────────────────────────────
     // Stripe metadata: valori string, max 500 chars/valoare, max 50 chei
     const stripeMetadata = {
@@ -108,7 +123,7 @@ router.post("/create-checkout", async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      locale: "ro",
+      locale: booking.preferred_language === "en" ? "en" : "ro",
       customer_email: booking.guest_email,
 
       line_items: [
@@ -119,7 +134,9 @@ router.post("/create-checkout", async (req, res) => {
             product_data: {
               name: productName,
               description: productDescription,
-              images: [`${FRONTEND_URL}/placeholder.svg`],
+              images: [
+                "https://belvedere-images.s3.eu-central-1.amazonaws.com/hero/poza-pensiune.jpg",
+              ],
             },
           },
           quantity: 1,

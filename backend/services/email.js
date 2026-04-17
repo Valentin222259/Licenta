@@ -1620,6 +1620,7 @@ ${btn("Deschide Panoul de Administrare", `${B.site}/admin/bookings`)}
 
 module.exports = {
   sendClientBookingConfirmation,
+  translateRoomName,
   sendAdminNewBookingAlert,
   sendBookingCancellation,
   sendAdminCancellationAlert,
