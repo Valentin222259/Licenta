@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 
 interface SettingsRow {
   key: string;
@@ -222,15 +222,15 @@ const AdminSettings = () => {
             </p>
             <p>
               ☕ Mic dejun: {values.price_breakfast} × 2 pers × 3 nopți ={" "}
-              <strong>{parseInt(values.price_breakfast || "0") * 6} RON</strong>
+              <strong>{Number.parseInt(values.price_breakfast || "0") * 6} RON</strong>
             </p>
             <p>
               🍽️ Cină: {values.price_dinner} × 2 pers × 3 nopți ={" "}
-              <strong>{parseInt(values.price_dinner || "0") * 6} RON</strong>
+              <strong>{Number.parseInt(values.price_dinner || "0") * 6} RON</strong>
             </p>
             <p>
               🛏️ 1 pat suplimentar × 3 nopți ={" "}
-              <strong>{parseInt(values.price_extra_bed || "0") * 3} RON</strong>
+              <strong>{Number.parseInt(values.price_extra_bed || "0") * 3} RON</strong>
             </p>
             <p>
               🌊 Ciubăr (1 sesiune): <strong>{values.price_jacuzzi} RON</strong>

@@ -161,7 +161,7 @@ router.post("/sentiment", async (req, res) => {
          ORDER BY created_at DESC LIMIT 50`,
       );
       reviews = result.rows.length > 0 ? result.rows : MOCK_REVIEWS;
-    } catch {
+    } catch (_err) {
       reviews = MOCK_REVIEWS; // fallback dacă tabelul nu există încă
     }
 
@@ -211,7 +211,7 @@ Returnează EXACT acest format JSON (fără markdown, fără explicații):
         },
         { role: "user", content: prompt },
       ]);
-      aiInsights = JSON.parse(rawText.replace(/```json|```/g, "").trim());
+      aiInsights = JSON.parse(rawText.replaceAll(/```json|```/g, "").trim());
     } else {
       // 🔧 Mock response — folosit când Azure nu e disponibil
       aiInsights = {
@@ -277,20 +277,20 @@ router.get("/smart-pricing", async (req, res) => {
         ORDER BY date
       `);
       occupancyData = result.rows.length >= 3 ? result.rows : MOCK_OCCUPANCY;
-    } catch {
+    } catch (_err) {
       occupancyData = MOCK_OCCUPANCY;
     }
 
     // ── Pasul 2: Statistici agregate ────────────────────────────────────────
     const avgOccupancy = Math.round(
-      occupancyData.reduce((s, d) => s + parseInt(d.occupancy_rate), 0) /
+      occupancyData.reduce((s, d) => s + Number.parseInt(d.occupancy_rate), 0) /
         occupancyData.length,
     );
     const peakOccupancy = Math.max(
-      ...occupancyData.map((d) => parseInt(d.occupancy_rate)),
+      ...occupancyData.map((d) => Number.parseInt(d.occupancy_rate)),
     );
     const highDemandDays = occupancyData.filter(
-      (d) => parseInt(d.occupancy_rate) >= 80,
+      (d) => Number.parseInt(d.occupancy_rate) >= 80,
     ).length;
 
     // ── Pasul 3: Prompt pentru LLM ──────────────────────────────────────────
@@ -327,7 +327,7 @@ Returnează DOAR un obiect JSON valid (fără markdown):
         },
         { role: "user", content: prompt },
       ]);
-      aiRecommendation = JSON.parse(rawText.replace(/```json|```/g, "").trim());
+      aiRecommendation = JSON.parse(rawText.replaceAll(/```json|```/g, "").trim());
     } else {
       // 🔧 Mock response
       aiRecommendation = {
@@ -372,3 +372,4 @@ function getCurrentSeason() {
 }
 
 module.exports = router;
+

@@ -194,19 +194,15 @@ router.post(
         const paymentSplit = session.metadata?.payment_split || "full";
         const isAdvance = paymentSplit === "advance";
         const paidAmount = Math.round(session.amount_total / 100);
-        const remainingAmount = parseInt(
+        const remainingAmount = Number.parseInt(
           session.metadata?.remaining_amount || "0",
         );
-        const totalPrice = parseInt(session.metadata?.total_price || "0");
-        const nights = parseInt(session.metadata?.nights || "1");
+        const totalPrice = Number.parseInt(session.metadata?.total_price || "0");
+        const nights = Number.parseInt(session.metadata?.nights || "1");
         const checkIn = session.metadata?.check_in || "";
         const checkOut = session.metadata?.check_out || "";
 
         // Date B2B din metadata Stripe
-        const needsInvoice = session.metadata?.needs_invoice === "true";
-        const companyName = session.metadata?.company_name || null;
-        const companyCui = session.metadata?.company_cui || null;
-
         if (bookingId) {
           try {
             const result = await query(
@@ -353,8 +349,8 @@ router.get("/verify/:sessionId", async (req, res) => {
       charge_amount: session.amount_total
         ? Math.round(session.amount_total / 100)
         : null,
-      remaining_amount: parseInt(session.metadata?.remaining_amount || "0"),
-      total_price: parseInt(session.metadata?.total_price || "0"),
+      remaining_amount: Number.parseInt(session.metadata?.remaining_amount || "0"),
+      total_price: Number.parseInt(session.metadata?.total_price || "0"),
       needs_invoice: session.metadata?.needs_invoice === "true",
       booking,
     });
@@ -365,3 +361,4 @@ router.get("/verify/:sessionId", async (req, res) => {
 });
 
 module.exports = router;
+
