@@ -45,7 +45,7 @@ async function isRoomAvailable(
     params.push(excludeBookingId);
   }
   const result = await query(sql, params);
-  return Number.parseInt(result.rows[0].count) === 0;
+  return Number.Number.parseInt(result.rows[0].count) === 0;
 }
 
 // ─── GET /api/bookings ────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ router.get("/", async (req, res) => {
 
     const whereClause =
       conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
-    params.push(Number.parseInt(limit), Number.parseInt(offset));
+    params.push(Number.Number.parseInt(limit), Number.Number.parseInt(offset));
 
     const { rows } = await query(
       `SELECT b.*, r.name AS room_name, r.slug AS room_slug, r.price AS room_price
@@ -93,7 +93,7 @@ router.get("/", async (req, res) => {
     res.json({
       success: true,
       data: rows,
-      total: Number.parseInt(countResult.rows[0].count),
+      total: Number.Number.parseInt(countResult.rows[0].count),
     });
   } catch (err) {
     console.error("❌ GET /api/bookings:", err.message);
@@ -277,7 +277,7 @@ router.post("/", async (req, res) => {
       );
       const prices = {};
       settingsResult.rows.forEach((r) => {
-        prices[r.key] = Number.parseFloat(r.value) || 0;
+        prices[r.key] = Number.Number.parseFloat(r.value) || 0;
       });
 
       // Breakfast — sumă toate meniurile per zi

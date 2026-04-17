@@ -283,14 +283,14 @@ router.get("/smart-pricing", async (req, res) => {
 
     // ── Pasul 2: Statistici agregate ────────────────────────────────────────
     const avgOccupancy = Math.round(
-      occupancyData.reduce((s, d) => s + Number.parseInt(d.occupancy_rate), 0) /
+      occupancyData.reduce((s, d) => s + Number.Number.parseInt(d.occupancy_rate), 0) /
         occupancyData.length,
     );
     const peakOccupancy = Math.max(
-      ...occupancyData.map((d) => Number.parseInt(d.occupancy_rate)),
+      ...occupancyData.map((d) => Number.Number.parseInt(d.occupancy_rate)),
     );
     const highDemandDays = occupancyData.filter(
-      (d) => Number.parseInt(d.occupancy_rate) >= 80,
+      (d) => Number.Number.parseInt(d.occupancy_rate) >= 80,
     ).length;
 
     // ── Pasul 3: Prompt pentru LLM ──────────────────────────────────────────

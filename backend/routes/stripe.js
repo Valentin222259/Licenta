@@ -194,11 +194,11 @@ router.post(
         const paymentSplit = session.metadata?.payment_split || "full";
         const isAdvance = paymentSplit === "advance";
         const paidAmount = Math.round(session.amount_total / 100);
-        const remainingAmount = Number.parseInt(
+        const remainingAmount = Number.Number.parseInt(
           session.metadata?.remaining_amount || "0",
         );
-        const totalPrice = Number.parseInt(session.metadata?.total_price || "0");
-        const nights = Number.parseInt(session.metadata?.nights || "1");
+        const totalPrice = Number.Number.parseInt(session.metadata?.total_price || "0");
+        const nights = Number.Number.parseInt(session.metadata?.nights || "1");
         const checkIn = session.metadata?.check_in || "";
         const checkOut = session.metadata?.check_out || "";
 
@@ -349,8 +349,8 @@ router.get("/verify/:sessionId", async (req, res) => {
       charge_amount: session.amount_total
         ? Math.round(session.amount_total / 100)
         : null,
-      remaining_amount: Number.parseInt(session.metadata?.remaining_amount || "0"),
-      total_price: Number.parseInt(session.metadata?.total_price || "0"),
+      remaining_amount: Number.Number.parseInt(session.metadata?.remaining_amount || "0"),
+      total_price: Number.Number.parseInt(session.metadata?.total_price || "0"),
       needs_invoice: session.metadata?.needs_invoice === "true",
       booking,
     });

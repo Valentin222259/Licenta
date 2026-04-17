@@ -131,12 +131,12 @@ router.get("/smart-pricing", async (req, res) => {
       rooms: roomStats.map((r) => ({
         name: r.name,
         current_price_ron: r.current_price,
-        total_bookings_6mo: parseInt(r.total_bookings),
-        confirmed: parseInt(r.confirmed_bookings),
-        cancelled: parseInt(r.cancelled_bookings),
-        upcoming: parseInt(r.upcoming_bookings),
-        revenue_6mo_ron: parseInt(r.total_revenue),
-        avg_stay_nights: parseFloat(r.avg_nights).toFixed(1),
+        total_bookings_6mo: Number.parseInt(r.total_bookings),
+        confirmed: Number.parseInt(r.confirmed_bookings),
+        cancelled: Number.parseInt(r.cancelled_bookings),
+        upcoming: Number.parseInt(r.upcoming_bookings),
+        revenue_6mo_ron: Number.parseInt(r.total_revenue),
+        avg_stay_nights: Number.parseFloat(r.avg_nights).toFixed(1),
       })),
       monthly_trend: monthlyStats,
       upcoming_busy_weekends: upcomingWeekends.rows.length,
@@ -375,8 +375,8 @@ function getCurrentSeason() {
 
 function generateStaticPricing(rooms) {
   return rooms.map((room) => {
-    const bookings = parseInt(room.total_bookings) || 0;
-    const currentPrice = parseInt(room.current_price) || 250;
+    const bookings = Number.parseInt(room.total_bookings) || 0;
+    const currentPrice = Number.parseInt(room.current_price) || 250;
     let direction = "stable",
       change = 0;
     let reasoning = "Ocupare normală, prețul este optim.";
@@ -462,7 +462,7 @@ router.post("/chat", async (req, res) => {
       );
 
       const totalRooms = roomsResult.rows.length;
-      const occupiedRooms = parseInt(occupiedResult.rows[0]?.occupied || 0);
+      const occupiedRooms = Number.parseInt(occupiedResult.rows[0]?.occupied || 0);
       const freeRooms = totalRooms - occupiedRooms;
 
       // Construim contextul ca text structurat pentru prompt

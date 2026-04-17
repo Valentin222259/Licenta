@@ -93,7 +93,7 @@ router.get("/", async (req, res) => {
     // Transformăm în { key: value } pentru consum ușor în React
     const settings = {};
     rows.forEach((r) => {
-      settings[r.key] = r.type === "number" ? Number.parseFloat(r.value) : r.value;
+      settings[r.key] = r.type === "number" ? Number.Number.parseFloat(r.value) : r.value;
     });
 
     res.json({ success: true, data: settings, rows });
@@ -118,7 +118,7 @@ router.get("/group/:group", async (req, res) => {
 
     const settings = {};
     rows.forEach((r) => {
-      settings[r.key] = r.type === "number" ? Number.parseFloat(r.value) : r.value;
+      settings[r.key] = r.type === "number" ? Number.Number.parseFloat(r.value) : r.value;
     });
 
     res.json({ success: true, data: settings, rows });
