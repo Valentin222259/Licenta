@@ -300,41 +300,107 @@ function buildExtrasHtml(extras, lang = "ro") {
   // Verificăm dacă există obiectul și dacă are cel puțin o opțiune selectată
   if (!extras || typeof extras !== "object") return "";
 
-  const { breakfast, dinner, extra_beds, jacuzzi } = extras;
-  if (!breakfast && !dinner && !extra_beds && !jacuzzi) return "";
+  const { breakfast, dinner, extra_beds, jacuzzi, jacuzzi_dates } = extras;
 
-  const title =
-    lang === "en"
-      ? "Servicii Suplimentare Solicitate"
-      : "Servicii Suplimentare Solicitate"; // Folosim engleză pentru en
-  const titleText =
-    lang === "en"
-      ? "Requested Extra Services"
-      : "Servicii Suplimentare Solicitate";
+  // Calculăm totaluri din structura per-zi
+  const totalBreakfast =
+    breakfast && typeof breakfast === "object"
+      ? Object.values(breakfast).reduce((s, n) => s + (n || 0), 0)
+      : breakfast || 0;
+  const totalDinner =
+    dinner && typeof dinner === "object"
+      ? Object.values(dinner).reduce((s, n) => s + (n || 0), 0)
+      : dinner || 0;
+  const totalJacuzzi = Array.isArray(jacuzzi_dates)
+    ? jacuzzi_dates.length
+    : jacuzzi || 0;
+
+  if (!totalBreakfast && !totalDinner && !extra_beds && !totalJacuzzi)
+    return "";
+
+  const fmtDate = (iso) => {
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  };
 
   const items = [];
-  if (breakfast)
-    items.push(
-      lang === "en" ? "🥞 Traditional Breakfast" : "🥞 Mic dejun tradițional",
-    );
-  if (dinner)
-    items.push(
-      lang === "en"
-        ? "🍲 Traditional Dinner (3 courses)"
-        : "🍲 Cină tradițională (3 feluri)",
-    );
+
+  // Mic dejun — afișăm per zi dacă avem structura detaliată
+  if (totalBreakfast > 0) {
+    if (breakfast && typeof breakfast === "object") {
+      const dayLines = Object.entries(breakfast)
+        .filter(([, n]) => n > 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, n]) =>
+          lang === "en"
+            ? `${fmtDate(date)}: ${n} ${n === 1 ? "menu" : "menus"}`
+            : `${fmtDate(date)}: ${n} ${n === 1 ? "meniu" : "meniuri"}`,
+        )
+        .join(", ");
+      items.push(
+        lang === "en"
+          ? `🥞 Traditional Breakfast — ${dayLines} (total: ${totalBreakfast} ${totalBreakfast === 1 ? "menu" : "menus"})`
+          : `🥞 Mic dejun tradițional — ${dayLines} (total: ${totalBreakfast} ${totalBreakfast === 1 ? "meniu" : "meniuri"})`,
+      );
+    } else {
+      items.push(
+        lang === "en"
+          ? `🥞 Traditional Breakfast — ${totalBreakfast} ${totalBreakfast === 1 ? "menu" : "menus"}`
+          : `🥞 Mic dejun tradițional — ${totalBreakfast} ${totalBreakfast === 1 ? "meniu" : "meniuri"}`,
+      );
+    }
+  }
+
+  // Cină — la fel
+  if (totalDinner > 0) {
+    if (dinner && typeof dinner === "object") {
+      const dayLines = Object.entries(dinner)
+        .filter(([, n]) => n > 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, n]) =>
+          lang === "en"
+            ? `${fmtDate(date)}: ${n} ${n === 1 ? "menu" : "menus"}`
+            : `${fmtDate(date)}: ${n} ${n === 1 ? "meniu" : "meniuri"}`,
+        )
+        .join(", ");
+      items.push(
+        lang === "en"
+          ? `🍲 Traditional Dinner — ${dayLines} (total: ${totalDinner} ${totalDinner === 1 ? "menu" : "menus"})`
+          : `🍲 Cină tradițională — ${dayLines} (total: ${totalDinner} ${totalDinner === 1 ? "meniu" : "meniuri"})`,
+      );
+    } else {
+      items.push(
+        lang === "en"
+          ? `🍲 Traditional Dinner — ${totalDinner} ${totalDinner === 1 ? "menu" : "menus"}`
+          : `🍲 Cină tradițională — ${totalDinner} ${totalDinner === 1 ? "meniu" : "meniuri"}`,
+      );
+    }
+  }
+
   if (extra_beds)
     items.push(
       lang === "en"
         ? `🛏️ Extra Bed (${extra_beds})`
         : `🛏️ Pat suplimentar (${extra_beds})`,
     );
-  if (jacuzzi)
-    items.push(
-      lang === "en"
-        ? "🫧 Outdoor Jacuzzi / Hot Tub Access"
-        : "🫧 Acces Ciubăr / Jacuzzi exterior",
-    );
+
+  // Ciubăr — afișăm datele exacte
+  if (totalJacuzzi > 0) {
+    if (Array.isArray(jacuzzi_dates) && jacuzzi_dates.length > 0) {
+      const dateList = jacuzzi_dates.sort().map(fmtDate).join(", ");
+      items.push(
+        lang === "en"
+          ? `🫧 Outdoor Jacuzzi / Hot Tub — ${dateList} (${totalJacuzzi} ${totalJacuzzi === 1 ? "session" : "sessions"})`
+          : `🫧 Ciubăr / Jacuzzi exterior — ${dateList} (${totalJacuzzi} ${totalJacuzzi === 1 ? "sesiune" : "sesiuni"})`,
+      );
+    } else {
+      items.push(
+        lang === "en"
+          ? `🫧 Outdoor Jacuzzi / Hot Tub — ${totalJacuzzi} ${totalJacuzzi === 1 ? "session" : "sessions"}`
+          : `🫧 Ciubăr / Jacuzzi exterior — ${totalJacuzzi} ${totalJacuzzi === 1 ? "sesiune" : "sesiuni"}`,
+      );
+    }
+  }
 
   return `
 <div style="border-radius:12px;overflow:hidden;border:2px solid ${B.goldBorder};margin:0 0 28px 0;">

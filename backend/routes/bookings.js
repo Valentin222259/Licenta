@@ -280,19 +280,40 @@ router.post("/", async (req, res) => {
         prices[r.key] = parseFloat(r.value) || 0;
       });
 
-      if (extras.breakfast)
-        extrasPrice += (prices.price_breakfast || 50) * guests * nights;
-      if (extras.dinner)
-        extrasPrice += (prices.price_dinner || 80) * guests * nights;
+      // Breakfast — sumă toate meniurile per zi
+      if (extras.breakfast && typeof extras.breakfast === "object") {
+        const totalBreakfast = Object.values(extras.breakfast).reduce(
+          (s, n) => s + (n || 0),
+          0,
+        );
+        extrasPrice += (prices.price_breakfast || 50) * totalBreakfast;
+      }
+
+      // Dinner — sumă toate meniurile per zi
+      if (extras.dinner && typeof extras.dinner === "object") {
+        const totalDinner = Object.values(extras.dinner).reduce(
+          (s, n) => s + (n || 0),
+          0,
+        );
+        extrasPrice += (prices.price_dinner || 80) * totalDinner;
+      }
+
       if (extraBeds > 0)
         extrasPrice += (prices.price_extra_bed || 50) * extraBeds * nights;
-      if (extras.jacuzzi) extrasPrice += prices.price_jacuzzi || 100;
+
+      // Jacuzzi — număr sesiuni din dates
+      const jacuzziSessions = Array.isArray(extras.jacuzzi_dates)
+        ? extras.jacuzzi_dates.length
+        : extras.jacuzzi || 0;
+      if (jacuzziSessions > 0)
+        extrasPrice += (prices.price_jacuzzi || 100) * jacuzziSessions;
 
       extrasJson = {
-        breakfast: !!extras.breakfast,
-        dinner: !!extras.dinner,
+        breakfast: extras.breakfast || {},
+        dinner: extras.dinner || {},
         extra_beds: extraBeds,
-        jacuzzi: !!extras.jacuzzi,
+        jacuzzi: jacuzziSessions,
+        jacuzzi_dates: extras.jacuzzi_dates || [],
       };
     }
 

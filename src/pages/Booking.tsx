@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useRooms } from "@/lib/hooks";
 import { useSettings } from "@/lib/useSettings";
-import { apiPost } from "@/lib/api";
+import { apiPost, apiGet } from "@/lib/api";
 import heroImage from "@/assets/hero-mountains.jpg";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
@@ -23,11 +23,15 @@ import "react-phone-number-input/style.css";
 type PaymentMethod = "card" | "bank_transfer" | "reception";
 type PaymentSplit = "full" | "advance";
 
+interface DayMenus {
+  [date: string]: number;
+}
+
 interface Extras {
-  breakfast: boolean;
-  dinner: boolean;
+  breakfast: DayMenus;
+  dinner: DayMenus;
   extra_beds: 0 | 1 | 2;
-  jacuzzi: boolean;
+  jacuzzi_dates: string[];
 }
 
 const ADVANCE_PERCENT = 0.3;
@@ -47,23 +51,13 @@ const Booking = () => {
   const [paymentSplit, setPaymentSplit] = useState<PaymentSplit>("full");
 
   const [extras, setExtras] = useState<Extras>({
-    breakfast: false,
-    dinner: false,
+    breakfast: {},
+    dinner: {},
     extra_beds: 0,
-    jacuzzi: false,
+    jacuzzi_dates: [],
   });
-
-  const toggleExtra = (key: keyof Extras, value?: number) => {
-    setExtras((prev) => {
-      if (key === "extra_beds") {
-        return { ...prev, extra_beds: (value as 0 | 1 | 2) ?? 0 };
-      }
-      return {
-        ...prev,
-        [key]: !prev[key as "breakfast" | "dinner" | "jacuzzi"],
-      };
-    });
-  };
+  const [jacuzziOccupied, setJacuzziOccupied] = useState<string[]>([]);
+  const [jacuzziLoading, setJacuzziLoading] = useState(false);
 
   const [needsInvoice, setNeedsInvoice] = useState(false);
   const [company, setCompany] = useState({
@@ -99,6 +93,51 @@ const Booking = () => {
     return errors;
   }, [form.checkIn, form.checkOut, today, t]);
 
+  // ─── Fetch disponibilitate ciubăr când se schimbă intervalul ──────────────
+  useEffect(() => {
+    if (
+      !form.checkIn ||
+      !form.checkOut ||
+      dateErrors.checkIn ||
+      dateErrors.checkOut
+    )
+      return;
+    setJacuzziLoading(true);
+    apiGet<{ success: boolean; occupied: string[] }>(
+      `/api/jacuzzi/availability?from=${form.checkIn}&to=${form.checkOut}`,
+    )
+      .then((res) => setJacuzziOccupied(res.occupied || []))
+      .catch(() => setJacuzziOccupied([]))
+      .finally(() => setJacuzziLoading(false));
+    setExtras((prev) => ({ ...prev, jacuzzi_dates: [] }));
+  }, [form.checkIn, form.checkOut, dateErrors.checkIn, dateErrors.checkOut]);
+
+  // ─── Zile din intervalul rezervării ───────────────────────────────────────
+  const bookingDays = useMemo(() => {
+    if (
+      !form.checkIn ||
+      !form.checkOut ||
+      dateErrors.checkIn ||
+      dateErrors.checkOut
+    )
+      return [];
+    const days: string[] = [];
+    const current = new Date(form.checkIn);
+    const end = new Date(form.checkOut);
+    while (current <= end) {
+      days.push(current.toISOString().split("T")[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    return days;
+  }, [form.checkIn, form.checkOut, dateErrors.checkIn, dateErrors.checkOut]);
+
+  // Mic dejun: nu în ziua check-in
+  const breakfastDays = bookingDays.filter((d) => d !== form.checkIn);
+  // Cină: nu în ziua check-out
+  const dinnerDays = bookingDays.filter((d) => d !== form.checkOut);
+  // Ciubăr: nu în ziua check-out
+  const jacuzziDays = bookingDays.filter((d) => d !== form.checkOut);
+
   const nights =
     form.checkIn && form.checkOut && !dateErrors.checkIn && !dateErrors.checkOut
       ? Math.max(
@@ -113,16 +152,24 @@ const Booking = () => {
 
   const roomPrice = room ? room.price * nights : 0;
 
+  const totalBreakfastMenus = Object.values(extras.breakfast).reduce(
+    (s, n) => s + n,
+    0,
+  );
+  const totalDinnerMenus = Object.values(extras.dinner).reduce(
+    (s, n) => s + n,
+    0,
+  );
+
   const extrasPrice = useMemo(() => {
     let total = 0;
-    if (extras.breakfast)
-      total += settings.price_breakfast * form.guests * nights;
-    if (extras.dinner) total += settings.price_dinner * form.guests * nights;
+    total += settings.price_breakfast * totalBreakfastMenus;
+    total += settings.price_dinner * totalDinnerMenus;
     if (extras.extra_beds > 0)
       total += settings.price_extra_bed * extras.extra_beds * nights;
-    if (extras.jacuzzi) total += settings.price_jacuzzi;
+    total += settings.price_jacuzzi * extras.jacuzzi_dates.length;
     return total;
-  }, [extras, form.guests, nights, settings]);
+  }, [extras, nights, settings, totalBreakfastMenus, totalDinnerMenus]);
 
   const totalPrice = roomPrice + extrasPrice;
   const advanceAmount = Math.round(totalPrice * ADVANCE_PERCENT);
@@ -130,9 +177,17 @@ const Booking = () => {
   const stripeAmount = paymentSplit === "advance" ? advanceAmount : totalPrice;
   const receptionAmount = paymentSplit === "advance" ? remainingAmount : 0;
 
-  const maxGuests = 2 + extras.extra_beds;
+  const maxGuests = room
+    ? Math.max(room.capacity, 2) + extras.extra_beds
+    : 2 + extras.extra_beds;
 
   const formatDate = (iso: string) => {
+    if (!iso) return "";
+    const [, m, d] = iso.split("-");
+    return `${d}/${m}`;
+  };
+
+  const formatDateFull = (iso: string) => {
     if (!iso) return "";
     const [y, m, d] = iso.split("-");
     return `${d}/${m}/${y}`;
@@ -191,10 +246,19 @@ const Booking = () => {
           breakfast: extras.breakfast,
           dinner: extras.dinner,
           extra_beds: extras.extra_beds,
-          jacuzzi: extras.jacuzzi,
+          jacuzzi: extras.jacuzzi_dates.length,
+          jacuzzi_dates: extras.jacuzzi_dates,
         },
         preferred_language: i18n.language?.startsWith("en") ? "en" : "ro",
       });
+
+      // Rezervă sesiunile de ciubăr dacă există
+      if (extras.jacuzzi_dates.length > 0) {
+        await apiPost("/api/jacuzzi/reserve", {
+          booking_id: booking.data.id,
+          dates: extras.jacuzzi_dates,
+        });
+      }
 
       if (paymentMethod === "card") {
         const { checkout_url } = await apiPost<{ checkout_url: string }>(
@@ -238,11 +302,13 @@ const Booking = () => {
           onSubmit={handleSubmit}
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
+          {/* ─── Coloana stângă ─────────────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-5">
             <h2 className="font-heading text-xl mb-2">
               {t("booking.guestInfo")}
             </h2>
 
+            {/* Nume */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.fullName")}
@@ -257,6 +323,7 @@ const Booking = () => {
               />
             </div>
 
+            {/* Email */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.email")}
@@ -271,6 +338,7 @@ const Booking = () => {
               />
             </div>
 
+            {/* Telefon */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.phone")}
@@ -284,6 +352,7 @@ const Booking = () => {
               />
             </div>
 
+            {/* Date */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
@@ -299,7 +368,7 @@ const Booking = () => {
                 />
                 {form.checkIn && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatDate(form.checkIn)}
+                    {formatDateFull(form.checkIn)}
                   </p>
                 )}
                 {dateErrors.checkIn && (
@@ -322,7 +391,7 @@ const Booking = () => {
                 />
                 {form.checkOut && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatDate(form.checkOut)}
+                    {formatDateFull(form.checkOut)}
                   </p>
                 )}
                 {dateErrors.checkOut && (
@@ -333,6 +402,7 @@ const Booking = () => {
               </div>
             </div>
 
+            {/* Număr oaspeți */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.guestsLabel")}
@@ -353,30 +423,24 @@ const Booking = () => {
               </p>
             </div>
 
-            {/* EXTRAS */}
+            {/* ─── EXTRAS ─────────────────────────────────────────────────── */}
             <div>
               <h2 className="font-heading text-xl mb-3">
                 {t("booking.extras")}
               </h2>
 
               <div className="space-y-3">
-                {/* Breakfast */}
-                <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    extras.breakfast
+                {/* ── Mic dejun ─────────────────────────────────────────── */}
+                <div
+                  className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
+                    totalBreakfastMenus > 0
                       ? "border-primary bg-primary/5"
-                      : "border-border bg-muted/20 hover:border-primary/30"
+                      : "border-border bg-muted/20"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={extras.breakfast}
-                    onChange={() => toggleExtra("breakfast")}
-                    className="accent-primary mt-0.5 shrink-0 w-4 h-4"
-                  />
+                  <Coffee size={15} className="text-primary shrink-0 mt-1" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Coffee size={15} className="text-primary shrink-0" />
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold">
                         {t("booking.breakfast")}
                       </span>
@@ -390,35 +454,83 @@ const Booking = () => {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {t("booking.breakfastDesc")}
                     </p>
-                    {extras.breakfast && nights > 0 && (
-                      <p className="text-xs text-primary mt-1 font-medium">
-                        = {settings.price_breakfast * form.guests * nights} RON
-                        ({form.guests} × {nights})
+                    <p className="text-xs text-muted-foreground mt-0.5 italic">
+                      {t("booking.breakfastNote")}
+                    </p>
+
+                    {breakfastDays.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {breakfastDays.map((day) => {
+                          const val = extras.breakfast[day] || 0;
+                          return (
+                            <div
+                              key={day}
+                              className="flex items-center gap-2 flex-wrap"
+                            >
+                              <span className="text-xs font-medium text-muted-foreground w-14 shrink-0">
+                                {formatDate(day)}
+                              </span>
+                              <div className="flex gap-1 flex-wrap">
+                                {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+                                  <button
+                                    key={n}
+                                    type="button"
+                                    onClick={() =>
+                                      setExtras((prev) => ({
+                                        ...prev,
+                                        breakfast: {
+                                          ...prev.breakfast,
+                                          [day]: n,
+                                        },
+                                      }))
+                                    }
+                                    className={`w-8 h-8 rounded-lg text-xs font-semibold border-2 transition-all ${
+                                      val === n
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                                    }`}
+                                  >
+                                    {n === 0 ? "—" : n}
+                                  </button>
+                                ))}
+                              </div>
+                              {val > 0 && (
+                                <span className="text-xs text-primary font-medium">
+                                  {val * settings.price_breakfast} RON
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {totalBreakfastMenus > 0 && (
+                      <p className="text-xs text-primary mt-2 font-medium">
+                        Total: {totalBreakfastMenus}{" "}
+                        {totalBreakfastMenus === 1
+                          ? t("booking.menuLabel")
+                          : t("booking.menusLabel")}{" "}
+                        = {totalBreakfastMenus * settings.price_breakfast} RON
                       </p>
                     )}
                   </div>
-                </label>
+                </div>
 
-                {/* Dinner */}
-                <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    extras.dinner
+                {/* ── Cină ──────────────────────────────────────────────── */}
+                <div
+                  className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
+                    totalDinnerMenus > 0
                       ? "border-primary bg-primary/5"
-                      : "border-border bg-muted/20 hover:border-primary/30"
+                      : "border-border bg-muted/20"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={extras.dinner}
-                    onChange={() => toggleExtra("dinner")}
-                    className="accent-primary mt-0.5 shrink-0 w-4 h-4"
+                  <UtensilsCrossed
+                    size={15}
+                    className="text-primary shrink-0 mt-1"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <UtensilsCrossed
-                        size={15}
-                        className="text-primary shrink-0"
-                      />
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold">
                         {t("booking.dinner")}
                       </span>
@@ -432,16 +544,70 @@ const Booking = () => {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {t("booking.dinnerDesc")}
                     </p>
-                    {extras.dinner && nights > 0 && (
-                      <p className="text-xs text-primary mt-1 font-medium">
-                        = {settings.price_dinner * form.guests * nights} RON (
-                        {form.guests} × {nights})
+                    <p className="text-xs text-muted-foreground mt-0.5 italic">
+                      {t("booking.dinnerNote")}
+                    </p>
+
+                    {dinnerDays.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {dinnerDays.map((day) => {
+                          const val = extras.dinner[day] || 0;
+                          return (
+                            <div
+                              key={day}
+                              className="flex items-center gap-2 flex-wrap"
+                            >
+                              <span className="text-xs font-medium text-muted-foreground w-14 shrink-0">
+                                {formatDate(day)}
+                              </span>
+                              <div className="flex gap-1 flex-wrap">
+                                {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+                                  <button
+                                    key={n}
+                                    type="button"
+                                    onClick={() =>
+                                      setExtras((prev) => ({
+                                        ...prev,
+                                        dinner: {
+                                          ...prev.dinner,
+                                          [day]: n,
+                                        },
+                                      }))
+                                    }
+                                    className={`w-8 h-8 rounded-lg text-xs font-semibold border-2 transition-all ${
+                                      val === n
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                                    }`}
+                                  >
+                                    {n === 0 ? "—" : n}
+                                  </button>
+                                ))}
+                              </div>
+                              {val > 0 && (
+                                <span className="text-xs text-primary font-medium">
+                                  {val * settings.price_dinner} RON
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {totalDinnerMenus > 0 && (
+                      <p className="text-xs text-primary mt-2 font-medium">
+                        Total: {totalDinnerMenus}{" "}
+                        {totalDinnerMenus === 1
+                          ? t("booking.menuLabel")
+                          : t("booking.menusLabel")}{" "}
+                        = {totalDinnerMenus * settings.price_dinner} RON
                       </p>
                     )}
                   </div>
-                </label>
+                </div>
 
-                {/* Extra beds */}
+                {/* ── Paturi suplimentare ────────────────────────────────── */}
                 <div
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                     extras.extra_beds > 0
@@ -470,7 +636,9 @@ const Booking = () => {
                         <button
                           key={n}
                           type="button"
-                          onClick={() => toggleExtra("extra_beds", n)}
+                          onClick={() =>
+                            setExtras((prev) => ({ ...prev, extra_beds: n }))
+                          }
                           className={`flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-all ${
                             extras.extra_beds === n
                               ? "border-primary bg-primary text-primary-foreground"
@@ -495,23 +663,17 @@ const Booking = () => {
                   </div>
                 </div>
 
-                {/* Jacuzzi */}
-                <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    extras.jacuzzi
+                {/* ── Ciubăr / Jacuzzi ──────────────────────────────────── */}
+                <div
+                  className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
+                    extras.jacuzzi_dates.length > 0
                       ? "border-primary bg-primary/5"
-                      : "border-border bg-muted/20 hover:border-primary/30"
+                      : "border-border bg-muted/20"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={extras.jacuzzi}
-                    onChange={() => toggleExtra("jacuzzi")}
-                    className="accent-primary mt-0.5 shrink-0 w-4 h-4"
-                  />
+                  <Waves size={15} className="text-primary shrink-0 mt-1" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Waves size={15} className="text-primary shrink-0" />
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold">
                         {t("booking.jacuzzi")}
                       </span>
@@ -525,12 +687,90 @@ const Booking = () => {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {t("booking.jacuzziDesc")}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 italic">
+                      {t("booking.jacuzziCheckinNote")}
+                    </p>
+                    <p className="text-xs text-muted-foreground italic">
+                      {t("booking.jacuzziCheckoutNote")}
+                    </p>
+
+                    {jacuzziDays.length > 0 ? (
+                      <div className="mt-3">
+                        {jacuzziLoading ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 size={13} className="animate-spin" />
+                            {i18n.language?.startsWith("en")
+                              ? "Checking availability..."
+                              : "Se verifică disponibilitatea..."}
+                          </div>
+                        ) : (
+                          <div className="flex gap-2 flex-wrap">
+                            {jacuzziDays.map((day) => {
+                              const isOccupied = jacuzziOccupied.includes(day);
+                              const isSelected =
+                                extras.jacuzzi_dates.includes(day);
+                              return (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  disabled={isOccupied}
+                                  onClick={() => {
+                                    if (isOccupied) return;
+                                    setExtras((prev) => ({
+                                      ...prev,
+                                      jacuzzi_dates: isSelected
+                                        ? prev.jacuzzi_dates.filter(
+                                            (d) => d !== day,
+                                          )
+                                        : [...prev.jacuzzi_dates, day],
+                                    }));
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${
+                                    isOccupied
+                                      ? "border-red-200 bg-red-50 text-red-400 cursor-not-allowed"
+                                      : isSelected
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                                  }`}
+                                  title={
+                                    isOccupied
+                                      ? t("booking.jacuzziOccupied")
+                                      : t("booking.jacuzziAvailable")
+                                  }
+                                >
+                                  {formatDate(day)}
+                                  {isOccupied && " ✗"}
+                                  {isSelected && !isOccupied && " ✓"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      (!form.checkIn || !form.checkOut) && (
+                        <p className="text-xs text-muted-foreground mt-2 italic">
+                          {t("booking.jacuzziSelectDates")}
+                        </p>
+                      )
+                    )}
+
+                    {extras.jacuzzi_dates.length > 0 && (
+                      <p className="text-xs text-primary mt-2 font-medium">
+                        {extras.jacuzzi_dates.length}{" "}
+                        {extras.jacuzzi_dates.length === 1
+                          ? t("booking.jacuzziSession")
+                          : t("booking.jacuzziSessions")}{" "}
+                        = {extras.jacuzzi_dates.length * settings.price_jacuzzi}{" "}
+                        RON
+                      </p>
+                    )}
                   </div>
-                </label>
+                </div>
               </div>
             </div>
 
-            {/* Special requests */}
+            {/* Cereri speciale */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
                 {t("booking.specialRequests")}
@@ -544,7 +784,7 @@ const Booking = () => {
               />
             </div>
 
-            {/* Payment method */}
+            {/* ─── Metodă de plată ─────────────────────────────────────── */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-3 block">
                 {t("booking.paymentMethod")}
@@ -637,7 +877,7 @@ const Booking = () => {
                   )}
                 </div>
 
-                {/* Bank transfer */}
+                {/* Transfer bancar */}
                 <label
                   className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === "bank_transfer" ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-primary/40"}`}
                 >
@@ -665,7 +905,7 @@ const Booking = () => {
               </div>
             </div>
 
-            {/* B2B Invoice */}
+            {/* ─── Factură B2B ─────────────────────────────────────────── */}
             <div className="pt-1">
               <label
                 className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${needsInvoice ? "border-primary bg-primary/5" : "border-border bg-muted/20 hover:border-primary/30"}`}
@@ -754,7 +994,7 @@ const Booking = () => {
             </div>
           </div>
 
-          {/* Sidebar summary */}
+          {/* ─── Sidebar sumar ───────────────────────────────────────────── */}
           {room && (
             <div className="bg-card border border-border rounded-lg p-6 h-fit lg:sticky lg:top-24">
               <h2 className="font-heading text-lg mb-4">
@@ -778,13 +1018,13 @@ const Booking = () => {
                     <p>
                       📅 {t("booking.checkIn")}:{" "}
                       <span className="font-medium text-foreground">
-                        {formatDate(form.checkIn)}
+                        {formatDateFull(form.checkIn)}
                       </span>
                     </p>
                     <p>
                       📅 {t("booking.checkOut")}:{" "}
                       <span className="font-medium text-foreground">
-                        {formatDate(form.checkOut)}
+                        {formatDateFull(form.checkOut)}
                       </span>
                     </p>
                   </div>
@@ -799,24 +1039,22 @@ const Booking = () => {
                   <span>{roomPrice} RON</span>
                 </div>
 
-                {extras.breakfast && (
+                {totalBreakfastMenus > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>
-                      ☕ {t("booking.breakfast")} × {form.guests} × {nights}
+                      ☕ {t("booking.breakfast")} × {totalBreakfastMenus}
                     </span>
                     <span>
-                      {settings.price_breakfast * form.guests * nights} RON
+                      {settings.price_breakfast * totalBreakfastMenus} RON
                     </span>
                   </div>
                 )}
-                {extras.dinner && (
+                {totalDinnerMenus > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>
-                      🍽️ {t("booking.dinner")} × {form.guests} × {nights}
+                      🍽️ {t("booking.dinner")} × {totalDinnerMenus}
                     </span>
-                    <span>
-                      {settings.price_dinner * form.guests * nights} RON
-                    </span>
+                    <span>{settings.price_dinner * totalDinnerMenus} RON</span>
                   </div>
                 )}
                 {extras.extra_beds > 0 && (
@@ -830,10 +1068,14 @@ const Booking = () => {
                     </span>
                   </div>
                 )}
-                {extras.jacuzzi && (
+                {extras.jacuzzi_dates.length > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>🌊 {t("booking.jacuzzi")}</span>
-                    <span>{settings.price_jacuzzi} RON</span>
+                    <span>
+                      🌊 {t("booking.jacuzzi")} × {extras.jacuzzi_dates.length}
+                    </span>
+                    <span>
+                      {settings.price_jacuzzi * extras.jacuzzi_dates.length} RON
+                    </span>
                   </div>
                 )}
 

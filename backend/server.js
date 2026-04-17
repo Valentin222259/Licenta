@@ -32,6 +32,7 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
 
 const settingsRouter = require("./routes/settings");
+const jacuzziRouter = require("./routes/jacuzzi");
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 // Citim originile permise din .env (separate cu virgulă)
@@ -127,6 +128,7 @@ app.use("/api/contact", contactRouter);
 app.use("/api/reviews", reviewsRouter);
 
 app.use("/api/settings", settingsRouter);
+app.use("/api/jacuzzi", jacuzziRouter);
 
 app.use("/api/test-emails", require("./routes/testEmails"));
 
