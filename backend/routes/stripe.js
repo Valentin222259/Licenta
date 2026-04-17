@@ -239,6 +239,13 @@ router.post(
                     : ""),
               );
 
+              // Fetch extras din DB
+              const extrasResult = await query(
+                `SELECT extras_json FROM bookings WHERE id = $1`,
+                [bookingId],
+              );
+              const extrasJson = extrasResult.rows[0]?.extras_json || null;
+
               const bookingData = {
                 guestName: booking.guest_name,
                 guestEmail: booking.guest_email,
@@ -252,12 +259,12 @@ router.post(
                 paymentSplit,
                 stripeAmount: paidAmount,
                 remainingAmount,
-                // ── Date B2B — din DB (mai complete decât metadata Stripe) ──────
                 needsInvoice: booking.needs_invoice,
                 companyName: booking.company_name,
                 companyCui: booking.company_cui,
                 companyRegNo: booking.company_reg_no,
                 companyAddress: booking.company_address,
+                extras: extrasJson,
               };
 
               const paymentMethodLabel = isAdvance

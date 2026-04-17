@@ -331,11 +331,17 @@ function buildExtrasHtml(extras, lang = "ro") {
       const dayLines = Object.entries(breakfast)
         .filter(([, n]) => n > 0)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, n]) =>
-          lang === "en"
-            ? `${fmtDate(date)}: ${n} ${n === 1 ? "menu" : "menus"}`
-            : `${fmtDate(date)}: ${n} ${n === 1 ? "meniu" : "meniuri"}`,
-        )
+        .map(([date, n]) => {
+          const unit =
+            lang === "en"
+              ? n === 1
+                ? "menu"
+                : "menus"
+              : n === 1
+                ? "meniu"
+                : "meniuri";
+          return `${fmtDate(date)}: ${n} ${unit}`;
+        })
         .join(", ");
       items.push(
         lang === "en"
@@ -357,11 +363,17 @@ function buildExtrasHtml(extras, lang = "ro") {
       const dayLines = Object.entries(dinner)
         .filter(([, n]) => n > 0)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, n]) =>
-          lang === "en"
-            ? `${fmtDate(date)}: ${n} ${n === 1 ? "menu" : "menus"}`
-            : `${fmtDate(date)}: ${n} ${n === 1 ? "meniu" : "meniuri"}`,
-        )
+        .map(([date, n]) => {
+          const unit =
+            lang === "en"
+              ? n === 1
+                ? "menu"
+                : "menus"
+              : n === 1
+                ? "meniu"
+                : "meniuri";
+          return `${fmtDate(date)}: ${n} ${unit}`;
+        })
         .join(", ");
       items.push(
         lang === "en"
@@ -401,6 +413,11 @@ function buildExtrasHtml(extras, lang = "ro") {
       );
     }
   }
+
+  const titleText =
+    lang === "en"
+      ? "Requested Extra Services"
+      : "Servicii Suplimentare Solicitate";
 
   return `
 <div style="border-radius:12px;overflow:hidden;border:2px solid ${B.goldBorder};margin:0 0 28px 0;">

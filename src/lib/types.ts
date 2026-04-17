@@ -38,17 +38,14 @@ export interface Booking {
   nights: number;
   guests: number;
   total_price: number;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status: "pending" | "confirmed" | "cancelled" | "completed" | "finished";
   source: string;
   special_requests: string | null;
   created_at: string;
-  // ── Câmpuri noi pentru sistemul de plată în avans ──────────────────────
-  // payment_split: "full" = plătit 100% online; "advance" = 30% online, 70% la recepție
   payment_split?: "full" | "advance" | null;
-  // stripe_amount: suma efectiv trimisă la Stripe (RON); NULL dacă nu e plată card
   stripe_amount?: number | null;
-  // remaining_amount: restanța de plătit la check-in (RON); 0 dacă s-a plătit integral
   remaining_amount?: number | null;
+  extras_json?: Record<string, any> | string | null;
 }
 
 export interface Review {

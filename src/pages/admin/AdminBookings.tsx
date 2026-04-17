@@ -615,8 +615,9 @@ const AdminBookings = () => {
 
   const fmt = (d: string) => {
     if (!d) return "—";
-    const dt = new Date(d);
-    return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear().toString().slice(2)}`;
+    const s = String(d).substring(0, 10);
+    const [y, m, day] = s.split("-");
+    return `${day}/${m}/${y.slice(2)}`;
   };
 
   const canCancel = (b: Booking) =>
@@ -1022,14 +1023,8 @@ const AdminBookings = () => {
                   ["Email", selected.guest_email],
                   ["Telefon", selected.guest_phone || "—"],
                   ["Cameră", selected.room_name],
-                  [
-                    "Check-in",
-                    selected.check_in?.split("T")[0] || selected.check_in,
-                  ],
-                  [
-                    "Check-out",
-                    selected.check_out?.split("T")[0] || selected.check_out,
-                  ],
+                  ["Check-in", fmt(selected.check_in)],
+                  ["Check-out", fmt(selected.check_out)],
                   ["Nopți", String(selected.nights)],
                   ["Total", `${selected.total_price} RON`],
                 ].map(([l, v]) => (
@@ -1045,6 +1040,119 @@ const AdminBookings = () => {
                     </span>
                   </div>
                 ))}
+                {selected.extras_json &&
+                  (() => {
+                    const ex =
+                      typeof selected.extras_json === "string"
+                        ? JSON.parse(selected.extras_json)
+                        : selected.extras_json;
+
+                    const fmtD = (iso: string) => {
+                      const [y, m, d] = iso.split("-");
+                      return `${d}/${m}/${y.slice(2)}`;
+                    };
+
+                    const totalBreakfast =
+                      ex.breakfast && typeof ex.breakfast === "object"
+                        ? Object.values(
+                            ex.breakfast as Record<string, number>,
+                          ).reduce((s, n) => s + n, 0)
+                        : 0;
+                    const totalDinner =
+                      ex.dinner && typeof ex.dinner === "object"
+                        ? Object.values(
+                            ex.dinner as Record<string, number>,
+                          ).reduce((s, n) => s + n, 0)
+                        : 0;
+                    const jacuzziDates: string[] = Array.isArray(
+                      ex.jacuzzi_dates,
+                    )
+                      ? ex.jacuzzi_dates
+                      : [];
+
+                    if (
+                      !totalBreakfast &&
+                      !totalDinner &&
+                      !ex.extra_beds &&
+                      !jacuzziDates.length
+                    )
+                      return null;
+
+                    return (
+                      <div className="py-3 border-t border-border">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                          Servicii Suplimentare
+                        </span>
+                        <div className="space-y-2">
+                          {totalBreakfast > 0 && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                              <p className="text-xs font-semibold text-amber-800 mb-1">
+                                ☕ Mic dejun — {totalBreakfast} meniuri
+                              </p>
+                              {Object.entries(
+                                ex.breakfast as Record<string, number>,
+                              )
+                                .filter(([, n]) => n > 0)
+                                .sort(([a], [b]) => a.localeCompare(b))
+                                .map(([date, n]) => (
+                                  <p
+                                    key={date}
+                                    className="text-xs text-amber-700"
+                                  >
+                                    {fmtD(date)}: {n}{" "}
+                                    {n === 1 ? "meniu" : "meniuri"}
+                                  </p>
+                                ))}
+                            </div>
+                          )}
+                          {totalDinner > 0 && (
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                              <p className="text-xs font-semibold text-orange-800 mb-1">
+                                🍽️ Cină — {totalDinner} meniuri
+                              </p>
+                              {Object.entries(
+                                ex.dinner as Record<string, number>,
+                              )
+                                .filter(([, n]) => n > 0)
+                                .sort(([a], [b]) => a.localeCompare(b))
+                                .map(([date, n]) => (
+                                  <p
+                                    key={date}
+                                    className="text-xs text-orange-700"
+                                  >
+                                    {fmtD(date)}: {n}{" "}
+                                    {n === 1 ? "meniu" : "meniuri"}
+                                  </p>
+                                ))}
+                            </div>
+                          )}
+                          {ex.extra_beds > 0 && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <p className="text-xs font-semibold text-blue-800">
+                                🛏️ Paturi suplimentare: {ex.extra_beds}
+                              </p>
+                            </div>
+                          )}
+                          {jacuzziDates.length > 0 && (
+                            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
+                              <p className="text-xs font-semibold text-teal-800 mb-1">
+                                🫧 Ciubăr — {jacuzziDates.length}{" "}
+                                {jacuzziDates.length === 1
+                                  ? "sesiune"
+                                  : "sesiuni"}
+                              </p>
+                              {jacuzziDates.sort().map((date) => (
+                                <p key={date} className="text-xs text-teal-700">
+                                  {fmtD(date)}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                 {selected.special_requests && (
                   <div className="py-3">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
