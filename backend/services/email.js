@@ -691,12 +691,21 @@ async function sendBookingCancellation(clientEmail, d, lang = "ro") {
   let reasonTrans = d.reason;
   if (lang === "en" && reasonTrans) {
     const reasonsDict = {
+      "Anulat de către client": "Cancelled by customer",
+      "Anulat de catre client": "Cancelled by customer",
+      Neprezentare: "No-show",
+      "Neplata transferului bancar": "Bank transfer payment not received",
+      "Neplata avansului": "Advance payment not received",
+      "Cameră indisponibilă / Problemă tehnică":
+        "Room unavailable / Technical issue",
+      "Camera indisponibila / Problema tehnica":
+        "Room unavailable / Technical issue",
+      "Eroare de sistem / Suprarezervare": "System error / Overbooking",
+      "Fenomene meteo intense": "Severe weather conditions",
       "Planuri schimbate": "Plans changed",
       "Probleme de sănătate": "Health issues",
       "Eroare la rezervare": "Booking error",
       "Forță majoră": "Force majeure",
-      "Neplata avansului": "Advance payment not received",
-      "Neplata transferului bancar": "Bank transfer payment not received",
       "Cererea clientului": "Customer request",
       "Motiv personal": "Personal reasons",
     };
