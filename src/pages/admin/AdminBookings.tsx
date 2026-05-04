@@ -7,8 +7,6 @@ import {
   Loader2,
   CheckCircle,
   AlertTriangle,
-  Copy,
-  Check,
   ArrowLeft,
   ShieldCheck,
   RefreshCw,
@@ -19,22 +17,6 @@ import {
 import { apiGet } from "@/lib/api";
 import type { ApiResponse, Booking } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
-
-interface GuestIdData {
-  cnp: string;
-  nume: string;
-  prenume: string;
-  data_nasterii: string;
-  sex: string;
-  cetatenie: string;
-  locul_nasterii: string;
-  domiciliu: string;
-  serie: string;
-  numar: string;
-  data_emiterii: string;
-  data_expirarii: string;
-  emis_de: string;
-}
 
 // ─── Stiluri per status ───────────────────────────────────────────────────────
 const S: Record<
@@ -82,39 +64,6 @@ const FILTER_LABEL: Record<string, string> = {
   finished: "Finalizate",
 };
 
-const FIELD_LABELS: Record<string, string> = {
-  cnp: "CNP",
-  nume: "Nume",
-  prenume: "Prenume",
-  data_nasterii: "Data nașterii",
-  sex: "Sex",
-  cetatenie: "Cetățenie",
-  locul_nasterii: "Locul nașterii",
-  domiciliu: "Domiciliu",
-  serie: "Serie",
-  numar: "Număr",
-  data_emiterii: "Data emiterii",
-  data_expirarii: "Data expirării",
-  emis_de: "Emis de",
-};
-
-const FIELD_ORDER = [
-  "cnp",
-  "nume",
-  "prenume",
-  "data_nasterii",
-  "sex",
-  "cetatenie",
-  "locul_nasterii",
-  "domiciliu",
-  "serie",
-  "numar",
-  "data_emiterii",
-  "data_expirarii",
-  "emis_de",
-] as const;
-
-// Fiecare motiv: label (buton) + description (subtext)
 const CANCEL_REASONS: { label: string; description: string }[] = [
   {
     label: "Anulat de către client",
@@ -126,8 +75,7 @@ const CANCEL_REASONS: { label: string; description: string }[] = [
   },
   {
     label: "Neplata transferului bancar",
-    description:
-      "A ales transfer bancar, dar nu a trimis banii în termenul de 48h.",
+    description: "A ales transfer bancar, dar nu a trimis banii în termen.",
   },
   {
     label: "Cameră indisponibilă / Problemă tehnică",
@@ -145,7 +93,6 @@ const CANCEL_REASONS: { label: string; description: string }[] = [
 ];
 
 const OTHER_REASON_KEY = "Alt motiv...";
-
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 const apiFetchRaw = (path: string, options?: RequestInit) => {
@@ -159,85 +106,344 @@ const apiFetchRaw = (path: string, options?: RequestInit) => {
   });
 };
 
-// ─── Scanner Buletin ──────────────────────────────────────────────────────────
+// ─── Câmpuri universale act identitate ───────────────────────────────────────
+const GUEST_FIELDS = [
+  { key: "document_type", label: "Tip Document" },
+  { key: "country_of_issue", label: "Tara Emitenta" },
+  { key: "document_number", label: "Numar Document" },
+  { key: "personal_identification_number", label: "CNP / Nr. Identificare" },
+  { key: "last_name", label: "Nume" },
+  { key: "first_names", label: "Prenume" },
+  { key: "date_of_birth", label: "Data Nasterii" },
+  { key: "nationality", label: "Nationalitate" },
+  { key: "address", label: "Domiciliu" },
+  { key: "sex", label: "Sex" },
+  { key: "date_of_expiry", label: "Data Expirarii" },
+] as const;
+
+type UniversalGuestData = Record<string, string>;
+
+function getPinLabel(country: string) {
+  return country?.toLowerCase().includes("roman")
+    ? "CNP"
+    : "Nr. Identificare National";
+}
+
+// ─── Export PDF cu jsPDF ──────────────────────────────────────────────────────
+const fixDiacritics = (str: string) =>
+  (str || "")
+    .replace(/[ăĂ]/g, (c) => (c === "ă" ? "a" : "A"))
+    .replace(/[âÂ]/g, (c) => (c === "â" ? "a" : "A"))
+    .replace(/[îÎ]/g, (c) => (c === "î" ? "i" : "I"))
+    .replace(/[șşȘŞ]/g, (c) => (/[șş]/.test(c) ? "s" : "S"))
+    .replace(/[țţȚŢ]/g, (c) => (/[țţ]/.test(c) ? "t" : "T"))
+    .replace(/\^/g, "S"); // pașaport românesc folosește ^ pentru Ș
+const translateNationality = (val: string) => {
+  const map: Record<string, string> = {
+    ROU: "Romana",
+    Romanian: "Romana",
+    MDA: "Moldoveana",
+    Moldovan: "Moldoveana",
+    HUN: "Maghiara",
+    Hungarian: "Maghiara",
+    DEU: "Germana",
+    German: "Germana",
+    FRA: "Franceza",
+    French: "Franceza",
+    ITA: "Italiana",
+    Italian: "Italiana",
+    ESP: "Spaniola",
+    Spanish: "Spaniola",
+    BGR: "Bulgara",
+    Bulgarian: "Bulgara",
+    UKR: "Ucraineana",
+    Ukrainian: "Ucraineana",
+    GBR: "Engleza",
+    British: "Engleza",
+    English: "Engleza",
+    AUT: "Austriaca",
+    Austrian: "Austriaca",
+    NLD: "Olandeza",
+    Dutch: "Olandeza",
+    BEL: "Belgiana",
+    Belgian: "Belgiana",
+    CZE: "Ceha",
+    Czech: "Ceha",
+    SVK: "Slovaca",
+    Slovak: "Slovaca",
+    POL: "Poloneza",
+    Polish: "Poloneza",
+    HRV: "Croata",
+    Croatian: "Croata",
+    SRB: "Sarba",
+    Serbian: "Sarba",
+    GRC: "Greaca",
+    Greek: "Greaca",
+    TUR: "Turca",
+    Turkish: "Turca",
+    USA: "Americana",
+    American: "Americana",
+  };
+  return map[val] || val;
+};
+
+const translateCountry = (val: string) => {
+  const map: Record<string, string> = {
+    ROU: "Romania",
+    ROM: "Romania",
+    Romania: "Romania",
+    MDA: "Moldova",
+    Moldova: "Moldova",
+    HUN: "Ungaria",
+    Hungary: "Ungaria",
+    DEU: "Germania",
+    Germany: "Germania",
+    FRA: "Franta",
+    France: "Franta",
+    ITA: "Italia",
+    Italy: "Italia",
+    ESP: "Spania",
+    Spain: "Spania",
+    BGR: "Bulgaria",
+    Bulgaria: "Bulgaria",
+    UKR: "Ucraina",
+    Ukraine: "Ucraina",
+    GBR: "Marea Britanie",
+    "United Kingdom": "Marea Britanie",
+    AUT: "Austria",
+    Austria: "Austria",
+    NLD: "Olanda",
+    Netherlands: "Olanda",
+    BEL: "Belgia",
+    Belgium: "Belgia",
+    CZE: "Cehia",
+    "Czech Republic": "Cehia",
+    SVK: "Slovacia",
+    Slovakia: "Slovacia",
+    POL: "Polonia",
+    Poland: "Polonia",
+    HRV: "Croatia",
+    Croatia: "Croatia",
+    SRB: "Serbia",
+    Serbia: "Serbia",
+    GRC: "Grecia",
+    Greece: "Grecia",
+    TUR: "Turcia",
+    Turkey: "Turcia",
+    USA: "Statele Unite",
+    "United States": "Statele Unite",
+  };
+  return map[val] || val;
+};
+
+async function exportGuestPDF(
+  data: UniversalGuestData,
+  guestName: string,
+  bookingRef: string,
+) {
+  const { jsPDF } = await import(
+    "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm" as any
+  );
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const green = [30, 77, 43];
+  const darkText = [22, 48, 29];
+  const mutedText = [100, 115, 104];
+  const borderColor = [220, 215, 208];
+  const rowEven = [248, 246, 242];
+
+  doc.setFillColor(...green);
+  doc.rect(0, 0, 210, 38, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("PENSIUNEA", 105, 12, { align: "center" });
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("Maramures Belvedere", 105, 22, { align: "center" });
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("Str. Hera, Nr. 2, Petrova, Maramures", 105, 30, {
+    align: "center",
+  });
+
+  doc.setTextColor(...darkText);
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.text("Fisa de Inregistrare Oaspete", 20, 52);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...mutedText);
+  doc.text(
+    `Rezervare: ${bookingRef}   |   Oaspete: ${fixDiacritics(guestName)}   |   Data: ${new Date().toLocaleDateString("ro-RO")}`,
+    20,
+    59,
+  );
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.4);
+  doc.line(20, 63, 190, 63);
+
+  let y = 72;
+  const labelColW = 65;
+  const valueColX = 20 + labelColW + 5;
+  const valueColW = 170 - labelColW - 5;
+
+  GUEST_FIELDS.forEach((field, i) => {
+    const label =
+      field.key === "personal_identification_number"
+        ? getPinLabel(data.country_of_issue || "")
+        : field.label;
+
+    const value = fixDiacritics(
+      field.key === "nationality"
+        ? translateNationality(data[field.key] || "—")
+        : field.key === "country_of_issue"
+          ? translateCountry(data[field.key] || "—")
+          : data[field.key] || "—",
+    );
+
+    doc.setFontSize(9.5);
+    const valueLines: string[] = doc.splitTextToSize(value, valueColW);
+    const cellH = Math.max(11, valueLines.length * 5.5 + 4);
+
+    if (i % 2 === 0) {
+      doc.setFillColor(...rowEven);
+    } else {
+      doc.setFillColor(255, 255, 255);
+    }
+    doc.rect(20, y - 7, 170, cellH, "F");
+    doc.setDrawColor(...borderColor);
+    doc.setLineWidth(0.2);
+    doc.rect(20, y - 7, 170, cellH);
+    doc.line(20 + labelColW, y - 7, 20 + labelColW, y - 7 + cellH);
+
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...mutedText);
+    doc.text(label.toUpperCase(), 25, y);
+
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...darkText);
+    doc.text(valueLines, valueColX, y);
+
+    y += cellH;
+  });
+
+  y += 12;
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.4);
+  doc.line(20, y, 190, y);
+  y += 8;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...mutedText);
+  doc.text(
+    "Document generat conform OG 97/2005 privind evidenta persoanelor.",
+    20,
+    y,
+  );
+  doc.text(
+    `Generat automat la ${new Date().toLocaleString("ro-RO")}`,
+    20,
+    y + 5,
+  );
+  doc.save(
+    `fisa-oaspete-${bookingRef}-${fixDiacritics(guestName).replace(/\s+/g, "-")}.pdf`,
+  );
+}
+
+// ─── ScannerBuletin ───────────────────────────────────────────────────────────
 const ScannerBuletin = ({
   bookingId,
   guestName,
+  bookingRef,
   onClose,
 }: {
   bookingId: string;
   guestName: string;
+  bookingRef: string;
   onClose: () => void;
 }) => {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [idData, setIdData] = useState<GuestIdData | null>(null);
+  const [formData, setFormData] = useState<UniversalGuestData>({});
+  const [scanning, setScanning] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [copiedField, setCopied] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
     setError(null);
-    setIdData(null);
     setWarning(null);
     setSaved(false);
-    if (!file.type.startsWith("image/")) {
-      setError("Selectați o imagine (JPEG, PNG, WebP).");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("Fișierul depășește 10 MB.");
-      return;
-    }
-    setPreview(URL.createObjectURL(file));
-    setLoading(true);
+    setScanning(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const r = await fetch("/api/extract", { method: "POST", body: fd });
-      if (!r.ok) {
-        const e = await r.json();
-        throw new Error(e.error || `Eroare ${r.status}`);
-      }
       const res = await r.json();
       if (!res.success) throw new Error(res.error);
-      if (["cnp", "nume", "prenume"].some((f) => !res.data[f]?.trim()))
-        setWarning(
-          "Unele câmpuri nu au putut fi citite. Verificați că fotografia este clară.",
-        );
-      setIdData(res.data);
+      // Traducem țara și naționalitatea direct la primire
+      const translated = {
+        ...res.data,
+        country_of_issue: translateCountry(res.data.country_of_issue || ""),
+        nationality: translateNationality(res.data.nationality || ""),
+      };
+      setFormData(translated);
+      const missing = GUEST_FIELDS.filter(
+        (f) => !res.data[f.key]?.trim(),
+      ).length;
+      if (missing > 3)
+        setWarning("Unele câmpuri nu au putut fi citite. Completați manual.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Eroare necunoscută.");
+      setError(e instanceof Error ? e.message : "Eroare la procesare.");
     } finally {
-      setLoading(false);
+      setScanning(false);
     }
   };
 
-  const copy = (v: string, f: string) => {
-    navigator.clipboard.writeText(v);
-    setCopied(f);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  const saveData = async () => {
-    if (!idData) return;
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
     try {
-      await fetch(`/api/bookings/${bookingId}/guest-id`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(idData),
+      const token = sessionStorage.getItem("token");
+      const r = await fetch(`${API_URL}/api/bookings/${bookingId}/guest`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(formData),
       });
+      if (!r.ok) throw new Error("Eroare la salvare");
       setSaved(true);
     } catch {
       setError("Nu s-au putut salva datele.");
+    } finally {
+      setSaving(false);
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportGuestPDF(formData, guestName, bookingRef);
+    } catch {
+      setError("Nu s-a putut genera PDF-ul.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const hasData = Object.values(formData).some((v) => v?.trim());
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border shrink-0">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border shrink-0">
         <button
           type="button"
           onClick={onClose}
@@ -245,214 +451,158 @@ const ScannerBuletin = ({
         >
           <ArrowLeft size={15} /> Înapoi
         </button>
-        <div className="flex-1" />
-        <div className="flex items-center gap-2">
-          <ScanLine size={16} className="text-primary" />
-          <div className="text-right">
-            <p className="text-sm font-semibold leading-tight">
-              Scanare Buletin
-            </p>
-            <p className="text-xs text-muted-foreground leading-tight">
-              {guestName} · {bookingId}
-            </p>
-          </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold leading-tight">Act Identitate</p>
+          <p className="text-xs text-muted-foreground">
+            {guestName} · {bookingRef}
+          </p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
-        {!preview ? (
-          <div className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-10 flex flex-col items-center gap-5 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <ScanLine size={30} className="text-primary" />
-            </div>
-            <div>
-              <p className="font-heading text-lg font-semibold mb-1">
-                Fotografiați buletinul oaspetelui
-              </p>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Gemini AI extrage automat datele de pe cartea de identitate
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  fileRef.current?.setAttribute("capture", "environment");
-                  fileRef.current?.click();
-                }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-              >
-                <Camera size={17} /> Fă o poză
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  fileRef.current?.removeAttribute("capture");
-                  fileRef.current?.click();
-                }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-sm font-semibold hover:bg-muted transition-colors"
-              >
-                <ImageIcon size={17} /> Din galerie
-              </button>
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) =>
-                e.target.files?.[0] && handleFile(e.target.files[0])
-              }
-            />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <div
-                className="relative bg-slate-900 flex items-center justify-center"
-                style={{ minHeight: 200 }}
-              >
-                <img
-                  src={preview}
-                  alt="Buletin"
-                  className="max-w-full max-h-64 object-contain"
-                />
-                {loading && (
-                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                    <Loader2 size={36} className="text-primary animate-spin" />
-                    <p className="text-sm font-semibold">
-                      Gemini AI analizează...
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {loading
-                    ? "Analiză în curs..."
-                    : idData
-                      ? "Procesare completă"
-                      : "Gata de procesare"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreview(null);
-                    setIdData(null);
-                    setError(null);
-                    setWarning(null);
-                    setSaved(false);
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-destructive py-1"
-                >
-                  <X size={13} /> Înlătură
-                </button>
-              </div>
-            </div>
-
-            {warning && (
-              <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                <AlertTriangle
-                  size={16}
-                  className="text-amber-600 shrink-0 mt-0.5"
-                />
-                <p className="text-sm text-amber-800">{warning}</p>
-              </div>
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {/* Butoane scanare */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={scanning}
+            onClick={() => cameraRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {scanning ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Camera size={15} />
             )}
+            {scanning ? "Analizează..." : "Fă o poză"}
+          </button>
 
-            {idData && !loading && (
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-4 py-3.5 border-b border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle size={17} className="text-emerald-500" />
-                    <span className="text-sm font-semibold">
-                      Date extrase cu succes
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {FIELD_ORDER.filter((k) => idData[k]?.trim()).length}/
-                    {FIELD_ORDER.length} câmpuri
-                  </span>
-                </div>
-                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {FIELD_ORDER.map((key) => {
-                    const val = idData[key];
-                    const empty = !val?.trim();
-                    return (
-                      <div
-                        key={key}
-                        className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg ${empty ? "bg-muted/20" : "bg-muted/50"}`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                            {FIELD_LABELS[key]}
-                          </p>
-                          <p
-                            className={`text-sm font-medium truncate ${empty ? "text-muted-foreground italic" : "text-foreground"}`}
-                          >
-                            {val || "Nedisponibil"}
-                          </p>
-                        </div>
-                        {!empty && (
-                          <button
-                            type="button"
-                            onClick={() => copy(val, key)}
-                            className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {copiedField === key ? (
-                              <Check size={13} className="text-emerald-500" />
-                            ) : (
-                              <Copy size={13} />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="px-4 pb-4">
-                  {saved ? (
-                    <div className="w-full py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm font-semibold text-center flex items-center justify-center gap-2">
-                      <CheckCircle size={16} /> Date salvate cu succes!
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={saveData}
-                      className="w-full py-3 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-                    >
-                      Salvează datele buletinului
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          <button
+            type="button"
+            disabled={scanning}
+            onClick={() => galleryRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg text-sm font-semibold hover:bg-muted disabled:opacity-50 transition-colors"
+          >
+            <ImageIcon size={15} /> Din galerie
+          </button>
 
-        {error && (
-          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <X size={16} className="text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-700 mb-0.5">
-                Eroare la procesare
-              </p>
-              <p className="text-xs text-red-600">{error}</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="px-5 py-3.5 border-t border-border bg-muted/20 shrink-0">
-        <div className="flex items-start gap-2">
-          <ShieldCheck
-            size={14}
-            className="text-muted-foreground shrink-0 mt-0.5"
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) =>
+              e.target.files?.[0] && handleFile(e.target.files[0])
+            }
           />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Prelucrate conform <strong>GDPR</strong> · înregistrare oaspeți (
-            <strong>OG 97/2005</strong>)
-          </p>
+          <input
+            ref={galleryRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) =>
+              e.target.files?.[0] && handleFile(e.target.files[0])
+            }
+          />
+        </div>
+
+        {/* Warning */}
+        {warning && (
+          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <AlertTriangle
+              size={14}
+              className="text-amber-600 shrink-0 mt-0.5"
+            />
+            <p className="text-xs text-amber-800">{warning}</p>
+          </div>
+        )}
+
+        {/* Formular */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {GUEST_FIELDS.map((field) => {
+            const label =
+              field.key === "personal_identification_number"
+                ? getPinLabel(formData.country_of_issue || "")
+                : field.label;
+            return (
+              <div
+                key={field.key}
+                className={field.key === "address" ? "sm:col-span-2" : ""}
+              >
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
+                  {label}
+                </label>
+                <input
+                  type="text"
+                  value={formData[field.key] || ""}
+                  onChange={(e) => {
+                    setSaved(false);
+                    setFormData((prev) => ({
+                      ...prev,
+                      [field.key]: e.target.value,
+                    }));
+                  }}
+                  placeholder="—"
+                  className="w-full bg-muted border border-border rounded-md px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Eroare */}
+        {error && (
+          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <X size={14} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700">{error}</p>
+          </div>
+        )}
+
+        {/* Acțiuni + GDPR */}
+        <div className="space-y-3 pt-1">
+          <div className="flex gap-2">
+            {saved ? (
+              <div className="flex-1 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm font-semibold text-center flex items-center justify-center gap-2">
+                <CheckCircle size={15} /> Salvat cu succes!
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || !hasData}
+                className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              >
+                {saving ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <CheckCircle size={14} />
+                )}
+                Salvează
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exporting || !hasData}
+              className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg text-sm font-semibold hover:bg-muted disabled:opacity-50 transition-colors"
+            >
+              {exporting ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <span>📄</span>
+              )}
+              Export PDF
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={13} className="text-muted-foreground shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Prelucrate conform <strong>GDPR</strong> · OG 97/2005
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -490,11 +640,9 @@ const AdminBookings = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // anulare cu motiv — modal
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelCustomText, setCancelCustomText] = useState("");
-  // anulare rapidă din tabel
   const [quickCancelId, setQuickCancelId] = useState<string | null>(null);
   const [quickCancelReason, setQuickCancelReason] = useState("");
   const [quickCancelCustom, setQuickCancelCustom] = useState("");
@@ -635,7 +783,7 @@ const AdminBookings = () => {
 
   return (
     <div className="space-y-5">
-      {/* ── Filtre ────────────────────────────────────────────────────────── */}
+      {/* ── Filtre ── */}
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Filtrare:
@@ -671,7 +819,7 @@ const AdminBookings = () => {
         </button>
       </div>
 
-      {/* ── Legendă ───────────────────────────────────────────────────────── */}
+      {/* ── Legendă ── */}
       <div className="flex flex-wrap gap-3">
         {["pending", "confirmed", "cancelled", "finished"].map((s) => (
           <div
@@ -684,7 +832,7 @@ const AdminBookings = () => {
         ))}
       </div>
 
-      {/* ── Tabel ─────────────────────────────────────────────────────────── */}
+      {/* ── Tabel ── */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
@@ -699,10 +847,9 @@ const AdminBookings = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-muted/40 border-b border-border">
-                  <th className="px-4 py-3 text-xs text-center font-semibold uppercase tracking-wider text-muted-foreground text-center w-28">
+                  <th className="px-4 py-3 text-xs text-center font-semibold uppercase tracking-wider text-muted-foreground w-28">
                     Ref
                   </th>
-                  {/* Oaspete centrat */}
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
                     Oaspete
                   </th>
@@ -728,7 +875,6 @@ const AdminBookings = () => {
               </thead>
               <tbody className="divide-y divide-border">
                 {bookings.map((b) => {
-                  const s = S[b.status] ?? S.pending;
                   const isQuickCancel = quickCancelId === b.id;
                   return (
                     <>
@@ -744,12 +890,9 @@ const AdminBookings = () => {
                         }}
                         className="hover:bg-muted/20 cursor-pointer transition-colors"
                       >
-                        {/* REF */}
                         <td className="px-4 py-3.5 text-center text-xs text-muted-foreground font-mono">
                           {b.booking_ref}
                         </td>
-
-                        {/* OASPETE — centrat */}
                         <td className="px-4 py-3.5 text-center">
                           <p className="text-sm font-semibold text-foreground">
                             {b.guest_name}
@@ -758,54 +901,38 @@ const AdminBookings = () => {
                             {b.guest_email}
                           </p>
                         </td>
-
-                        {/* CAMERĂ */}
                         <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden md:table-cell">
                           {b.room_name}
                         </td>
-
-                        {/* CHECK-IN */}
                         <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
                           {fmt(b.check_in)}
                         </td>
-
-                        {/* CHECK-OUT */}
                         <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
                           {fmt(b.check_out)}
                         </td>
-
-                        {/* TOTAL */}
                         <td className="px-4 py-3.5 text-center">
                           <span className="text-sm font-semibold">
                             {b.total_price} RON
                           </span>
                         </td>
-
-                        {/* STATUS */}
                         <td className="px-4 py-3.5 text-center">
                           <StatusBadge status={b.status} />
                         </td>
-
-                        {/* ── ACȚIUNI RAPIDE ── */}
                         <td
                           className="px-3 py-3 text-center hidden lg:table-cell"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                            {/* Confirmă — doar pending */}
                             {b.status === "pending" && (
                               <button
                                 type="button"
                                 disabled={actionLoading}
                                 onClick={() => updateStatus(b.id, "confirmed")}
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                                title="Confirmă"
                               >
                                 <CheckSquare size={12} /> Confirmă
                               </button>
                             )}
-
-                            {/* Anulează — pending sau confirmed */}
                             {canCancel(b) && !isQuickCancel && (
                               <button
                                 type="button"
@@ -815,13 +942,10 @@ const AdminBookings = () => {
                                   setQuickCancelReason("");
                                 }}
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
-                                title="Anulează"
                               >
                                 <XSquare size={12} /> Anulează
                               </button>
                             )}
-
-                            {/* Anulare în curs — arată selectorul de motiv */}
                             {isQuickCancel && (
                               <button
                                 type="button"
@@ -834,8 +958,6 @@ const AdminBookings = () => {
                                 ✕ Renunță
                               </button>
                             )}
-
-                            {/* Șterge — cancelled sau finished */}
                             {canDelete(b) && (
                               <button
                                 type="button"
@@ -847,18 +969,14 @@ const AdminBookings = () => {
                                   setCancelMode(false);
                                 }}
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-muted text-muted-foreground border border-border rounded-lg text-xs font-semibold hover:bg-destructive hover:text-white hover:border-destructive transition-colors disabled:opacity-50"
-                                title="Șterge din listă"
                               >
                                 <Trash2 size={12} /> Șterge
                               </button>
                             )}
-
-                            {/* Fără acțiuni disponibile */}
                           </div>
                         </td>
                       </tr>
 
-                      {/* ── Rând expandat pentru motiv anulare rapidă ── */}
                       {isQuickCancel && (
                         <tr
                           key={`${b.id}-cancel`}
@@ -869,7 +987,6 @@ const AdminBookings = () => {
                             className="px-5 py-4 hidden lg:table-cell"
                           >
                             <div className="space-y-3">
-                              {/* Titlu + renunță */}
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
                                   <AlertTriangle size={13} /> Selectează motivul
@@ -890,7 +1007,6 @@ const AdminBookings = () => {
                                   Renunță
                                 </button>
                               </div>
-                              {/* Butoane motive */}
                               <div className="flex flex-wrap gap-2">
                                 {CANCEL_REASONS.map(
                                   ({ label, description }) => (
@@ -913,8 +1029,6 @@ const AdminBookings = () => {
                                   ),
                                 )}
                               </div>
-
-                              {/* Textarea pentru Alt motiv */}
                               {quickCancelReason === OTHER_REASON_KEY && (
                                 <textarea
                                   value={quickCancelCustom}
@@ -927,37 +1041,34 @@ const AdminBookings = () => {
                                   autoFocus
                                 />
                               )}
-                              {/* Buton confirmare */}
                               {quickCancelReason && (
-                                <div>
-                                  <button
-                                    type="button"
-                                    disabled={
-                                      (quickCancelReason === OTHER_REASON_KEY &&
-                                        !quickCancelCustom.trim()) ||
-                                      actionLoading
-                                    }
-                                    onClick={() => {
-                                      const fr =
-                                        quickCancelReason === OTHER_REASON_KEY
-                                          ? quickCancelCustom.trim()
-                                          : quickCancelReason;
-                                      handleCancel(b.id, fr);
-                                    }}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
-                                  >
-                                    {actionLoading ? (
-                                      <Loader2
-                                        size={13}
-                                        className="animate-spin"
-                                      />
-                                    ) : (
-                                      <>
-                                        <XSquare size={13} /> Confirmă Anularea
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
+                                <button
+                                  type="button"
+                                  disabled={
+                                    (quickCancelReason === OTHER_REASON_KEY &&
+                                      !quickCancelCustom.trim()) ||
+                                    actionLoading
+                                  }
+                                  onClick={() => {
+                                    const fr =
+                                      quickCancelReason === OTHER_REASON_KEY
+                                        ? quickCancelCustom.trim()
+                                        : quickCancelReason;
+                                    handleCancel(b.id, fr);
+                                  }}
+                                  className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
+                                >
+                                  {actionLoading ? (
+                                    <Loader2
+                                      size={13}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <>
+                                      <XSquare size={13} /> Confirmă Anularea
+                                    </>
+                                  )}
+                                </button>
                               )}
                             </div>
                           </td>
@@ -972,7 +1083,7 @@ const AdminBookings = () => {
         )}
       </div>
 
-      {/* ── Modal detalii ─────────────────────────────────────────────────── */}
+      {/* ── Modal detalii ── */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
@@ -987,12 +1098,12 @@ const AdminBookings = () => {
               <ScannerBuletin
                 bookingId={selected.id}
                 guestName={selected.guest_name}
+                bookingRef={selected.booking_ref}
                 onClose={() => setScannerOpen(false)}
               />
             </div>
           ) : (
             <div className="relative bg-card border border-border rounded-2xl w-full max-w-md z-50 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
-              {/* Header */}
               <div className="flex items-start justify-between px-6 pt-6 pb-4 shrink-0">
                 <div>
                   <h3 className="font-heading text-xl font-semibold">
@@ -1011,12 +1122,10 @@ const AdminBookings = () => {
                 </button>
               </div>
 
-              {/* Status */}
               <div className="px-6 pb-3 shrink-0">
                 <StatusBadge status={selected.status} size="md" />
               </div>
 
-              {/* Detalii */}
               <div className="px-6 pb-2 divide-y divide-border overflow-y-auto flex-1">
                 {[
                   ["Oaspete", selected.guest_name],
@@ -1040,18 +1149,17 @@ const AdminBookings = () => {
                     </span>
                   </div>
                 ))}
+
                 {selected.extras_json &&
                   (() => {
                     const ex =
                       typeof selected.extras_json === "string"
                         ? JSON.parse(selected.extras_json)
                         : selected.extras_json;
-
                     const fmtD = (iso: string) => {
                       const [y, m, d] = iso.split("-");
                       return `${d}/${m}/${y.slice(2)}`;
                     };
-
                     const totalBreakfast =
                       ex.breakfast && typeof ex.breakfast === "object"
                         ? Object.values(
@@ -1069,7 +1177,6 @@ const AdminBookings = () => {
                     )
                       ? ex.jacuzzi_dates
                       : [];
-
                     if (
                       !totalBreakfast &&
                       !totalDinner &&
@@ -1077,7 +1184,6 @@ const AdminBookings = () => {
                       !jacuzziDates.length
                     )
                       return null;
-
                     return (
                       <div className="py-3 border-t border-border">
                         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
@@ -1163,11 +1269,73 @@ const AdminBookings = () => {
                     </p>
                   </div>
                 )}
+
+                {(selected as any).guest_data &&
+                  (() => {
+                    const gd =
+                      typeof (selected as any).guest_data === "string"
+                        ? JSON.parse((selected as any).guest_data)
+                        : (selected as any).guest_data;
+                    const fields = [
+                      { key: "document_type", label: "Tip Document" },
+                      { key: "country_of_issue", label: "Tara Emitenta" },
+                      { key: "document_number", label: "Numar Document" },
+                      {
+                        key: "personal_identification_number",
+                        label: gd.country_of_issue
+                          ?.toLowerCase()
+                          .includes("roman")
+                          ? "CNP"
+                          : "Nr. Identificare",
+                      },
+                      { key: "last_name", label: "Nume" },
+                      { key: "first_names", label: "Prenume" },
+                      { key: "date_of_birth", label: "Data Nasterii" },
+                      { key: "nationality", label: "Nationalitate" },
+                      { key: "address", label: "Domiciliu" },
+                      { key: "sex", label: "Sex" },
+                      { key: "date_of_expiry", label: "Data Expirarii" },
+                    ];
+                    return (
+                      <div className="py-3 border-t border-border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Date Identitate
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              exportGuestPDF(
+                                gd,
+                                selected.guest_name,
+                                selected.booking_ref,
+                              )
+                            }
+                            className="flex items-center gap-1.5 px-2.5 py-1 bg-card border border-border rounded-lg text-xs font-medium hover:bg-muted transition-colors"
+                          >
+                            📄 Export PDF
+                          </button>
+                        </div>
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-1.5">
+                          {fields
+                            .filter((f) => gd[f.key]?.trim())
+                            .map((f) => (
+                              <div key={f.key} className="flex gap-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 w-28 shrink-0 pt-0.5">
+                                  {f.label}
+                                </span>
+                                <span className="text-xs text-emerald-900 font-medium">
+                                  {gd[f.key]}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
               </div>
 
-              {/* Acțiuni */}
               <div className="px-6 py-5 space-y-3 shrink-0 border-t border-border">
-                {/* Scanner buletin */}
                 {(selected.status === "confirmed" ||
                   selected.status === "pending") && (
                   <button
@@ -1179,7 +1347,6 @@ const AdminBookings = () => {
                   </button>
                 )}
 
-                {/* Confirmare — pending, fără cancelMode */}
                 {selected.status === "pending" && !cancelMode && (
                   <button
                     type="button"
@@ -1196,7 +1363,6 @@ const AdminBookings = () => {
                   </button>
                 )}
 
-                {/* Anulare cu motiv */}
                 {canCancel(selected) && (
                   <div>
                     {!cancelMode ? (
@@ -1249,7 +1415,6 @@ const AdminBookings = () => {
                             </label>
                           ))}
                         </div>
-                        {/* Textarea pentru Alt motiv */}
                         {cancelReason === OTHER_REASON_KEY && (
                           <textarea
                             value={cancelCustomText}
@@ -1303,14 +1468,12 @@ const AdminBookings = () => {
                   </div>
                 )}
 
-                {/* Finalizat */}
                 {selected.status === "finished" && (
                   <div className="w-full py-3 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl text-sm text-center">
                     ✓ Rezervare finalizată — sejur încheiat
                   </div>
                 )}
 
-                {/* Ștergere */}
                 {canDelete(selected) && (
                   <div>
                     {!deleteConfirm ? (

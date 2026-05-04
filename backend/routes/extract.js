@@ -95,12 +95,19 @@ router.post("/", upload.single("file"), async (req, res) => {
     const imagePart = fileToGenerativePart(tempFilePath, req.file.mimetype);
 
     const prompt = `
-      Extract information from this Romanian Identity Card (Carte de Identitate).
-      Return ONLY a valid JSON object with these exact keys:
-      cnp, nume, prenume, cetatenie, locul_nasterii, domiciliu, data_nasterii,
-      sex, emis_de, data_emiterii, data_expirarii, serie, numar.
-      If a field is not visible or clear, use an empty string "".
-      Respond ONLY with the JSON object, no other text.
+      Analyze this identity document (ID card, passport, or any official document).
+  Return ONLY a valid JSON object with these exact keys:
+  document_type, country_of_issue, document_number, personal_identification_number,
+  last_name, first_names, date_of_birth, nationality, address, sex, date_of_expiry.
+  Instructions:
+  - document_type: e.g. "ID Card", "Passport", "Residence Permit"
+  - document_number: main serial/number (for Romanian IDs, combine Serie + Numar, e.g. "AX123456")
+  - personal_identification_number: national ID number (e.g. CNP for Romania)
+  - address: full address if visible, otherwise empty string
+  - sex: "M" or "F"
+  - All dates in DD/MM/YYYY format
+  - If any field is missing or not visible, use empty string ""
+  Respond ONLY with the JSON object, no markdown, no other text.
     `;
 
     const response = await generateContentWithRetry(prompt, imagePart);

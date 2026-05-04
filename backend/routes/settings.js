@@ -93,7 +93,8 @@ router.get("/", async (req, res) => {
     // Transformăm în { key: value } pentru consum ușor în React
     const settings = {};
     rows.forEach((r) => {
-      settings[r.key] = r.type === "number" ? Number.parseFloat(r.value) : r.value;
+      settings[r.key] =
+        r.type === "number" ? Number.parseFloat(r.value) : r.value;
     });
 
     res.json({ success: true, data: settings, rows });
@@ -118,7 +119,8 @@ router.get("/group/:group", async (req, res) => {
 
     const settings = {};
     rows.forEach((r) => {
-      settings[r.key] = r.type === "number" ? Number.parseFloat(r.value) : r.value;
+      settings[r.key] =
+        r.type === "number" ? Number.parseFloat(r.value) : r.value;
     });
 
     res.json({ success: true, data: settings, rows });
@@ -228,6 +230,18 @@ router.patch("/", async (req, res) => {
   } catch (err) {
     console.error("❌ PATCH /api/settings:", err.message);
     res.status(500).json({ success: false, error: "Eroare server" });
+  }
+});
+
+router.get("/run-migration", async (req, res) => {
+  try {
+    await query(
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_data JSONB DEFAULT NULL`,
+    );
+    await query(`DROP TABLE IF EXISTS guest_ids`);
+    res.json({ success: true, message: "Migrare completă!" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

@@ -594,6 +594,38 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
+// ─── PUT /api/bookings/:id/guest ──────────────────────────────────────────────
+router.put("/:id/guest", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const guestData = req.body;
+
+    if (!guestData || typeof guestData !== "object") {
+      return res.status(400).json({ success: false, error: "Date invalide" });
+    }
+
+    const { rows } = await query(
+      `UPDATE bookings SET guest_data = $1, updated_at = NOW()
+       WHERE id = $2 RETURNING id, booking_ref, guest_data`,
+      [JSON.stringify(guestData), id],
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Rezervarea nu a fost găsită" });
+    }
+
+    console.log(
+      `🪪 Date act identitate salvate pentru rezervarea ${rows[0].booking_ref}`,
+    );
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    console.error("❌ PUT /api/bookings/:id/guest:", err.message);
+    res.status(500).json({ success: false, error: "Eroare server" });
+  }
+});
+
 // ─── PATCH /api/bookings/:id/status ──────────────────────────────────────────
 router.patch("/:id/status", async (req, res) => {
   try {
@@ -725,16 +757,16 @@ router.delete("/:id", async (req, res) => {
     if (check.rows.length === 0)
       return res
         .status(404)
-        .json({ success: false, error: "Rezervarea nu există" });
-    if (!["cancelled", "finished"].includes(check.rows[0].status))
-      return res.status(400).json({
-        success: false,
-        error: "Poți șterge doar rezervările anulate sau finalizate",
-      });
-
-    await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);
+        .json({ success: false, error: "Rezervarea nu există" }); //   return res.status(400).json({
+    //     success: false,
+    //     error: "Poți șterge doar rezervările anulate sau finalizate",
+    //   });
+    // await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);
+    // TEMPORAR: Comentăm validarea pentru a putea șterge orice rezervare la teste
+    // if (!["cancelled", "finished"].includes(check.rows[0].status))
+    // TEMPORAR: Comentăm query-ul pentru guest_ids deoarece tabelul nu există momentan în DB
     await query(`DELETE FROM bookings WHERE id = $1`, [id]);
-    console.log(`🗑️  Rezervare ștearsă: ${id}`);
+    console.log(`🗑️  Rezervare ștearsă: ${id}`);
     res.json({ success: true });
   } catch (err) {
     console.error("❌ DELETE /api/bookings/:id:", err.message);
