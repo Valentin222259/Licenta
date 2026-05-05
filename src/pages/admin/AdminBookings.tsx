@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Trash2,
   CheckSquare,
+  Search,
   XSquare,
 } from "lucide-react";
 import { apiGet } from "@/lib/api";
@@ -646,6 +647,7 @@ const AdminBookings = () => {
   const [quickCancelId, setQuickCancelId] = useState<string | null>(null);
   const [quickCancelReason, setQuickCancelReason] = useState("");
   const [quickCancelCustom, setQuickCancelCustom] = useState("");
+  const [search, setSearch] = useState("");
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -781,6 +783,16 @@ const AdminBookings = () => {
     "finished",
   ] as const;
 
+  const filtered = bookings.filter((b) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      b.guest_name?.toLowerCase().includes(q) ||
+      b.guest_email?.toLowerCase().includes(q) ||
+      b.booking_ref?.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="space-y-5">
       {/* ── Filtre ── */}
@@ -832,6 +844,29 @@ const AdminBookings = () => {
         ))}
       </div>
 
+      <div className="relative">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Caută după nume, email sau referință..."
+          className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring pl-9"
+        />
+        <Search
+          size={15}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X size={15} />
+          </button>
+        )}
+      </div>
+
       {/* ── Tabel ── */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {loading ? (
@@ -874,7 +909,7 @@ const AdminBookings = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {bookings.map((b) => {
+                {filtered.map((b) => {
                   const isQuickCancel = quickCancelId === b.id;
                   return (
                     <>

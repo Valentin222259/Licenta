@@ -15,7 +15,6 @@ function fmtISO(val) {
 
 async function generateBookingRef() {
   const year = new Date().getFullYear();
-  // Folosim MAX în loc de COUNT pentru a evita coliziunile
   const result = await query(
     `SELECT MAX(CAST(SPLIT_PART(booking_ref, '-', 3) AS INTEGER)) as max_seq
      FROM bookings
@@ -90,9 +89,15 @@ router.get("/", async (req, res) => {
       params.slice(0, -2),
     );
 
+    const normalized = rows.map((b) => ({
+      ...b,
+      check_in: fmtISO(b.check_in),
+      check_out: fmtISO(b.check_out),
+    }));
+
     res.json({
       success: true,
-      data: rows,
+      data: normalized,
       total: Number.parseInt(countResult.rows[0].count),
     });
   } catch (err) {
@@ -132,7 +137,14 @@ router.get("/my", async (req, res) => {
        WHERE b.guest_email = $1 ORDER BY b.check_in DESC`,
       [email],
     );
-    res.json({ success: true, data: rows });
+
+    const normalized = rows.map((b) => ({
+      ...b,
+      check_in: fmtISO(b.check_in),
+      check_out: fmtISO(b.check_out),
+    }));
+
+    res.json({ success: true, data: normalized });
   } catch (err) {
     console.error("❌ GET /api/bookings/my:", err.message);
     res.status(500).json({ success: false, error: "Eroare server" });
@@ -157,10 +169,14 @@ router.get("/:id", async (req, res) => {
       `SELECT * FROM guest_ids WHERE booking_id = $1`,
       [id],
     );
+
+    const b = bookingResult.rows[0];
     res.json({
       success: true,
       data: {
-        ...bookingResult.rows[0],
+        ...b,
+        check_in: fmtISO(b.check_in),
+        check_out: fmtISO(b.check_out),
         guest_id: guestIdResult.rows[0] || null,
       },
     });
@@ -280,7 +296,6 @@ router.post("/", async (req, res) => {
         prices[r.key] = Number.parseFloat(r.value) || 0;
       });
 
-      // Breakfast — sumă toate meniurile per zi
       if (extras.breakfast && typeof extras.breakfast === "object") {
         const totalBreakfast = Object.values(extras.breakfast).reduce(
           (s, n) => s + (n || 0),
@@ -289,7 +304,6 @@ router.post("/", async (req, res) => {
         extrasPrice += (prices.price_breakfast || 50) * totalBreakfast;
       }
 
-      // Dinner — sumă toate meniurile per zi
       if (extras.dinner && typeof extras.dinner === "object") {
         const totalDinner = Object.values(extras.dinner).reduce(
           (s, n) => s + (n || 0),
@@ -301,7 +315,6 @@ router.post("/", async (req, res) => {
       if (extraBeds > 0)
         extrasPrice += (prices.price_extra_bed || 50) * extraBeds * nights;
 
-      // Jacuzzi — număr sesiuni din dates
       const jacuzziSessions = Array.isArray(extras.jacuzzi_dates)
         ? extras.jacuzzi_dates.length
         : extras.jacuzzi || 0;
@@ -757,16 +770,9 @@ router.delete("/:id", async (req, res) => {
     if (check.rows.length === 0)
       return res
         .status(404)
-        .json({ success: false, error: "Rezervarea nu există" }); //   return res.status(400).json({
-    //     success: false,
-    //     error: "Poți șterge doar rezervările anulate sau finalizate",
-    //   });
-    // await query(`DELETE FROM guest_ids WHERE booking_id = $1`, [id]);
-    // TEMPORAR: Comentăm validarea pentru a putea șterge orice rezervare la teste
-    // if (!["cancelled", "finished"].includes(check.rows[0].status))
-    // TEMPORAR: Comentăm query-ul pentru guest_ids deoarece tabelul nu există momentan în DB
+        .json({ success: false, error: "Rezervarea nu există" });
     await query(`DELETE FROM bookings WHERE id = $1`, [id]);
-    console.log(`🗑️  Rezervare ștearsă: ${id}`);
+    console.log(`🗑️  Rezervare ștearsă: ${id}`);
     res.json({ success: true });
   } catch (err) {
     console.error("❌ DELETE /api/bookings/:id:", err.message);
