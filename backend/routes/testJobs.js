@@ -86,8 +86,6 @@ router.get("/", (req, res) => {
         "/api/test-jobs/seed/jobs": "Seed bookings positioned for cron jobs",
       },
       "B. CLEANUP": {
-        "/api/test-jobs/cleanup/bookings": "Delete BLV-BK-* bookings",
-        "/api/test-jobs/cleanup/jobs": "Delete BLV-JB-* bookings",
         "/api/test-jobs/cleanup/all": "Delete all test data",
       },
       "C. EMAIL TRIGGERS": {
@@ -590,20 +588,82 @@ router.get("/seed/jobs", async (req, res) => {
 
 /**
  * @swagger
- * /api/test-jobs/cleanup/bookings:
+ * /api/test-jobs/seed/analytics:
  *   get:
- *     summary: "🗑️ Cleanup - Bookings (BLV-BK-*)"
+ *     summary: "🌱 Seed - Analytics (distributed bookings for AI testing)"
  *     tags: [Test Jobs]
+ *     description: |
+ *       Creates bookings distributed across all rooms and next 14 days.
+ *       Use this before opening Analytics to get realistic AI recommendations.
  *     responses:
  *       200:
- *         description: Deleted
+ *         description: Bookings created successfully
  */
-router.get("/cleanup/bookings", async (req, res) => {
+router.get("/seed/analytics", async (req, res) => {
   try {
-    const { rowCount } = await query(
-      `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-BK-%'`,
+    const { rows: rooms } = await query(
+      `SELECT id FROM rooms WHERE status = 'active' ORDER BY sort_order`,
     );
-    ok(res, { message: `${rowCount} BLV-BK-* bookings deleted.` });
+    if (rooms.length === 0) throw new Error("No active rooms found.");
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-AN-%'`,
+      );
+
+      const RO_TODAY = `(NOW() + INTERVAL '3 hours')::date`;
+      const created = [];
+      let seq = 1;
+
+      // Distribuie rezervări pe 14 zile și toate camerele
+      for (let day = 1; day <= 14; day++) {
+        // Câte camere ocupăm în ziua asta (variabil pentru grafic realist)
+        const occupiedRooms =
+          day % 7 === 0 || day % 7 === 6
+            ? Math.floor(rooms.length * 0.9) // weekend — 90% ocupare
+            : Math.floor(rooms.length * 0.4 + (day % 3)); // săptămână — 40-60%
+
+        for (let r = 0; r < occupiedRooms && r < rooms.length; r++) {
+          const ref = `BLV-AN-${String(seq).padStart(3, "0")}`;
+          await client.query(
+            `INSERT INTO bookings (
+              booking_ref, room_id, guest_name, guest_email, guest_phone,
+              check_in, check_out, guests, total_price, status, source,
+              payment_split, stripe_amount, remaining_amount, preferred_language
+            ) VALUES (
+              $1, $2, $3, $4, $5,
+              ${RO_TODAY} + INTERVAL '${day} days',
+              ${RO_TODAY} + INTERVAL '${day + 2} days',
+              2, 500, 'confirmed', 'website', 'full', 500, 0, 'ro'
+            )`,
+            [
+              ref,
+              rooms[r].id,
+              `Analytics Guest ${seq}`,
+              TEST_CLIENT_EMAIL,
+              "+40700000000",
+            ],
+          );
+          created.push({ ref, day, room: r + 1 });
+          seq++;
+        }
+      }
+
+      await client.query("COMMIT");
+      ok(res, {
+        message: `${created.length} bookings created for analytics testing`,
+        note: "Open /admin/analytics → Smart Pricing → Actualizează",
+        distribution: `${rooms.length} rooms × 14 days, weekend peaks included`,
+        created,
+      });
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
   } catch (e) {
     err(res, e);
   }
@@ -611,20 +671,234 @@ router.get("/cleanup/bookings", async (req, res) => {
 
 /**
  * @swagger
- * /api/test-jobs/cleanup/jobs:
+ * /api/test-jobs/seed/analytics-low:
  *   get:
- *     summary: "🗑️ Cleanup - Cron job bookings (BLV-JB-*)"
+ *     summary: "🌱 Seed - Analytics LOW occupancy (20-30%)"
  *     tags: [Test Jobs]
+ *     description: Creates few bookings to simulate low demand. AI should recommend price decrease or promotions.
  *     responses:
  *       200:
- *         description: Deleted
+ *         description: Bookings created successfully
  */
-router.get("/cleanup/jobs", async (req, res) => {
+router.get("/seed/analytics-low", async (req, res) => {
   try {
-    const { rowCount } = await query(
-      `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-JB-%'`,
+    const { rows: rooms } = await query(
+      `SELECT id FROM rooms WHERE status = 'active' ORDER BY sort_order`,
     );
-    ok(res, { message: `${rowCount} BLV-JB-* bookings deleted.` });
+    if (rooms.length === 0) throw new Error("No active rooms found.");
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-AN-%'`,
+      );
+
+      const RO_TODAY = `(NOW() + INTERVAL '3 hours')::date`;
+      const created = [];
+      let seq = 1;
+
+      // Doar 1-2 camere ocupate per zi, nu în fiecare zi
+      for (let day = 1; day <= 14; day++) {
+        if (day % 3 === 0) continue; // sari peste fiecare a 3-a zi — zile goale
+        const occupiedRooms = 1; // maxim 1 cameră pe zi → ~12% ocupare
+
+        for (let r = 0; r < occupiedRooms; r++) {
+          const ref = `BLV-AN-${String(seq).padStart(3, "0")}`;
+          await client.query(
+            `INSERT INTO bookings (
+              booking_ref, room_id, guest_name, guest_email, guest_phone,
+              check_in, check_out, guests, total_price, status, source,
+              payment_split, stripe_amount, remaining_amount, preferred_language
+            ) VALUES (
+              $1, $2, $3, $4, $5,
+              ${RO_TODAY} + INTERVAL '${day} days',
+              ${RO_TODAY} + INTERVAL '${day + 2} days',
+              2, 500, 'confirmed', 'website', 'full', 500, 0, 'ro'
+            )`,
+            [
+              ref,
+              rooms[r].id,
+              `Analytics Guest ${seq}`,
+              TEST_CLIENT_EMAIL,
+              "+40700000000",
+            ],
+          );
+          created.push({ ref, day });
+          seq++;
+        }
+      }
+
+      await client.query("COMMIT");
+      ok(res, {
+        message: `${created.length} bookings created — LOW occupancy scenario`,
+        note: "Open /admin/analytics → Smart Pricing → Actualizează",
+        expectedAI: "Price decrease or promotional packages recommended",
+        created,
+      });
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    err(res, e);
+  }
+});
+
+/**
+ * @swagger
+ * /api/test-jobs/seed/analytics-high:
+ *   get:
+ *     summary: "🌱 Seed - Analytics HIGH occupancy (90-100%)"
+ *     tags: [Test Jobs]
+ *     description: Creates bookings for almost all rooms every day. AI should recommend significant price increase.
+ *     responses:
+ *       200:
+ *         description: Bookings created successfully
+ */
+router.get("/seed/analytics-high", async (req, res) => {
+  try {
+    const { rows: rooms } = await query(
+      `SELECT id FROM rooms WHERE status = 'active' ORDER BY sort_order`,
+    );
+    if (rooms.length === 0) throw new Error("No active rooms found.");
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-AN-%'`,
+      );
+
+      const RO_TODAY = `(NOW() + INTERVAL '3 hours')::date`;
+      const created = [];
+      let seq = 1;
+
+      // Toate camerele ocupate în toate zilele → 100% ocupare
+      for (let day = 1; day <= 14; day++) {
+        const occupiedRooms = rooms.length; // toate camerele
+
+        for (let r = 0; r < occupiedRooms; r++) {
+          const ref = `BLV-AN-${String(seq).padStart(3, "0")}`;
+          await client.query(
+            `INSERT INTO bookings (
+              booking_ref, room_id, guest_name, guest_email, guest_phone,
+              check_in, check_out, guests, total_price, status, source,
+              payment_split, stripe_amount, remaining_amount, preferred_language
+            ) VALUES (
+              $1, $2, $3, $4, $5,
+              ${RO_TODAY} + INTERVAL '${day} days',
+              ${RO_TODAY} + INTERVAL '${day + 2} days',
+              2, 500, 'confirmed', 'website', 'full', 500, 0, 'ro'
+            )`,
+            [
+              ref,
+              rooms[r].id,
+              `Analytics Guest ${seq}`,
+              TEST_CLIENT_EMAIL,
+              "+40700000000",
+            ],
+          );
+          created.push({ ref, day, room: r + 1 });
+          seq++;
+        }
+      }
+
+      await client.query("COMMIT");
+      ok(res, {
+        message: `${created.length} bookings created — HIGH occupancy scenario`,
+        note: "Open /admin/analytics → Smart Pricing → Actualizează",
+        expectedAI: "Significant price increase recommended (15-25%)",
+        created,
+      });
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    err(res, e);
+  }
+});
+
+/**
+ * @swagger
+ * /api/test-jobs/seed/analytics-mixed:
+ *   get:
+ *     summary: "🌱 Seed - Analytics MIXED occupancy (weekend peaks)"
+ *     tags: [Test Jobs]
+ *     description: Creates bookings with weekend peaks and slow weekdays. AI should recommend dynamic pricing strategy.
+ *     responses:
+ *       200:
+ *         description: Bookings created successfully
+ */
+router.get("/seed/analytics-mixed", async (req, res) => {
+  try {
+    const { rows: rooms } = await query(
+      `SELECT id FROM rooms WHERE status = 'active' ORDER BY sort_order`,
+    );
+    if (rooms.length === 0) throw new Error("No active rooms found.");
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-AN-%'`,
+      );
+
+      const RO_TODAY = `(NOW() + INTERVAL '3 hours')::date`;
+      const created = [];
+      let seq = 1;
+
+      for (let day = 1; day <= 14; day++) {
+        // Weekend (ziua 6,7,13,14) → 90% ocupare, săptămână → 25%
+        const isWeekend = day % 7 === 6 || day % 7 === 0;
+        const occupiedRooms = isWeekend
+          ? Math.ceil(rooms.length * 0.9)
+          : Math.ceil(rooms.length * 0.25);
+
+        for (let r = 0; r < occupiedRooms && r < rooms.length; r++) {
+          const ref = `BLV-AN-${String(seq).padStart(3, "0")}`;
+          await client.query(
+            `INSERT INTO bookings (
+              booking_ref, room_id, guest_name, guest_email, guest_phone,
+              check_in, check_out, guests, total_price, status, source,
+              payment_split, stripe_amount, remaining_amount, preferred_language
+            ) VALUES (
+              $1, $2, $3, $4, $5,
+              ${RO_TODAY} + INTERVAL '${day} days',
+              ${RO_TODAY} + INTERVAL '${day + 2} days',
+              2, 500, 'confirmed', 'website', 'full', 500, 0, 'ro'
+            )`,
+            [
+              ref,
+              rooms[r].id,
+              `Analytics Guest ${seq}`,
+              TEST_CLIENT_EMAIL,
+              "+40700000000",
+            ],
+          );
+          created.push({ ref, day, type: isWeekend ? "weekend" : "weekday" });
+          seq++;
+        }
+      }
+
+      await client.query("COMMIT");
+      ok(res, {
+        message: `${created.length} bookings created — MIXED occupancy scenario`,
+        note: "Open /admin/analytics → Smart Pricing → Actualizează",
+        expectedAI: "Dynamic pricing — higher rates for weekends recommended",
+        created,
+      });
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
   } catch (e) {
     err(res, e);
   }
@@ -643,7 +917,7 @@ router.get("/cleanup/jobs", async (req, res) => {
 router.get("/cleanup/all", async (req, res) => {
   try {
     const { rowCount } = await query(
-      `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-BK-%' OR booking_ref LIKE 'BLV-JB-%'`,
+      `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-BK-%' OR booking_ref LIKE 'BLV-JB-%' OR booking_ref LIKE 'BLV-AN-%'`,
     );
     ok(res, {
       message: `${rowCount} test bookings deleted (BLV-BK-* + BLV-JB-*).`,

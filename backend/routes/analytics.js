@@ -276,7 +276,7 @@ router.get("/smart-pricing", async (req, res) => {
         GROUP BY check_in::date
         ORDER BY date
       `);
-      occupancyData = result.rows.length >= 3 ? result.rows : MOCK_OCCUPANCY;
+      occupancyData = result.rows.length > 0 ? result.rows : MOCK_OCCUPANCY;
     } catch (_err) {
       occupancyData = MOCK_OCCUPANCY;
     }
@@ -327,7 +327,9 @@ Returnează DOAR un obiect JSON valid (fără markdown):
         },
         { role: "user", content: prompt },
       ]);
-      aiRecommendation = JSON.parse(rawText.replaceAll(/```json|```/g, "").trim());
+      aiRecommendation = JSON.parse(
+        rawText.replaceAll(/```json|```/g, "").trim(),
+      );
     } else {
       // 🔧 Mock response
       aiRecommendation = {
@@ -345,6 +347,10 @@ Returnează DOAR un obiect JSON valid (fără markdown):
       };
     }
 
+    const priceResult = await query(
+      `SELECT price FROM rooms WHERE status = 'active' ORDER BY sort_order LIMIT 1`,
+    );
+
     // ── Pasul 5: Răspuns către frontend ─────────────────────────────────────
     res.json({
       success: true,
@@ -353,7 +359,7 @@ Returnează DOAR un obiect JSON valid (fără markdown):
         occupancy_chart: occupancyData, // date pentru graficul Recharts
         stats: { avgOccupancy, peakOccupancy, highDemandDays },
         recommendation: aiRecommendation, // recomandarea AI
-        current_price: 250, // prețul de bază din DB
+        current_price: priceResult.rows[0]?.price || 250,
       },
     });
   } catch (err) {
@@ -372,4 +378,3 @@ function getCurrentSeason() {
 }
 
 module.exports = router;
-
