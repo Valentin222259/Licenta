@@ -80,13 +80,6 @@ const AdminRooms = () => {
         <p className="text-muted-foreground text-sm">
           {rooms.length} camere total
         </p>
-        <Button
-          size="sm"
-          onClick={() => toast({ title: "Funcționalitate în dezvoltare" })}
-        >
-          <Plus size={16} />
-          Adaugă Cameră
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
