@@ -1914,4 +1914,18 @@ router.get("/preview/expire", async (req, res) => {
   }
 });
 
+router.get("/migrate-multiplier", async (req, res) => {
+  try {
+    await query(
+      `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS smart_multiplier NUMERIC(4,2) DEFAULT 1.0`,
+    );
+    await query(
+      `UPDATE rooms SET smart_multiplier = 1.0 WHERE smart_multiplier IS NULL`,
+    );
+    res.json({ success: true, message: "Migrare completă" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

@@ -421,6 +421,7 @@ const ScannerBuletin = ({
       });
       if (!r.ok) throw new Error("Eroare la salvare");
       setSaved(true);
+      setTimeout(() => onClose(), 1500);
     } catch {
       setError("Nu s-au putut salva datele.");
     } finally {
@@ -1134,7 +1135,16 @@ const AdminBookings = () => {
                 bookingId={selected.id}
                 guestName={selected.guest_name}
                 bookingRef={selected.booking_ref}
-                onClose={() => setScannerOpen(false)}
+                onClose={async () => {
+                  setScannerOpen(false);
+                  await fetchBookings();
+                  // reîncarcă selected cu datele noi
+                  const res = await fetch(
+                    `${API_URL}/api/bookings/${selected.id}`,
+                  );
+                  const data = await res.json();
+                  if (data.success) setSelected(data.data);
+                }}
               />
             </div>
           ) : (

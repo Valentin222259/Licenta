@@ -5,6 +5,7 @@ export interface Room {
   description: string;
   short_description: string;
   price: number;
+  current_price?: number | null;
   capacity: number;
   status: "active" | "inactive" | "maintenance";
   amenities: string[];

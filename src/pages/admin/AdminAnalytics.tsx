@@ -13,7 +13,7 @@
  */
 
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ResponsiveContainer,
   PieChart,
@@ -68,16 +68,15 @@ interface PricingData {
     highDemandDays: number;
   };
   recommendation: {
-    price_factor: number;
-    recommended_price: number;
+    price_multiplier: number;
     urgency: "high" | "medium" | "low";
     reasoning: string;
     strategy: string;
     apply_from: string;
     tips: string[];
   };
-  current_price: number;
-  ai_powered: boolean;
+  rooms: { id: string; name: string; price: number; current_price: number }[];
+  avg_price: number;
 }
 
 // ─── Culori grafice (aliniate la tema Belvedere) ──────────────────────────────
@@ -134,19 +133,54 @@ const AdminAnalytics = () => {
       apiGet<{ success: boolean; ai_powered: boolean; data: PricingData }>(
         "/api/analytics/smart-pricing",
       ),
-    staleTime: 5 * 60 * 1000, // cache 5 minute — apelurile AI sunt costisitoare
+    staleTime: Infinity,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
   });
 
   const sentiment = sentimentResponse?.data;
   const pricing = pricingResponse?.data;
+  const queryClient = useQueryClient();
 
   // ── Handler: aplică prețul recomandat ────────────────────────────────────
   // În producție: apelează PATCH /api/rooms/:id cu noul preț
-  const handleApplyPricing = () => {
-    toast({
-      title: "✅ Preț actualizat",
-      description: `Tariful a fost setat la ${pricing?.recommendation.recommended_price} RON/noapte`,
-    });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
+
+  const handleApplyPricing = async () => {
+    if (!pricing) return;
+    setApplying(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/rooms/pricing/apply`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            multiplier: pricing.recommendation.price_multiplier,
+          }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({
+        title: "✅ Prețuri actualizate",
+        description: `${data.updatedRooms} camere actualizate cu succes`,
+      });
+      setApplied(true);
+      setConfirmOpen(false);
+      refetchPricing();
+    } catch (e) {
+      toast({
+        title: "Eroare",
+        description:
+          e instanceof Error ? e.message : "Eroare la aplicarea prețului",
+        variant: "destructive",
+      });
+    } finally {
+      setApplying(false);
+    }
   };
 
   // ── Date pentru PieChart sentiment ───────────────────────────────────────
@@ -601,7 +635,7 @@ const AdminAnalytics = () => {
                         Preț actual
                       </p>
                       <p className="font-heading text-xl text-muted-foreground line-through">
-                        {pricing.current_price} RON
+                        {pricing.avg_price} RON
                       </p>
                     </div>
                     <ArrowUp size={20} className="text-primary" />
@@ -610,13 +644,17 @@ const AdminAnalytics = () => {
                         Preț recomandat
                       </p>
                       <p className="font-heading text-2xl text-primary">
-                        {pricing.recommendation.recommended_price} RON
+                        {Math.round(
+                          pricing.avg_price *
+                            pricing.recommendation.price_multiplier,
+                        )}{" "}
+                        RON
                       </p>
                     </div>
                     <Badge className="ml-2 text-sm">
                       +
                       {Math.round(
-                        (pricing.recommendation.price_factor - 1) * 100,
+                        (pricing.recommendation.price_multiplier - 1) * 100,
                       )}
                       %
                     </Badge>
@@ -641,24 +679,61 @@ const AdminAnalytics = () => {
                   </div>
 
                   {/* Acțiuni */}
-                  <div className="flex items-center gap-3 pt-2">
-                    <Button onClick={handleApplyPricing} className="gap-2">
+                  <div className="flex items-center gap-3 pt-2 flex-wrap">
+                    <Button
+                      onClick={() => setConfirmOpen(true)}
+                      className="gap-2"
+                      disabled={applied}
+                    >
                       <Zap size={14} />
                       Aplică Prețul Recomandat
                     </Button>
+
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => refetchPricing()}
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(
+                            `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/rooms/pricing/reset`,
+                            { method: "POST" },
+                          );
+                          if (!res.ok) throw new Error();
+                          toast({
+                            title: "✅ Prețuri resetate la valorile de bază",
+                          });
+                          setApplied(false);
+                          refetchPricing();
+                        } catch {
+                          toast({
+                            title: "Eroare la resetare",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      className="gap-2 text-muted-foreground"
+                    >
+                      <RefreshCw size={13} />
+                      Reset la bază
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setApplied(false);
+                        await queryClient.resetQueries({
+                          queryKey: ["smart-pricing"],
+                        });
+                        refetchPricing();
+                      }}
                       disabled={pricingLoading}
                       className="gap-2"
                     >
-                      <RefreshCw
-                        size={13}
-                        className={pricingLoading ? "animate-spin" : ""}
-                      />
-                      Actualizează
+                      <Brain size={13} />
+                      Nouă Analiză AI
                     </Button>
+
                     <span className="text-xs text-muted-foreground">
                       Aplică: {pricing.recommendation.apply_from}
                     </span>
@@ -669,6 +744,91 @@ const AdminAnalytics = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* ── Modal confirmare aplicare prețuri ─────────────────────────── */}
+      {confirmOpen && pricing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="fixed inset-0 bg-foreground/40 backdrop-blur-sm w-full h-full border-0 p-0 cursor-default"
+            onClick={() => setConfirmOpen(false)}
+          />
+          <div className="relative bg-card border border-border rounded-2xl w-full max-w-md z-50 shadow-2xl p-6 space-y-4">
+            <h3 className="font-heading text-lg font-semibold">
+              Confirmare ajustare prețuri
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Multiplicator aplicat:{" "}
+              <strong>×{pricing.recommendation.price_multiplier}</strong> (
+              {pricing.recommendation.strategy})
+            </p>
+
+            <div className="border border-border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
+                      Cameră
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">
+                      Preț actual
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">
+                      Preț nou
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pricing.rooms.map((room) => {
+                    const newPrice = Math.round(
+                      room.price * pricing.recommendation.price_multiplier,
+                    );
+                    return (
+                      <tr key={room.id}>
+                        <td className="px-3 py-2 text-foreground">
+                          {room.name}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {room.price} RON
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-primary">
+                          {newPrice} RON
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={handleApplyPricing}
+                disabled={applying}
+                className="flex-1 gap-2"
+              >
+                {applying ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" /> Se
+                    aplică...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={14} /> Confirmă
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmOpen(false)}
+                className="flex-1"
+              >
+                Anulează
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

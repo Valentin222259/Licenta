@@ -248,7 +248,9 @@ router.post("/", async (req, res) => {
       });
 
     const roomResult = await query(
-      `SELECT id, price, capacity FROM rooms WHERE id = $1 AND status = 'active'`,
+      `SELECT id, price, capacity, smart_multiplier,
+          ROUND(price * COALESCE(smart_multiplier, 1.0)) AS current_price
+   FROM rooms WHERE id = $1 AND status = 'active'`,
       [room_id],
     );
     if (roomResult.rows.length === 0)
@@ -330,7 +332,7 @@ router.post("/", async (req, res) => {
       };
     }
 
-    const room_price = room.price * nights;
+    const room_price = Number(room.current_price || room.price) * nights;
     const total_price = room_price + extrasPrice;
 
     const ADVANCE_PERCENT = 0.3;

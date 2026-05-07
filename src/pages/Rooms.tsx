@@ -9,7 +9,7 @@ import roomPlaceholder from "@/assets/hero-mountains.jpg";
 const Rooms = () => {
   const { t } = useTranslation();
   const { rooms, loading, error } = useRooms();
-  const [maxPrice, setMaxPrice] = useState(500);
+  const [maxPrice, setMaxPrice] = useState(2000);
   const [capacity, setCapacity] = useState(0);
 
   const filtered = rooms.filter(
@@ -54,7 +54,7 @@ const Rooms = () => {
             <input
               type="range"
               min={50}
-              max={500}
+              max={2000}
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
               className="w-full accent-primary"
@@ -105,7 +105,7 @@ const Rooms = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-heading text-lg text-accent">
-                    {room.price} RON
+                    {room.current_price || room.price} RON
                     <span className="text-sm text-muted-foreground font-body">
                       {t("ourRooms.perNight")}
                     </span>

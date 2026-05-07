@@ -111,7 +111,7 @@ const RoomDetail = () => {
               {t("roomDetail.from")}
             </p>
             <p className="font-heading text-3xl text-accent mb-1">
-              {room.price} RON
+              {Number(room.current_price) || room.price} RON
             </p>
             <p className="text-sm text-muted-foreground mb-2">
               {t("roomDetail.perNight")}

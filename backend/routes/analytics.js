@@ -260,7 +260,7 @@ Returnează EXACT acest format JSON (fără markdown, fără explicații):
  */
 router.get("/smart-pricing", async (req, res) => {
   try {
-    // ── Pasul 1: Date ocupare din DB (cu fallback la mock) ──────────────────
+    // ── Pasul 1: Date ocupare din DB ────────────────────────────────────────
     let occupancyData;
     try {
       const result = await query(`
@@ -281,6 +281,19 @@ router.get("/smart-pricing", async (req, res) => {
       occupancyData = MOCK_OCCUPANCY;
     }
 
+    // ── Pasul 1b: Date camere din DB ────────────────────────────────────────
+    let rooms = [];
+    try {
+      const priceResult = await query(
+        `SELECT id, name, price, smart_multiplier,
+        ROUND(price * COALESCE(smart_multiplier, 1.0)) AS current_price
+ FROM rooms WHERE status = 'active' ORDER BY sort_order`,
+      );
+      rooms = priceResult.rows;
+    } catch (_err) {
+      rooms = [];
+    }
+
     // ── Pasul 2: Statistici agregate ────────────────────────────────────────
     const avgOccupancy = Math.round(
       occupancyData.reduce((s, d) => s + Number.parseInt(d.occupancy_rate), 0) /
@@ -293,9 +306,16 @@ router.get("/smart-pricing", async (req, res) => {
       (d) => Number.parseInt(d.occupancy_rate) >= 80,
     ).length;
 
+    const avgPrice =
+      rooms.length > 0
+        ? Math.round(
+            rooms.reduce((s, r) => s + Number(r.price), 0) / rooms.length,
+          )
+        : 250;
+
     // ── Pasul 3: Prompt pentru LLM ──────────────────────────────────────────
     const prompt = `
-Ești un consultant de revenue management pentru o pensiune boutique din România (5 camere, preț mediu 250 RON/noapte).
+Ești un consultant de revenue management pentru o pensiune boutique din România (${rooms.length} camere, preț mediu ${avgPrice} RON/noapte).
 
 Date ocupare pentru următoarele 14 zile:
 - Ocupare medie: ${avgOccupancy}%
@@ -305,11 +325,10 @@ Date ocupare pentru următoarele 14 zile:
 
 Returnează DOAR un obiect JSON valid (fără markdown):
 {
-  "price_factor": 1.12,
-  "recommended_price": 280,
+  "price_multiplier": 1.12,
   "urgency": "high|medium|low",
   "reasoning": "Motivul în 1-2 propoziții",
-  "strategy": "Numele strategiei (ex: Peak Season Premium)",
+  "strategy": "Numele strategiei",
   "apply_from": "imediat|weekend|săptămâna viitoare",
   "tips": ["sfat 1", "sfat 2"]
 }`;
@@ -318,7 +337,6 @@ Returnează DOAR un obiect JSON valid (fără markdown):
     let aiRecommendation;
 
     if (azureReady) {
-      // ✅ Apel real la Azure OpenAI
       const rawText = await callAzureOpenAI([
         {
           role: "system",
@@ -331,35 +349,29 @@ Returnează DOAR un obiect JSON valid (fără markdown):
         rawText.replaceAll(/```json|```/g, "").trim(),
       );
     } else {
-      // 🔧 Mock response
       aiRecommendation = {
-        price_factor: 1.15,
-        recommended_price: 288,
-        urgency: "high",
-        reasoning:
-          "Cerere foarte mare în perioada Paștelui (15-17 aprilie). Ocupare 95-100% justifică o creștere de preț.",
-        strategy: "Holiday Peak Pricing",
+        price_multiplier: 1.12,
+        urgency: "medium",
+        reasoning: "Cerere moderată justifică o ajustare de preț.",
+        strategy: "Dynamic Demand Adjustment",
         apply_from: "imediat",
         tips: [
-          "Activează tarif special pentru weekend-uri",
-          "Oferă pachete 3 nopți cu reducere 10%",
+          "Monitorizează cererea zilnic",
+          "Oferă pachete speciale pentru zilele slabe",
         ],
       };
     }
-
-    const priceResult = await query(
-      `SELECT price FROM rooms WHERE status = 'active' ORDER BY sort_order LIMIT 1`,
-    );
 
     // ── Pasul 5: Răspuns către frontend ─────────────────────────────────────
     res.json({
       success: true,
       ai_powered: azureReady,
       data: {
-        occupancy_chart: occupancyData, // date pentru graficul Recharts
+        occupancy_chart: occupancyData,
         stats: { avgOccupancy, peakOccupancy, highDemandDays },
-        recommendation: aiRecommendation, // recomandarea AI
-        current_price: priceResult.rows[0]?.price || 250,
+        recommendation: aiRecommendation,
+        rooms: rooms,
+        avg_price: avgPrice,
       },
     });
   } catch (err) {

@@ -150,7 +150,9 @@ const Booking = () => {
         )
       : 1;
 
-  const roomPrice = room ? room.price * nights : 0;
+  const roomPrice = room
+    ? (Number(room.current_price) || Number(room.price)) * nights
+    : 0;
 
   const totalBreakfastMenus = Object.values(extras.breakfast).reduce(
     (s, n) => s + n,
@@ -1033,7 +1035,7 @@ const Booking = () => {
               <div className="border-t border-border pt-4 mb-5 space-y-2">
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>
-                    {room.price} RON × {nights}{" "}
+                    {Number(room.current_price) || room.price} RON × {nights}{" "}
                     {nights > 1 ? t("booking.nights") : t("booking.night")}
                   </span>
                   <span>{roomPrice} RON</span>
