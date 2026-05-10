@@ -181,17 +181,23 @@ router.post("/sentiment", async (req, res) => {
       .map((r) => `[${r.rating}/5] ${r.text}`)
       .join("\n");
 
-    const prompt = `
-Ești un analist de customer experience pentru o pensiune boutique din Maramureș, România.
+    const prompt = `Ești un analist de customer experience pentru o pensiune boutique din Maramureș, România.
 Analizează următoarele ${reviews.length} recenzii și returnează DOAR un obiect JSON valid.
 
 RECENZII:
 ${reviewTexts}
 
-Returnează EXACT acest format JSON (fără markdown, fără explicații):
+Calculează câmpul confidence (0.0 - 1.0) astfel:
+- 0.90-1.00: peste 10 recenzii cu sentiment clar și consistent
+- 0.75-0.89: 5-10 recenzii sau sentiment majoritar clar
+- 0.55-0.74: 3-5 recenzii sau sentiment mixt
+- sub 0.55: mai puțin de 3 recenzii sau opinii foarte contradictorii
+Număr recenzii analizate: ${reviews.length}
+
+Returnează EXACT acest format JSON (fără markdown, calculează scorul real, nu copia exemplul):
 {
   "overall_sentiment": "Excelent|Bun|Mediu|Slab",
-  "confidence": 0.95,
+  "sentiment_score": 92, // Generează o notă de la 1 la 100 bazată pe satisfacția reală
   "top_strengths": ["punct forte 1", "punct forte 2", "punct forte 3"],
   "improvement_areas": ["îmbunătățire 1", "îmbunătățire 2"],
   "summary": "Rezumat executiv în 2 propoziții",
@@ -216,7 +222,7 @@ Returnează EXACT acest format JSON (fără markdown, fără explicații):
       // 🔧 Mock response — folosit când Azure nu e disponibil
       aiInsights = {
         overall_sentiment: "Bun",
-        confidence: 0.88,
+        confidence: 88,
         top_strengths: [
           "Priveliște montană",
           "Personal amabil",

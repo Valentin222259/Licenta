@@ -182,7 +182,7 @@ const Index = () => {
               {reviews.slice(0, 3).map((r) => (
                 <div
                   key={r.id}
-                  className="bg-card border border-border rounded-lg p-6"
+                  className="bg-card border border-border rounded-lg p-6 flex flex-col"
                 >
                   <div className="flex gap-1 mb-3">
                     {Array.from({ length: r.rating }).map((_, j) => (
@@ -193,7 +193,7 @@ const Index = () => {
                       />
                     ))}
                   </div>
-                  <p className="text-sm text-muted-foreground italic mb-4">
+                  <p className="text-sm text-muted-foreground italic mb-4 flex-1">
                     "{r.text}"
                   </p>
                   <p className="font-heading text-sm">{r.guest_name}</p>

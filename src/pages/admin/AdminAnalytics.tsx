@@ -52,7 +52,7 @@ interface SentimentData {
   avg_rating: string;
   total_reviews: number;
   overall_sentiment: string;
-  confidence: number;
+  sentiment_score: number;
   top_strengths: string[];
   improvement_areas: string[];
   summary: string;
@@ -338,7 +338,7 @@ const AdminAnalytics = () => {
                       {sentiment.overall_sentiment}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Încredere: {Math.round(sentiment.confidence * 100)}%
+                      Scor AI (1-100): {sentiment.sentiment_score || 0}%
                     </p>
                   </CardContent>
                 </Card>

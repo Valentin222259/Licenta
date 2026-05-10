@@ -919,8 +919,11 @@ router.get("/cleanup/all", async (req, res) => {
     const { rowCount } = await query(
       `DELETE FROM bookings WHERE booking_ref LIKE 'BLV-BK-%' OR booking_ref LIKE 'BLV-JB-%' OR booking_ref LIKE 'BLV-AN-%'`,
     );
+    const { rowCount: reviewCount } = await query(
+      `DELETE FROM reviews WHERE guest_name LIKE 'Test Reviewer%'`,
+    );
     ok(res, {
-      message: `${rowCount} test bookings deleted (BLV-BK-* + BLV-JB-*).`,
+      message: `${rowCount} test bookings deleted + ${reviewCount} test reviews deleted.`,
     });
   } catch (e) {
     err(res, e);
@@ -1925,6 +1928,267 @@ router.get("/migrate-multiplier", async (req, res) => {
     res.json({ success: true, message: "Migrare completă" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SEED REVIEWS — Scenarii pentru testarea analizei AI Sentiment
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * @swagger
+ * /api/test-jobs/seed/reviews-positive:
+ *   get:
+ *     summary: "🌱 Seed - Reviews POSITIVE (4-5 stele)"
+ *     tags: [Test Jobs]
+ *     description: |
+ *       Inserează 8 recenzii pozitive (rating 4-5).
+ *       AI Sentiment va recomanda: sentiment Excelent, puncte forte clare.
+ *     responses:
+ *       200:
+ *         description: Reviews created
+ */
+router.get("/seed/reviews-positive", async (req, res) => {
+  try {
+    await query(`DELETE FROM reviews WHERE guest_name LIKE 'Test Reviewer%'`);
+
+    const reviews = [
+      {
+        name: "Test Reviewer 1",
+        rating: 5,
+        text: "Locație superbă, priveliște spectaculoasă spre munții Maramureșului. Personalul a fost extrem de amabil și atent la fiecare detaliu. Mic dejun tradițional delicios.",
+      },
+      {
+        name: "Test Reviewer 2",
+        rating: 5,
+        text: "Cea mai frumoasă pensiune din zonă. Camera curată, pat confortabil, liniște totală. Revin cu siguranță!",
+      },
+      {
+        name: "Test Reviewer 3",
+        rating: 5,
+        text: "Experiență de neuitat. Mâncarea tradițională maramureșeană a fost excepțională. Gazde primitoare și profesioniste.",
+      },
+      {
+        name: "Test Reviewer 4",
+        rating: 4,
+        text: "Foarte bine! Priveliștea din balcon este fantastică. Wi-Fi puțin lent dar altfel totul perfect.",
+      },
+      {
+        name: "Test Reviewer 5",
+        rating: 5,
+        text: "Atmosferă autentică, prețuri corecte, locație ideală pentru relaxare. Personalul vorbește engleză very well.",
+      },
+      {
+        name: "Test Reviewer 6",
+        rating: 5,
+        text: "Am stat 3 nopți și a fost extraordinar. Ciubărul exterior a fost o surpriză plăcută. Recomand 100%.",
+      },
+      {
+        name: "Test Reviewer 7",
+        rating: 4,
+        text: "Cameră spațioasă și curată, vedere spre pădure minunată. Micul dejun inclus a fost variat și gustos.",
+      },
+      {
+        name: "Test Reviewer 8",
+        rating: 5,
+        text: "Perfect pentru un weekend în natură. Liniște, aer curat, ospitalitate caldă. Unul dintre cele mai bune locuri din Maramureș.",
+      },
+    ];
+
+    for (const r of reviews) {
+      await query(
+        `INSERT INTO reviews (guest_name, rating, text, is_visible, created_at)
+         VALUES ($1, $2, $3, true, NOW())`,
+        [r.name, r.rating, r.text],
+      );
+    }
+
+    ok(res, {
+      message: `${reviews.length} recenzii pozitive create`,
+      expectedAI:
+        "Sentiment: Excelent, puncte forte: priveliște, personal, mâncare",
+      tip: "Mergi la Admin → Analitice → Sentiment & Recenzii → Pornește Analiza AI",
+    });
+  } catch (e) {
+    err(res, e);
+  }
+});
+
+/**
+ * @swagger
+ * /api/test-jobs/seed/reviews-negative:
+ *   get:
+ *     summary: "🌱 Seed - Reviews NEGATIVE (1-2 stele)"
+ *     tags: [Test Jobs]
+ *     description: |
+ *       Inserează 8 recenzii negative (rating 1-2).
+ *       AI Sentiment va recomanda: sentiment Slab, zone clare de îmbunătățit.
+ *     responses:
+ *       200:
+ *         description: Reviews created
+ */
+router.get("/seed/reviews-negative", async (req, res) => {
+  try {
+    await query(`DELETE FROM reviews WHERE guest_name LIKE 'Test Reviewer%'`);
+
+    const reviews = [
+      {
+        name: "Test Reviewer 1",
+        rating: 2,
+        text: "Camera era rece dimineața, sistemul de încălzire nu funcționa corect. Am așteptat 2 ore până a venit cineva să rezolve.",
+      },
+      {
+        name: "Test Reviewer 2",
+        rating: 1,
+        text: "Wi-Fi inexistent în cameră, personal nepoliticos la recepție. Nu recomand deloc.",
+      },
+      {
+        name: "Test Reviewer 3",
+        rating: 2,
+        text: "Patul era incomod, zgomot toată noaptea de la camerele vecine. Prețul nu se justifică pentru ce primești.",
+      },
+      {
+        name: "Test Reviewer 4",
+        rating: 1,
+        text: "Dezamăgitor total. Camera nu era curată la sosire, prosoapele uzate. Mic dejun slab și frig.",
+      },
+      {
+        name: "Test Reviewer 5",
+        rating: 2,
+        text: "Locație bună dar managementul lasă de dorit. Rezervarea mea nu era în sistem la sosire. Haos total.",
+      },
+      {
+        name: "Test Reviewer 6",
+        rating: 2,
+        text: "Prețuri mari pentru calitate slabă. Baia era mucegăită, apa caldă intermitentă. Nu revin.",
+      },
+      {
+        name: "Test Reviewer 7",
+        rating: 1,
+        text: "Cel mai prost sejur din viața mea. Personalul neprofesionist, camera murdară, mâncare rece.",
+      },
+      {
+        name: "Test Reviewer 8",
+        rating: 2,
+        text: "Nu corespunde deloc cu fotografiile de pe site. Realitatea e mult mai tristă. Dezamăgire totală.",
+      },
+    ];
+
+    for (const r of reviews) {
+      await query(
+        `INSERT INTO reviews (guest_name, rating, text, is_visible, created_at)
+         VALUES ($1, $2, $3, true, NOW())`,
+        [r.name, r.rating, r.text],
+      );
+    }
+
+    ok(res, {
+      message: `${reviews.length} recenzii negative create`,
+      expectedAI:
+        "Sentiment: Slab, zone de îmbunătățit: curățenie, personal, încălzire",
+      tip: "Mergi la Admin → Analitice → Sentiment & Recenzii → Pornește Analiza AI",
+    });
+  } catch (e) {
+    err(res, e);
+  }
+});
+
+/**
+ * @swagger
+ * /api/test-jobs/seed/reviews-mixed:
+ *   get:
+ *     summary: "🌱 Seed - Reviews MIXED (1-5 stele)"
+ *     tags: [Test Jobs]
+ *     description: |
+ *       Inserează 8 recenzii mixte cu rating variat (1-5 stele).
+ *       AI Sentiment va recomanda: sentiment Bun, mix de puncte forte și zone de îmbunătățit.
+ *     responses:
+ *       200:
+ *         description: Reviews created
+ */
+router.get("/seed/reviews-mixed", async (req, res) => {
+  try {
+    await query(`DELETE FROM reviews WHERE guest_name LIKE 'Test Reviewer%'`);
+
+    const reviews = [
+      {
+        name: "Test Reviewer 1",
+        rating: 5,
+        text: "Priveliște superbă, personal foarte amabil, mic dejun excelent! Revin cu plăcere.",
+      },
+      {
+        name: "Test Reviewer 2",
+        rating: 4,
+        text: "Cameră curată și confortabilă, Wi-Fi puțin slab dar altfel perfect.",
+      },
+      {
+        name: "Test Reviewer 3",
+        rating: 5,
+        text: "Liniște totală, natură, mâncare tradițională delicioasă. Revin!",
+      },
+      {
+        name: "Test Reviewer 4",
+        rating: 3,
+        text: "Ok în general, dar Wi-Fi-ul nu funcționa bine și patul era puțin dur.",
+      },
+      {
+        name: "Test Reviewer 5",
+        rating: 5,
+        text: "Cel mai frumos loc din Maramureș. Personalul a fost excepțional.",
+      },
+      {
+        name: "Test Reviewer 6",
+        rating: 2,
+        text: "Camera era rece dimineața, încălzirea nu funcționa corect. Dezamăgitor.",
+      },
+      {
+        name: "Test Reviewer 7",
+        rating: 4,
+        text: "Atmosferă autentică, prețuri corecte. Wi-Fi de îmbunătățit.",
+      },
+      {
+        name: "Test Reviewer 8",
+        rating: 1,
+        text: "Experiență foarte proastă. Camera murdară și personal nepoliticos.",
+      },
+    ];
+
+    for (const r of reviews) {
+      await query(
+        `INSERT INTO reviews (guest_name, rating, text, is_visible, created_at)
+         VALUES ($1, $2, $3, true, NOW())`,
+        [r.name, r.rating, r.text],
+      );
+    }
+
+    ok(res, {
+      message: `${reviews.length} recenzii mixte create`,
+      expectedAI: "Sentiment: Bun, mix de puncte forte și zone de îmbunătățit",
+      tip: "Mergi la Admin → Analitice → Sentiment & Recenzii → Pornește Analiza AI",
+    });
+  } catch (e) {
+    err(res, e);
+  }
+});
+
+/**
+ * @swagger
+ * /api/test-jobs/cleanup/reviews:
+ *   get:
+ *     summary: "🗑️ Cleanup - Șterge recenziile de test"
+ *     tags: [Test Jobs]
+ *     responses:
+ *       200:
+ *         description: Reviews deleted
+ */
+router.get("/cleanup/reviews", async (req, res) => {
+  try {
+    const { rowCount } = await query(
+      `DELETE FROM reviews WHERE guest_name LIKE 'Test Reviewer%'`,
+    );
+    ok(res, { message: `${rowCount} recenzii de test șterse` });
+  } catch (e) {
+    err(res, e);
   }
 });
 

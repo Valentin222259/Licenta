@@ -270,7 +270,7 @@ router.post("/sentiment", async (req, res) => {
       {
         role: "system",
         content:
-          "Ești un analist de customer experience pentru o pensiune boutique din România. Răspunzi DOAR cu JSON valid, fără markdown, fără backticks.",
+          "Ești un analist de customer experience pentru o pensiune boutique din România. Răspunzi DOAR cu JSON valid, fără markdown, fără backticks. IMPORTANT: Evaluează datele în mod real și calculează valorile (nu copia pur și simplu exemplele din structura cerută).",
       },
       {
         role: "user",
@@ -280,10 +280,10 @@ Statistici: ${stats.positive} pozitive, ${stats.neutral} neutre, ${stats.negativ
 RECENZII:
 ${reviewTexts}
 
-Returnează EXACT acest JSON:
+Returnează EXACT această structură JSON (înlocuiește valorile exemplu cu analiza ta reală):
 {
   "overall_sentiment": "excellent|good|average|poor",
-  "sentiment_score": 8.5,
+  "sentiment_score": 92, // Generează un număr între 1 și 100 care să reflecte scorul de satisfacție/încredere
   "executive_summary": "Rezumat 2-3 propoziții",
   "top_praised": [
     {"aspect": "aspect apreciat", "mentions": 12, "example_quote": "citat scurt"}
@@ -462,7 +462,9 @@ router.post("/chat", async (req, res) => {
       );
 
       const totalRooms = roomsResult.rows.length;
-      const occupiedRooms = Number.parseInt(occupiedResult.rows[0]?.occupied || 0);
+      const occupiedRooms = Number.parseInt(
+        occupiedResult.rows[0]?.occupied || 0,
+      );
       const freeRooms = totalRooms - occupiedRooms;
 
       // Construim contextul ca text structurat pentru prompt
