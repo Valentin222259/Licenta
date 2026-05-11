@@ -869,254 +869,304 @@ const AdminBookings = () => {
       </div>
 
       {/* ── Tabel ── */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 size={28} className="animate-spin text-primary" />
-          </div>
-        ) : bookings.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground text-sm">
-            Nicio rezervare găsită.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted/40 border-b border-border">
-                  <th className="px-4 py-3 text-xs text-center font-semibold uppercase tracking-wider text-muted-foreground w-28">
-                    Ref
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                    Oaspete
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden md:table-cell">
-                    Cameră
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
-                    Check-in
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
-                    Check-out
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                    Total
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden lg:table-cell min-w-[200px]">
-                    Acțiuni
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((b) => {
-                  const isQuickCancel = quickCancelId === b.id;
-                  return (
-                    <>
-                      <tr
-                        key={b.id}
-                        onClick={() => {
-                          if (isQuickCancel) return;
-                          setSelected(b);
-                          setScannerOpen(false);
-                          setDeleteConfirm(false);
-                          setCancelMode(false);
-                          setCancelReason("");
-                        }}
-                        className="hover:bg-muted/20 cursor-pointer transition-colors"
-                      >
-                        <td className="px-4 py-3.5 text-center text-xs text-muted-foreground font-mono">
-                          {b.booking_ref}
-                        </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <p className="text-sm font-semibold text-foreground">
-                            {b.guest_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {b.guest_email}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden md:table-cell">
-                          {b.room_name}
-                        </td>
-                        <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
-                          {fmt(b.check_in)}
-                        </td>
-                        <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
-                          {fmt(b.check_out)}
-                        </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <span className="text-sm font-semibold">
-                            {b.total_price} RON
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <StatusBadge status={b.status} />
-                        </td>
-                        <td
-                          className="px-3 py-3 text-center hidden lg:table-cell"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                            {b.status === "pending" && (
-                              <button
-                                type="button"
-                                disabled={actionLoading}
-                                onClick={() => updateStatus(b.id, "confirmed")}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                              >
-                                <CheckSquare size={12} /> Confirmă
-                              </button>
-                            )}
-                            {canCancel(b) && !isQuickCancel && (
-                              <button
-                                type="button"
-                                disabled={actionLoading}
-                                onClick={() => {
-                                  setQuickCancelId(b.id);
-                                  setQuickCancelReason("");
-                                }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
-                              >
-                                <XSquare size={12} /> Anulează
-                              </button>
-                            )}
-                            {isQuickCancel && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setQuickCancelId(null);
-                                  setQuickCancelReason("");
-                                }}
-                                className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-lg border border-border"
-                              >
-                                ✕ Renunță
-                              </button>
-                            )}
-                            {canDelete(b) && (
-                              <button
-                                type="button"
-                                disabled={actionLoading}
-                                onClick={() => {
-                                  setSelected(b);
-                                  setDeleteConfirm(true);
-                                  setScannerOpen(false);
-                                  setCancelMode(false);
-                                }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-muted text-muted-foreground border border-border rounded-lg text-xs font-semibold hover:bg-destructive hover:text-white hover:border-destructive transition-colors disabled:opacity-50"
-                              >
-                                <Trash2 size={12} /> Șterge
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+      <div className="md:hidden space-y-3">
+        {filtered.map((b) => (
+          <div
+            key={b.id}
+            className="bg-card border border-border rounded-xl p-4 space-y-3 cursor-pointer hover:shadow-sm transition-shadow"
+            onClick={() => setSelected(b)}
+          >
+            {/* Rând 1: Nume + Status */}
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold text-sm">{b.guest_name}</p>
+                <p className="text-xs text-muted-foreground">{b.guest_email}</p>
+              </div>
+              <StatusBadge status={b.status} />
+            </div>
 
-                      {isQuickCancel && (
+            {/* Rând 2: Cameră + Preț */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                🏠 {b.room_name}
+              </span>
+              <span className="text-sm font-bold text-foreground">
+                {b.total_price} RON
+              </span>
+            </div>
+
+            {/* Rând 3: Date */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                📅 Check-in: <strong>{fmt(b.check_in)}</strong>
+              </span>
+              <span>→</span>
+              <span>
+                📅 Check-out: <strong>{fmt(b.check_out)}</strong>
+              </span>
+            </div>
+
+            {/* Rând 4: Referință */}
+            <p className="text-xs text-muted-foreground font-mono border-t border-border pt-2">
+              Ref: {b.booking_ref}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Tabel desktop ── */}
+      <div className="hidden md:block">
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={28} className="animate-spin text-primary" />
+            </div>
+          ) : bookings.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground text-sm">
+              Nicio rezervare găsită.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-muted/40 border-b border-border">
+                    <th className="px-4 py-3 text-xs text-center font-semibold uppercase tracking-wider text-muted-foreground w-28">
+                      Ref
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                      Oaspete
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden md:table-cell">
+                      Cameră
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
+                      Check-in
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
+                      Check-out
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden lg:table-cell min-w-[200px]">
+                      Acțiuni
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map((b) => {
+                    const isQuickCancel = quickCancelId === b.id;
+                    return (
+                      <>
                         <tr
-                          key={`${b.id}-cancel`}
-                          className="bg-red-50/50 border-t border-red-100"
+                          key={b.id}
+                          onClick={() => {
+                            if (isQuickCancel) return;
+                            setSelected(b);
+                            setScannerOpen(false);
+                            setDeleteConfirm(false);
+                            setCancelMode(false);
+                            setCancelReason("");
+                          }}
+                          className="hover:bg-muted/20 cursor-pointer transition-colors"
                         >
+                          <td className="px-4 py-3.5 text-center text-xs text-muted-foreground font-mono">
+                            {b.booking_ref}
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <p className="text-sm font-semibold text-foreground">
+                              {b.guest_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {b.guest_email}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden md:table-cell">
+                            {b.room_name}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
+                            {fmt(b.check_in)}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
+                            {fmt(b.check_out)}
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <span className="text-sm font-semibold">
+                              {b.total_price} RON
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <StatusBadge status={b.status} />
+                          </td>
                           <td
-                            colSpan={8}
-                            className="px-5 py-4 hidden lg:table-cell"
+                            className="px-3 py-3 text-center hidden lg:table-cell"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
-                                  <AlertTriangle size={13} /> Selectează motivul
-                                  anulării pentru{" "}
-                                  <span className="font-bold">
-                                    {b.guest_name}
-                                  </span>
-                                </span>
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                              {b.status === "pending" && (
+                                <button
+                                  type="button"
+                                  disabled={actionLoading}
+                                  onClick={() =>
+                                    updateStatus(b.id, "confirmed")
+                                  }
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                                >
+                                  <CheckSquare size={12} /> Confirmă
+                                </button>
+                              )}
+                              {canCancel(b) && !isQuickCancel && (
+                                <button
+                                  type="button"
+                                  disabled={actionLoading}
+                                  onClick={() => {
+                                    setQuickCancelId(b.id);
+                                    setQuickCancelReason("");
+                                  }}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
+                                >
+                                  <XSquare size={12} /> Anulează
+                                </button>
+                              )}
+                              {isQuickCancel && (
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setQuickCancelId(null);
                                     setQuickCancelReason("");
-                                    setQuickCancelCustom("");
                                   }}
-                                  className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border bg-white"
+                                  className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-lg border border-border"
                                 >
-                                  Renunță
+                                  ✕ Renunță
                                 </button>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {CANCEL_REASONS.map(
-                                  ({ label, description }) => (
-                                    <button
-                                      key={label}
-                                      type="button"
-                                      onClick={() => {
-                                        setQuickCancelReason(label);
-                                        setQuickCancelCustom("");
-                                      }}
-                                      title={description}
-                                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                                        quickCancelReason === label
-                                          ? "bg-red-500 text-white border-red-500 shadow-sm"
-                                          : "bg-white text-red-700 border-red-200 hover:border-red-400 hover:bg-red-50"
-                                      }`}
-                                    >
-                                      {label}
-                                    </button>
-                                  ),
-                                )}
-                              </div>
-                              {quickCancelReason === OTHER_REASON_KEY && (
-                                <textarea
-                                  value={quickCancelCustom}
-                                  onChange={(e) =>
-                                    setQuickCancelCustom(e.target.value)
-                                  }
-                                  placeholder="Descrie motivul exact al anulării..."
-                                  rows={2}
-                                  className="w-full max-w-xl px-3 py-2 text-sm border border-red-300 rounded-lg bg-white resize-none focus:outline-none focus:ring-2 focus:ring-red-400 placeholder:text-muted-foreground"
-                                  autoFocus
-                                />
                               )}
-                              {quickCancelReason && (
+                              {canDelete(b) && (
                                 <button
                                   type="button"
-                                  disabled={
-                                    (quickCancelReason === OTHER_REASON_KEY &&
-                                      !quickCancelCustom.trim()) ||
-                                    actionLoading
-                                  }
+                                  disabled={actionLoading}
                                   onClick={() => {
-                                    const fr =
-                                      quickCancelReason === OTHER_REASON_KEY
-                                        ? quickCancelCustom.trim()
-                                        : quickCancelReason;
-                                    handleCancel(b.id, fr);
+                                    setSelected(b);
+                                    setDeleteConfirm(true);
+                                    setScannerOpen(false);
+                                    setCancelMode(false);
                                   }}
-                                  className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-muted text-muted-foreground border border-border rounded-lg text-xs font-semibold hover:bg-destructive hover:text-white hover:border-destructive transition-colors disabled:opacity-50"
                                 >
-                                  {actionLoading ? (
-                                    <Loader2
-                                      size={13}
-                                      className="animate-spin"
-                                    />
-                                  ) : (
-                                    <>
-                                      <XSquare size={13} /> Confirmă Anularea
-                                    </>
-                                  )}
+                                  <Trash2 size={12} /> Șterge
                                 </button>
                               )}
                             </div>
                           </td>
                         </tr>
-                      )}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+
+                        {isQuickCancel && (
+                          <tr
+                            key={`${b.id}-cancel`}
+                            className="bg-red-50/50 border-t border-red-100"
+                          >
+                            <td
+                              colSpan={8}
+                              className="px-5 py-4 hidden lg:table-cell"
+                            >
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
+                                    <AlertTriangle size={13} /> Selectează
+                                    motivul anulării pentru{" "}
+                                    <span className="font-bold">
+                                      {b.guest_name}
+                                    </span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setQuickCancelId(null);
+                                      setQuickCancelReason("");
+                                      setQuickCancelCustom("");
+                                    }}
+                                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border bg-white"
+                                  >
+                                    Renunță
+                                  </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {CANCEL_REASONS.map(
+                                    ({ label, description }) => (
+                                      <button
+                                        key={label}
+                                        type="button"
+                                        onClick={() => {
+                                          setQuickCancelReason(label);
+                                          setQuickCancelCustom("");
+                                        }}
+                                        title={description}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                          quickCancelReason === label
+                                            ? "bg-red-500 text-white border-red-500 shadow-sm"
+                                            : "bg-white text-red-700 border-red-200 hover:border-red-400 hover:bg-red-50"
+                                        }`}
+                                      >
+                                        {label}
+                                      </button>
+                                    ),
+                                  )}
+                                </div>
+                                {quickCancelReason === OTHER_REASON_KEY && (
+                                  <textarea
+                                    value={quickCancelCustom}
+                                    onChange={(e) =>
+                                      setQuickCancelCustom(e.target.value)
+                                    }
+                                    placeholder="Descrie motivul exact al anulării..."
+                                    rows={2}
+                                    className="w-full max-w-xl px-3 py-2 text-sm border border-red-300 rounded-lg bg-white resize-none focus:outline-none focus:ring-2 focus:ring-red-400 placeholder:text-muted-foreground"
+                                    autoFocus
+                                  />
+                                )}
+                                {quickCancelReason && (
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      (quickCancelReason === OTHER_REASON_KEY &&
+                                        !quickCancelCustom.trim()) ||
+                                      actionLoading
+                                    }
+                                    onClick={() => {
+                                      const fr =
+                                        quickCancelReason === OTHER_REASON_KEY
+                                          ? quickCancelCustom.trim()
+                                          : quickCancelReason;
+                                      handleCancel(b.id, fr);
+                                    }}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
+                                  >
+                                    {actionLoading ? (
+                                      <Loader2
+                                        size={13}
+                                        className="animate-spin"
+                                      />
+                                    ) : (
+                                      <>
+                                        <XSquare size={13} /> Confirmă Anularea
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Modal detalii ── */}

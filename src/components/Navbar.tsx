@@ -56,12 +56,12 @@ const Navbar = () => {
         </Link>
 
         {/* Desktop */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden lg:flex items-center gap-6">
           {navLinks.map((l) => (
             <Link
               key={l.to}
               to={l.to}
-              className={`relative text-sm tracking-wide uppercase transition-colors hover:text-primary pb-1 ${
+              className={`relative text-xs lg:text-sm tracking-wide uppercase transition-colors hover:text-primary pb-1 ${
                 isActive(location.pathname, l.to)
                   ? "text-primary font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
                   : "text-muted-foreground"
@@ -73,7 +73,7 @@ const Navbar = () => {
 
           <button
             onClick={toggleLang}
-            className="text-xs font-semibold uppercase tracking-wider border border-border rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+            className="hidden lg:inline-flex text-xs font-semibold uppercase tracking-wider border border-border rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
           >
             {i18n.language === "en" ? "RO" : "EN"}
           </button>
@@ -97,7 +97,7 @@ const Navbar = () => {
         </div>
 
         <button
-          className="md:hidden text-foreground"
+          className="lg:hidden text-foreground"
           onClick={() => setOpen(!open)}
         >
           {open ? <X size={24} /> : <Menu size={24} />}
@@ -105,7 +105,7 @@ const Navbar = () => {
       </div>
 
       {open && (
-        <div className="md:hidden bg-background border-b border-border animate-fade-in">
+        <div className="lg:hidden bg-background border-b border-border animate-fade-in">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-4">
             {navLinks.map((l) => (
               <Link
@@ -137,7 +137,7 @@ const Navbar = () => {
 
             <button
               onClick={toggleLang}
-              className="text-xs font-semibold uppercase tracking-wider border border-border rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground w-fit"
+              className="hidden lg:inline-flex text-xs font-semibold uppercase tracking-wider border border-border rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground w-fit"
             >
               {i18n.language === "en" ? "RO" : "EN"}
             </button>

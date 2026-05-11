@@ -166,74 +166,110 @@ const AdminDashboard = () => {
             Nicio rezervare încă.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted/40 border-b border-border">
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                    Oaspete
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden md:table-cell">
-                    Cameră
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
-                    Check-in
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
-                    Check-out
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                    Total
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {bookings.slice(0, 5).map((b) => {
-                  const s = statusStyle[b.status] ?? statusStyle.pending;
-                  return (
-                    <tr
-                      key={b.id}
-                      className="hover:bg-muted/20 transition-colors"
-                    >
-                      <td className="px-4 py-3.5 text-center">
-                        <p className="text-sm font-medium">{b.guest_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {b.guest_email}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden md:table-cell">
-                        {b.room_name}
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
-                        {formatDate(b.check_in)}
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
-                        {formatDate(b.check_out)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <span className="text-sm font-semibold">
-                          {b.total_price} RON
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
-                        >
+          <>
+            {/* Mobile carduri */}
+            <div className="md:hidden space-y-2 p-4">
+              {bookings.slice(0, 5).map((b) => {
+                const s = statusStyle[b.status] ?? statusStyle.pending;
+                return (
+                  <div
+                    key={b.id}
+                    className="bg-muted/30 rounded-lg p-3 space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">{b.guest_name}</p>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}
+                      >
+                        {statusLabel[b.status]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {b.room_name}
+                    </p>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>
+                        {formatDate(b.check_in)} → {formatDate(b.check_out)}
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {b.total_price} RON
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop tabel */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-muted/40 border-b border-border">
+                    <th className="px-4 py-3 text-xs text-center font-semibold uppercase tracking-wider text-muted-foreground">
+                      Oaspete
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden md:table-cell">
+                      Cameră
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
+                      Check-in
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center hidden sm:table-cell">
+                      Check-out
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {bookings.slice(0, 5).map((b) => {
+                    const s = statusStyle[b.status] ?? statusStyle.pending;
+                    return (
+                      <tr
+                        key={b.id}
+                        className="hover:bg-muted/20 transition-colors"
+                      >
+                        <td className="px-4 py-3.5 text-center">
+                          <p className="text-sm font-medium">{b.guest_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {b.guest_email}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden md:table-cell">
+                          {b.room_name}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
+                          {formatDate(b.check_in)}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground text-center hidden sm:table-cell">
+                          {formatDate(b.check_out)}
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <span className="text-sm font-semibold">
+                            {b.total_price} RON
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`}
-                          />
-                          {statusLabel[b.status] ?? b.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`}
+                            />
+                            {statusLabel[b.status] ?? b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

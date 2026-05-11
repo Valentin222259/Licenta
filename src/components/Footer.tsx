@@ -75,7 +75,7 @@ const Footer = () => {
               <Mail size={16} />
               <span>contact@maramures-belvedere.ro</span>
             </div>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-2 justify-center md:justify-start">
               <a
                 href="https://facebook.com"
                 target="_blank"
