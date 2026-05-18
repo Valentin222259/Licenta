@@ -71,13 +71,6 @@ const RoomDetail = () => {
                 <img src={img} alt="" className="w-full h-full object-cover" />
               </button>
             ))}
-            <button
-              onClick={() => setTourOpen(true)}
-              className="w-20 h-14 rounded border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-            >
-              <Eye size={16} />
-              <span className="text-[10px] ml-1">360°</span>
-            </button>
           </div>
         </div>
 
