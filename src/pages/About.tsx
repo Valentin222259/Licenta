@@ -1,6 +1,4 @@
 // src/pages/About.tsx — versiune actualizată cu conținut dinamic din admin
-// ÎNLOCUIEȘTE complet fișierul existent src/pages/About.tsx
-
 import {
   Bike,
   Utensils,
@@ -10,6 +8,8 @@ import {
   Gamepad2,
   Baby,
   Shirt,
+  ChefHat,
+  CalendarRange,
 } from "lucide-react";
 import heroImageFallback from "@/assets/hero-mountains.jpg";
 import { useTranslation } from "react-i18next";
@@ -17,7 +17,6 @@ import { useFacilityImages, useAboutImages } from "@/lib/useImages";
 import { useSettings } from "@/lib/useSettings";
 
 // Ordinea TREBUIE să fie identică cu FACILITIES din AdminImages.tsx
-// Cheile din settings sunt facility_{key}_title și facility_{key}_desc
 const FACILITY_KEYS = [
   { key: "jacuzzi", icon: Waves },
   { key: "bikes", icon: Bike },
@@ -27,13 +26,14 @@ const FACILITY_KEYS = [
   { key: "parking", icon: ParkingCircle },
   { key: "playground", icon: Baby },
   { key: "traditional", icon: Shirt },
+  { key: "food", icon: ChefHat },
+  { key: "events", icon: CalendarRange },
 ];
 
 const About = () => {
   const { t } = useTranslation();
   const { settings, loading: settingsLoading } = useSettings();
 
-  // Imaginile rămân la fel
   const { primary: aboutPrimary } = useAboutImages();
   const { images: facilityImages } = useFacilityImages();
 
@@ -59,33 +59,26 @@ const About = () => {
         </div>
       </section>
 
-      {/* ── Povestea — titlu și paragrafe din admin ── */}
+      {/* ── Povestea ── */}
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              {/* Titlu editabil din admin */}
               <h2 className="font-heading text-3xl mb-6">
                 {settingsLoading
                   ? t("about.storyTitle")
                   : settings.about_story_title || t("about.storyTitle")}
               </h2>
-
-              {/* Paragraf 1 editabil */}
               <p className="text-muted-foreground leading-relaxed mb-4">
                 {settingsLoading
                   ? t("about.storyP1")
                   : settings.about_story_p1 || t("about.storyP1")}
               </p>
-
-              {/* Paragraf 2 editabil */}
               <p className="text-muted-foreground leading-relaxed mb-4">
                 {settingsLoading
                   ? t("about.storyP2")
                   : settings.about_story_p2 || t("about.storyP2")}
               </p>
-
-              {/* Paragraf 3 editabil */}
               <p className="text-muted-foreground leading-relaxed">
                 {settingsLoading
                   ? t("about.storyP3")
@@ -116,7 +109,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* Distanțe — neschimbat */}
+      {/* Distanțe */}
       <section className="py-12 px-4 bg-muted">
         <div className="container mx-auto max-w-4xl">
           <h2 className="font-heading text-2xl text-center mb-8">
@@ -151,7 +144,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* ── Facilități — titluri și descrieri din admin ── */}
+      {/* ── Facilități ── */}
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-5xl">
           <h2 className="font-heading text-3xl text-center mb-4">
@@ -164,7 +157,6 @@ const About = () => {
             {FACILITY_KEYS.map(({ key, icon: Icon }, index) => {
               const facilityImg = facilityImages[index] || null;
 
-              // Titlu și descriere din admin (cu fallback la i18n)
               const titleKey = `facility_${key}_title` as keyof typeof settings;
               const descKey = `facility_${key}_desc` as keyof typeof settings;
 
@@ -214,7 +206,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* Politica copii — neschimbat */}
+      {/* Politica copii */}
       <section className="py-12 px-4 bg-muted">
         <div className="container mx-auto max-w-3xl text-center">
           <h2 className="font-heading text-2xl mb-4">{t("about.kidsTitle")}</h2>

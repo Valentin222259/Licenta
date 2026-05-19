@@ -388,7 +388,11 @@
     "playgroundTitle": "Children's Playground",
     "playgroundDesc": "Playground with trampoline, swing and slide. Kids will have a wonderful time!",
     "traditionalTitle": "Traditional Costume",
-    "traditionalDesc": "Opportunity to wear the traditional costume specific to Historic Maramureș — a unique cultural experience."
+    "traditionalDesc": "Opportunity to wear the traditional costume specific to Historic Maramureș — a unique cultural experience.",
+    "foodTitle": "Traditional Food",
+    "foodDesc": "Traditional Maramureș dishes cooked with local ingredients. An authentic culinary experience you will never forget.",
+    "eventsTitle": "Events Hall",
+    "eventsDesc": "Dedicated space for private events, family gatherings or special celebrations. Flexible capacity and full amenities."
   },
   "months": {
     "0": "January",

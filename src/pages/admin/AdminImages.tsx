@@ -25,6 +25,8 @@ import {
   Gamepad2,
   Baby,
   Shirt,
+  ChefHat,
+  CalendarRange,
 } from "lucide-react";
 
 // ─── Tipuri ──────────────────────────────────────────────────────────────────
@@ -51,6 +53,8 @@ const FACILITIES = [
   { key: "parking", label: "Parcare Gratuită", icon: ParkingCircle },
   { key: "playground", label: "Loc de Joacă Copii", icon: Baby },
   { key: "traditional", label: "Port Tradițional", icon: Shirt },
+  { key: "food", label: "Mâncare Tradițională", icon: ChefHat },
+  { key: "events", label: "Sală Evenimente", icon: CalendarRange },
 ];
 
 // Proxy Vite
@@ -91,7 +95,6 @@ const TABS: {
 ];
 
 // ─── SingleImageUploader ──────────────────────────────────────────────────────
-// Folosit pentru Hero și Despre Noi — afișează imaginea curentă + buton înlocuire
 const SingleImageUploader = ({
   fetchPath,
   uploadPath,
@@ -110,7 +113,6 @@ const SingleImageUploader = ({
     setLoading(true);
     try {
       const res = await apiGet<ApiResponse<GenericImage[]>>(`/api${fetchPath}`);
-      // Luăm prima imagine (dacă există mai multe rămase din trecut)
       setImage(res.data[0] || null);
     } catch (e) {
       console.error(e);
@@ -141,7 +143,6 @@ const SingleImageUploader = ({
 
     setUploading(true);
 
-    // Dacă există o imagine, o ștergem mai întâi
     if (image?.id) {
       try {
         await apiFetch(`/images/${image.id}`, { method: "DELETE" });
@@ -202,7 +203,6 @@ const SingleImageUploader = ({
       />
 
       {image ? (
-        // Imagine existentă
         <div className="relative rounded-2xl overflow-hidden border border-border bg-card">
           <img
             src={image.url}
@@ -238,7 +238,6 @@ const SingleImageUploader = ({
           </div>
         </div>
       ) : (
-        // Nicio imagine
         <div
           onClick={() => !uploading && fileRef.current?.click()}
           className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer hover:border-primary/50 hover:bg-muted/30 ${uploading ? "opacity-60 pointer-events-none" : ""}`}
@@ -277,9 +276,7 @@ const SingleImageUploader = ({
 };
 
 // ─── FacilitiesTab ────────────────────────────────────────────────────────────
-// Un card per facilitate cu imagine individuală
 const FacilitiesTab = () => {
-  // images[index] = imaginea pentru facilitatea cu acel index
   const [images, setImages] = useState<(GenericImage | null)[]>(
     Array(FACILITIES.length).fill(null),
   );
@@ -293,7 +290,6 @@ const FacilitiesTab = () => {
       const res = await apiGet<ApiResponse<GenericImage[]>>(
         "/api/images?category=facility",
       );
-      // Asociem imaginile în ordine (sort_order sau created_at)
       const sorted = [...res.data].sort(
         (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
       );
@@ -325,7 +321,6 @@ const FacilitiesTab = () => {
     }
     setUploading(index);
 
-    // Ștergem imaginea existentă pentru această facilitate
     const existing = images[index];
     if (existing?.id) {
       try {
@@ -337,7 +332,6 @@ const FacilitiesTab = () => {
 
     const fd = new FormData();
     fd.append("image", file);
-    // Adăugăm sort_order ca să știm poziția
     fd.append("caption", FACILITIES[index].label);
 
     try {
@@ -347,8 +341,6 @@ const FacilitiesTab = () => {
       });
       if (!res.ok) throw new Error("Upload eșuat");
 
-      // Actualizăm sort_order în DB prin PATCH dacă e necesar
-      // (deocamdată folosim ordinea din array)
       await fetchImages();
       toast({ title: "Imagine adăugată" });
     } catch (e) {
@@ -401,7 +393,6 @@ const FacilitiesTab = () => {
               key={facility.key}
               className="bg-card border border-border rounded-xl overflow-hidden"
             >
-              {/* Imagine sau placeholder */}
               <div className="relative h-40 bg-muted">
                 {img ? (
                   <>
@@ -455,7 +446,6 @@ const FacilitiesTab = () => {
                   </div>
                 )}
 
-                {/* Input ascuns */}
                 <input
                   ref={(el) => (fileRefs.current[index] = el)}
                   type="file"
@@ -467,7 +457,6 @@ const FacilitiesTab = () => {
                 />
               </div>
 
-              {/* Info facilitate */}
               <div className="p-3 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <Icon size={16} className="text-primary" />

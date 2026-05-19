@@ -388,7 +388,11 @@
     "playgroundTitle": "Loc de Joacă Copii",
     "playgroundDesc": "Loc de joacă amenajat cu trambulină, leagăn și tobogan. Copiii se vor simți minunat!",
     "traditionalTitle": "Port Tradițional",
-    "traditionalDesc": "Posibilitate de a îmbrăca portul tradițional specific zonei Maramureșului Istoric — o experiență culturală unică."
+    "traditionalDesc": "Posibilitate de a îmbrăca portul tradițional specific zonei Maramureșului Istoric — o experiență culturală unică.",
+    "foodTitle": "Mâncare Tradițională",
+    "foodDesc": "Preparate tradiționale maramureșene gătite cu ingrediente locale. O experiență culinară autentică pe care nu o vei uita.",
+    "eventsTitle": "Sală Evenimente",
+    "eventsDesc": "Spațiu amenajat pentru evenimente private, reuniuni de familie sau celebrări speciale. Capacitate flexibilă și dotări complete."
   },
   "months": {
     "0": "Ianuarie",
