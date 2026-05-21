@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Loader2, DollarSign, RefreshCw } from "lucide-react";
+import { Pencil, Loader2, DollarSign, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiGet } from "@/lib/api";
 import type { ApiResponse, Room } from "@/lib/types";
@@ -56,16 +56,6 @@ const AdminRooms = () => {
         title: "Eroare la actualizarea statusului",
         variant: "destructive",
       });
-    }
-  };
-
-  const deleteRoom = async (id: string) => {
-    try {
-      await fetch(`${API}/api/rooms/${id}`, { method: "DELETE" });
-      await fetchRooms();
-      toast({ title: "Cameră dezactivată" });
-    } catch {
-      toast({ title: "Eroare la ștergere", variant: "destructive" });
     }
   };
 
@@ -176,16 +166,6 @@ const AdminRooms = () => {
                 >
                   <Pencil size={13} />
                   {room.status === "active" ? "Dezactivează" : "Activează"}
-                </Button>
-
-                {/* Șterge */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => deleteRoom(room.id)}
-                >
-                  <Trash2 size={14} />
                 </Button>
               </div>
             </div>
