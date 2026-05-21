@@ -638,13 +638,13 @@ const ImageGrid = ({
               <Trash2 size={15} />
             </button>
           </div>
-          <div className="px-2 py-1.5 bg-card border-t border-border">
-            <p className="text-[10px] text-muted-foreground truncate">
-              {img.caption || (
-                <span className="italic opacity-40">Fără descriere</span>
-              )}
-            </p>
-          </div>
+          {img.caption && (
+            <div className="px-2 py-1.5 bg-card border-t border-border">
+              <p className="text-[10px] text-muted-foreground truncate">
+                {img.caption}
+              </p>
+            </div>
+          )}
         </div>
       ))}
     </div>
