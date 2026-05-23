@@ -130,6 +130,9 @@ app.use("/api/reviews", reviewsRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/jacuzzi", jacuzziRouter);
 
+const blockedRouter = require("./routes/blocked");
+app.use("/api/blocked", blockedRouter);
+
 if (process.env.NODE_ENV !== "production") {
   app.use("/api/test-jobs", require("./routes/testJobs"));
 }

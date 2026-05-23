@@ -32,6 +32,7 @@ async function isRoomAvailable(
   checkOut,
   excludeBookingId = null,
 ) {
+  // Verifică rezervări existente
   let sql = `
     SELECT COUNT(*) as count FROM bookings
     WHERE room_id = $1
@@ -44,7 +45,18 @@ async function isRoomAvailable(
     params.push(excludeBookingId);
   }
   const result = await query(sql, params);
-  return Number.parseInt(result.rows[0].count) === 0;
+  if (parseInt(result.rows[0].count) > 0) return false;
+
+  // Verifică perioade blocate (reparații/concediu)
+  // Pentru blocări, end_date e inclusiv → check_in < end_date + 1 zi
+  const blocked = await query(
+    `SELECT COUNT(*) as count FROM blocked_periods
+     WHERE (room_id = $1 OR all_rooms = TRUE)
+       AND start_date <= $3::date
+       AND end_date >= $2::date`,
+    [roomId, checkIn, checkOut],
+  );
+  return parseInt(blocked.rows[0].count) === 0;
 }
 
 // ─── GET /api/bookings ────────────────────────────────────────────────────────
@@ -109,13 +121,48 @@ router.get("/", async (req, res) => {
 // ─── GET /api/bookings/availability ──────────────────────────────────────────
 router.get("/availability", async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT b.check_in::text, b.check_out::text, r.name AS room_name, r.id AS room_id
+    // Rezervări confirmate/pending
+    const { rows: bookingRows } = await query(
+      `SELECT b.check_in::text, b.check_out::text, r.name AS room_name, r.id AS room_id, 'booking' AS type
        FROM bookings b JOIN rooms r ON r.id = b.room_id
        WHERE b.status IN ('confirmed', 'pending') AND b.check_out >= CURRENT_DATE
        ORDER BY b.check_in`,
     );
-    res.json({ success: true, data: rows });
+
+    // Perioade blocate per cameră specifică
+    const { rows: blockedSpecific } = await query(
+      `SELECT
+         bp.start_date::text AS check_in,
+         bp.end_date::text   AS check_out,
+         r.name              AS room_name,
+         bp.room_id,
+         bp.reason           AS type
+       FROM blocked_periods bp
+       JOIN rooms r ON r.id = bp.room_id
+       WHERE bp.all_rooms = FALSE
+         AND bp.end_date >= CURRENT_DATE`,
+    );
+
+    // Perioade blocate pentru TOATE camerele (all_rooms = TRUE)
+    // Trebuie expandate pentru fiecare cameră activă
+    const { rows: allRoomsBlocked } = await query(
+      `SELECT
+         bp.start_date::text AS check_in,
+         bp.end_date::text   AS check_out,
+         bp.reason           AS type,
+         r.id                AS room_id,
+         r.name              AS room_name
+       FROM blocked_periods bp
+       CROSS JOIN rooms r
+       WHERE bp.all_rooms = TRUE
+         AND r.status = 'active'
+         AND bp.end_date >= CURRENT_DATE`,
+    );
+
+    res.json({
+      success: true,
+      data: [...bookingRows, ...blockedSpecific, ...allRoomsBlocked],
+    });
   } catch (err) {
     console.error("❌ GET /api/bookings/availability:", err.message);
     res.status(500).json({ success: false, error: "Eroare server" });

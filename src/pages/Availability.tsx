@@ -10,6 +10,7 @@ interface OccupiedPeriod {
   room_name: string;
   check_in: string;
   check_out: string;
+  type?: string; // "booking" | "maintenance" | "holiday"
 }
 
 interface Room {
@@ -31,7 +32,10 @@ const isDayOccupied = (
     if (String(p.room_id) !== String(roomId)) return false;
     const ci = p.check_in.substring(0, 10);
     const co = p.check_out.substring(0, 10);
-    return dateStr >= ci && dateStr < co;
+    // Rezervări: check-out exclusiv (clientul pleacă, camera poate fi re-rezervată)
+    // Blocări (reparații/concediu): end_date inclusiv (toată ziua e blocată)
+    if (!p.type || p.type === "booking") return dateStr >= ci && dateStr < co;
+    return dateStr >= ci && dateStr <= co;
   });
 
 interface RoomCalendarProps {
@@ -223,10 +227,7 @@ const Availability = () => {
           <>
             <div className="flex items-center justify-center gap-6 mb-8 flex-wrap">
               {[
-                {
-                  key: "available",
-                  cls: "bg-emerald-50 border-emerald-200",
-                },
+                { key: "available", cls: "bg-emerald-50 border-emerald-200" },
                 { key: "occupied", cls: "bg-red-100 border-red-200" },
                 { key: "today", cls: "bg-primary border-primary" },
                 { key: "past", cls: "bg-muted/40 border-border" },
