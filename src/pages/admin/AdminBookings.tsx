@@ -374,7 +374,10 @@ const ScannerBuletin = ({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const r = await fetch("/api/extract", { method: "POST", body: fd });
+      const r = await fetch(`${API_URL}/api/extract`, {
+        method: "POST",
+        body: fd,
+      });
       const res = await r.json();
       if (!res.success) throw new Error(res.error);
       setFormData({
