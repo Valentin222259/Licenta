@@ -243,9 +243,7 @@ const AdminAnalytics = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB 1 — SENTIMENT & REVIEWS
-        ════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 1 — SENTIMENT & REVIEWS */}
         <TabsContent value="sentiment" className="mt-6 space-y-6">
           {/* Buton declanșare analiză */}
           {!sentiment && (
