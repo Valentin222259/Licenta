@@ -6,13 +6,10 @@ const fs = require("fs");
 const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// ─── Configurare Gemini ──────────────────────────────────────────────────────
+// Configurare Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-// ─── Multer: salvare TEMPORARĂ pe disc (șterge după Gemini) ─────────────────
-// IMPORTANT: Aceasta e singura rută care folosește disc.
-// Pozele de cameră merg direct în S3 (routes/images.js, memoryStorage).
 const uploadsDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -38,10 +35,8 @@ const upload = multer({
   },
 });
 
-// ─── Helper: pauză pentru retry ─────────────────────────────────────────────
+// Helper (pauză pentru retry)
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// ─── Helper: convertește fișier local în format Gemini ──────────────────────
 function fileToGenerativePart(filePath, mimeType) {
   return {
     inlineData: {
@@ -113,7 +108,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     const response = await generateContentWithRetry(prompt, imagePart);
     let text = response.text();
 
-    // Curățare markdown dacă Gemini adaugă ```json ... ```
+    // Curățare markdown
     text = text.replace(/```json|```/g, "").trim();
 
     const extractedData = JSON.parse(text);
@@ -129,7 +124,7 @@ router.post("/", upload.single("file"), async (req, res) => {
         : "Eroare la procesarea AI: " + error.message,
     });
   } finally {
-    // ❗ ÎNTOTDEAUNA ștergem fișierul temporar, indiferent de rezultat
+    // Ștergem fișierul temporar
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       fs.unlinkSync(tempFilePath);
       console.log("🗑️  Fișier temporar șters:", path.basename(tempFilePath));

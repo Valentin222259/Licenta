@@ -5,7 +5,7 @@ const { query } = require("../config/db");
 const { sendCheckInReminder, sendReviewRequest } = require("../services/email");
 
 function startReminderJob() {
-  // ─── JOB 1 — Reminder check-in (zilnic la 10:00) ─────────────────────────
+  // JOB 1 — Reminder check-in (zilnic la 10:00)
   cron.schedule(
     "0 10 * * *",
     async () => {
@@ -79,7 +79,7 @@ function startReminderJob() {
 
   console.log("✅ Job 1 — Reminder check-in înregistrat (zilnic 10:00)");
 
-  // ─── JOB 2 — Solicitare recenzie (zilnic la 12:00) ───────────────────────
+  // JOB 2 — Solicitare recenzie (zilnic la 12:00)
   cron.schedule(
     "0 12 * * *",
     async () => {
@@ -148,7 +148,7 @@ function startReminderJob() {
 
   console.log("✅ Job 2 — Review Request înregistrat (zilnic 12:00)");
 
-  // ─── JOB 3 — Finalizare rezervări (zilnic la 01:00) ──────────────────────
+  // JOB 3 — Finalizare rezervări (zilnic la 01:00)
   cron.schedule(
     "0 1 * * *",
     async () => {
@@ -163,20 +163,10 @@ function startReminderJob() {
         const yesterdayStr = yesterday.toISOString().split("T")[0];
 
         const { rows: toFinish } = await query(
-          `SELECT
-             b.id,
-             b.guest_name,
-             b.guest_email,
-             b.booking_ref,
-             b.check_in::text  AS check_in,
-             b.check_out::text AS check_out,
-             b.preferred_language,
-             r.name AS room_name
+          `SELECT b.id, b.guest_name, b.booking_ref
            FROM bookings b
-           JOIN rooms r ON r.id = b.room_id
            WHERE b.status = 'confirmed'
-             AND b.check_out::date <= $1
-             AND b.guest_email IS NOT NULL`,
+           AND b.check_out::date <= $1`,
           [yesterdayStr],
         );
 
@@ -197,42 +187,9 @@ function startReminderJob() {
           bookingIds,
         );
 
-        console.log(`   ✅ ${toFinish.length} rezervări marcate ca 'finished'`);
-
-        const emailResults = await Promise.allSettled(
-          toFinish.map((b) =>
-            sendReviewRequest(
-              b.guest_email,
-              {
-                guestName: b.guest_name,
-                roomName: b.room_name,
-                checkIn: b.check_in.substring(0, 10),
-                checkOut: b.check_out.substring(0, 10),
-                bookingRef: b.id,
-              },
-              b.preferred_language || "ro",
-            ),
-          ),
-        );
-
-        const emailSent = emailResults.filter(
-          (r) => r.status === "fulfilled",
-        ).length;
-        const emailFailed = emailResults.filter(
-          (r) => r.status === "rejected",
-        ).length;
         console.log(
-          `   📧 Emailuri recenzie trimise: ${emailSent} | ❌ Eșuate: ${emailFailed}\n`,
+          `   ✅ ${toFinish.length} rezervări marcate ca 'finished'\n`,
         );
-
-        emailResults.forEach((result, i) => {
-          if (result.status === "rejected") {
-            console.error(
-              `   ⚠️  Email eșuat pentru ${toFinish[i].guest_email}:`,
-              result.reason?.message,
-            );
-          }
-        });
       } catch (err) {
         console.error("❌ Finalizare Rezervări Job — eroare:", err.message);
       }

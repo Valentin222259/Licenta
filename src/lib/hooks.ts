@@ -11,7 +11,7 @@ function getLang(): "en" | "ro" {
   return i18n.language?.startsWith("en") ? "en" : "ro";
 }
 
-// ─── Hook camere ─────────────────────────────────────────────────────────────
+// Hook camere
 export function useRooms() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);

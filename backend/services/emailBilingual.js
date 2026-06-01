@@ -9,7 +9,7 @@
 
 "use strict";
 
-// ─── Texte bilingve ───────────────────────────────────────────────────────────
+// Texte bilingve
 const T = {
   ro: {
     confirmation: {

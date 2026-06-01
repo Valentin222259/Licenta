@@ -31,7 +31,7 @@ if (process.env.STRIPE_SECRET_KEY) {
   );
 }
 
-// ─── POST /api/payments/create-checkout ──────────────────────────────────────
+// POST /api/payments/create-checkout
 router.post("/create-checkout", async (req, res) => {
   if (!stripe) {
     return res
@@ -110,7 +110,7 @@ router.post("/create-checkout", async (req, res) => {
       nights: String(booking.nights),
       check_in: checkInStr,
       check_out: checkOutStr,
-      // ── B2B ──────────────────────────────────────────────────────────────────
+      // B2B
       needs_invoice: booking.needs_invoice ? "true" : "false",
       ...(booking.needs_invoice && booking.company_name
         ? { company_name: booking.company_name }
@@ -197,7 +197,9 @@ router.post(
         const remainingAmount = Number.parseInt(
           session.metadata?.remaining_amount || "0",
         );
-        const totalPrice = Number.parseInt(session.metadata?.total_price || "0");
+        const totalPrice = Number.parseInt(
+          session.metadata?.total_price || "0",
+        );
         const nights = Number.parseInt(session.metadata?.nights || "1");
         const checkIn = session.metadata?.check_in || "";
         const checkOut = session.metadata?.check_out || "";
@@ -349,7 +351,9 @@ router.get("/verify/:sessionId", async (req, res) => {
       charge_amount: session.amount_total
         ? Math.round(session.amount_total / 100)
         : null,
-      remaining_amount: Number.parseInt(session.metadata?.remaining_amount || "0"),
+      remaining_amount: Number.parseInt(
+        session.metadata?.remaining_amount || "0",
+      ),
       total_price: Number.parseInt(session.metadata?.total_price || "0"),
       needs_invoice: session.metadata?.needs_invoice === "true",
       booking,
@@ -361,4 +365,3 @@ router.get("/verify/:sessionId", async (req, res) => {
 });
 
 module.exports = router;
-
