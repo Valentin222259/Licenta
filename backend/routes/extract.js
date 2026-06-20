@@ -46,7 +46,7 @@ function fileToGenerativePart(filePath, mimeType) {
   };
 }
 
-// ─── Helper: apel Gemini cu retry la 429 ────────────────────────────────────
+// Helper: apel Gemini cu retry la 429
 async function generateContentWithRetry(prompt, imagePart, maxRetries = 3) {
   let lastError;
 
@@ -64,7 +64,7 @@ async function generateContentWithRetry(prompt, imagePart, maxRetries = 3) {
         await wait(delay);
         continue;
       }
-      throw error; // alte erori — aruncă imediat
+      throw error; // alte erori
     }
   }
   throw lastError;

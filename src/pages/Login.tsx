@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { apiPost } from "@/lib/api";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
+import { GoogleLogin } from "@react-oauth/google";
 
 interface AuthResponse {
   success: boolean;
@@ -190,19 +191,39 @@ const Login = () => {
           </p>
         </div>
 
-        <div className="mb-6">
-          <button
-            onClick={() =>
-              toast({
-                title: "Google Login",
-                description: t("loginPage.oauthComingSoon"),
-              })
+        <div className="mb-6 flex justify-center">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                const res = await apiPost<AuthResponse>("/api/auth/google", {
+                  credential: credentialResponse.credential,
+                });
+                sessionStorage.setItem("token", res.token);
+                sessionStorage.setItem("userId", res.user.id);
+                sessionStorage.setItem("userEmail", res.user.email);
+                sessionStorage.setItem("clientName", res.user.name);
+                if (res.user.role === "admin") {
+                  sessionStorage.setItem("isAdmin", "true");
+                  navigate("/admin");
+                } else {
+                  sessionStorage.setItem("isClient", "true");
+                  navigate("/account");
+                }
+              } catch (err) {
+                setErrors({
+                  general:
+                    err instanceof Error ? err.message : "Eroare Google login",
+                });
+              }
+            }}
+            onError={() =>
+              setErrors({ general: "Autentificare Google eșuată" })
             }
-            className="w-full flex items-center justify-center gap-3 bg-card border border-border rounded-md py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            <GoogleIcon />
-            {t("loginPage.continueWith")} Google
-          </button>
+            text="continue_with"
+            // @ts-expect-error -- locale e suportat la runtime de Google Identity Services, dar lipsește din tipurile pachetului
+            locale={i18n.language === "en" ? "en" : "ro"}
+            width="320"
+          />
         </div>
 
         <div className="flex items-center gap-3 mb-6">

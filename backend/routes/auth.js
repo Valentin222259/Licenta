@@ -5,6 +5,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { query } = require("../config/db");
 const { sendWelcomeEmail } = require("../services/email");
+const { OAuth2Client } = require("google-auth-library");
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "belvedere-jwt-secret-2025-upt-licenta";
@@ -68,6 +70,59 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error("❌ POST /api/auth/login:", err.message);
     res.status(500).json({ success: false, error: "Eroare server" });
+  }
+});
+
+// ─── POST /api/auth/google ───────────────────────────────────────────────────
+router.post("/google", async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Token Google lipsă" });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const { email, name, email_verified } = ticket.getPayload();
+
+    if (!email_verified) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Email Google neverificat" });
+    }
+
+    let result = await query(
+      "SELECT id, name, email, role FROM users WHERE email = $1",
+      [email],
+    );
+    let user = result.rows[0];
+
+    if (!user) {
+      const inserted = await query(
+        `INSERT INTO users (name, email, password, role)
+         VALUES ($1, $2, NULL, 'client')
+         RETURNING id, name, email, role`,
+        [name, email],
+      );
+      user = inserted.rows[0];
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, name: user.name },
+      JWT_SECRET,
+      { expiresIn: "7d" },
+    );
+
+    res.json({ success: true, token, user });
+  } catch (err) {
+    console.error("❌ POST /api/auth/google:", err.message);
+    res
+      .status(401)
+      .json({ success: false, error: "Autentificare Google invalidă" });
   }
 });
 
