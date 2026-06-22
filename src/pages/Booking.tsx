@@ -20,6 +20,9 @@ import heroImage from "@/assets/hero-mountains.jpg";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/dist/style.css";
+
 type PaymentMethod = "card" | "bank_transfer" | "reception";
 type PaymentSplit = "full" | "advance";
 
@@ -59,6 +62,25 @@ const Booking = () => {
   const [jacuzziOccupied, setJacuzziOccupied] = useState<string[]>([]);
   const [jacuzziLoading, setJacuzziLoading] = useState(false);
 
+  const [occupiedPeriods, setOccupiedPeriods] = useState<
+    { room_id: string; check_in: string; check_out: string; type?: string }[]
+  >([]);
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+
+  useEffect(() => {
+    apiGet<{
+      success: boolean;
+      data: {
+        room_id: string;
+        check_in: string;
+        check_out: string;
+        type?: string;
+      }[];
+    }>("/api/bookings/availability")
+      .then((res) => setOccupiedPeriods(res.data || []))
+      .catch(() => {});
+  }, []);
+
   const [needsInvoice, setNeedsInvoice] = useState(false);
   const [company, setCompany] = useState({
     name: "",
@@ -83,6 +105,35 @@ const Booking = () => {
     setForm((f) => ({ ...f, [field]: value }));
 
   const today = new Date().toISOString().split("T")[0];
+
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
+  const disabledDays = useMemo(() => {
+    const disabled: Date[] = [];
+    if (!room) return [{ before: todayDate }];
+
+    occupiedPeriods
+      .filter((p) => String(p.room_id) === String(room.id))
+      .forEach((p) => {
+        const start = new Date(p.check_in);
+        const end = new Date(p.check_out);
+        const cur = new Date(start);
+        while (cur < end) {
+          disabled.push(new Date(cur));
+          cur.setDate(cur.getDate() + 1);
+        }
+      });
+
+    return [{ before: todayDate }, ...disabled];
+  }, [occupiedPeriods, room, todayDate]);
+
+  const handleRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    const r = range || {};
+    setDateRange(r);
+    update("checkIn", r.from ? r.from.toISOString().split("T")[0] : "");
+    update("checkOut", r.to ? r.to.toISOString().split("T")[0] : "");
+  };
 
   const dateErrors = useMemo(() => {
     const errors: { checkIn?: string; checkOut?: string } = {};
@@ -355,53 +406,48 @@ const Booking = () => {
             </div>
 
             {/* Date */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                  {t("booking.checkIn")}
-                </label>
-                <input
-                  type="date"
-                  required
-                  min={today}
-                  value={form.checkIn}
-                  onChange={(e) => update("checkIn", e.target.value)}
-                  className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring ${dateErrors.checkIn ? "border-destructive" : "border-border"}`}
+            {/* Date */}
+            <div>
+              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-2 block">
+                {t("booking.checkIn")} → {t("booking.checkOut")}
+              </label>
+
+              <div className="rounded-xl border border-border bg-muted/20 p-3 flex justify-center">
+                <DayPicker
+                  mode="range"
+                  selected={
+                    dateRange.from
+                      ? { from: dateRange.from, to: dateRange.to }
+                      : undefined
+                  }
+                  onSelect={handleRangeSelect}
+                  disabled={disabledDays}
+                  fromMonth={todayDate}
+                  numberOfMonths={1}
+                  showOutsideDays={false}
                 />
-                {form.checkIn && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDateFull(form.checkIn)}
-                  </p>
-                )}
-                {dateErrors.checkIn && (
-                  <p className="text-xs text-destructive mt-1">
-                    {dateErrors.checkIn}
-                  </p>
-                )}
               </div>
-              <div>
-                <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-                  {t("booking.checkOut")}
-                </label>
-                <input
-                  type="date"
-                  required
-                  min={form.checkIn || today}
-                  value={form.checkOut}
-                  onChange={(e) => update("checkOut", e.target.value)}
-                  className={`w-full bg-muted border rounded-md px-4 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring ${dateErrors.checkOut ? "border-destructive" : "border-border"}`}
-                />
-                {form.checkOut && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDateFull(form.checkOut)}
-                  </p>
-                )}
-                {dateErrors.checkOut && (
-                  <p className="text-xs text-destructive mt-1">
-                    {dateErrors.checkOut}
-                  </p>
-                )}
-              </div>
+
+              {form.checkIn && form.checkOut && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  📅 {formatDateFull(form.checkIn)} →{" "}
+                  {formatDateFull(form.checkOut)}{" "}
+                  <span className="text-primary font-medium">
+                    ({nights}{" "}
+                    {nights > 1 ? t("booking.nights") : t("booking.night")})
+                  </span>
+                </p>
+              )}
+              {dateErrors.checkIn && (
+                <p className="text-xs text-destructive mt-1">
+                  {dateErrors.checkIn}
+                </p>
+              )}
+              {dateErrors.checkOut && (
+                <p className="text-xs text-destructive mt-1">
+                  {dateErrors.checkOut}
+                </p>
+              )}
             </div>
 
             {/* Număr oaspeți */}
