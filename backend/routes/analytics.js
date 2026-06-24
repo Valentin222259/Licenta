@@ -271,16 +271,19 @@ router.get("/smart-pricing", async (req, res) => {
     try {
       const result = await query(`
         SELECT
-          check_in::date AS date,
-          COUNT(*) AS bookings,
-          ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM rooms WHERE status = 'active'), 0) AS occupancy_rate,
-          SUM(total_price) AS revenue
-        FROM bookings
-        WHERE status != 'cancelled'
-          AND check_in >= CURRENT_DATE
-          AND check_in <= CURRENT_DATE + INTERVAL '14 days'
-        GROUP BY check_in::date
-        ORDER BY date
+    d::date AS date,
+    COUNT(b.id) AS bookings,
+    ROUND(COUNT(b.id) * 100.0 / (SELECT COUNT(*) FROM rooms WHERE status = 'active'), 0) AS occupancy_rate,
+    COALESCE(SUM(b.total_price / NULLIF(
+      EXTRACT(DAY FROM (b.check_out::date - b.check_in::date)), 0
+    )), 0) AS revenue
+  FROM generate_series(CURRENT_DATE, CURRENT_DATE + INTERVAL '14 days', '1 day') d
+  LEFT JOIN bookings b
+    ON b.check_in::date <= d::date
+    AND b.check_out::date > d::date
+    AND b.status != 'cancelled'
+  GROUP BY d
+  ORDER BY d
       `);
       occupancyData = result.rows.length > 0 ? result.rows : MOCK_OCCUPANCY;
     } catch (_err) {

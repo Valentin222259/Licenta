@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { KeyRound, Shield, Eye, EyeOff } from "lucide-react";
+import { useEffect } from "react";
+import { apiGet } from "@/lib/api";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -10,6 +12,47 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [stats, setStats] = useState({
+    rezervari: "...",
+    ocupare: "...",
+    rating: "...",
+  });
+
+  useEffect(() => {
+    Promise.allSettled([
+      apiGet<{ total: number }>("/api/bookings?limit=1"),
+      apiGet<{ success: boolean; data: { rating: number }[] }>("/api/reviews"),
+      apiGet<{ success: boolean; data: { stats: { avgOccupancy: number } } }>(
+        "/api/analytics/smart-pricing",
+      ),
+    ]).then(([bookingsRes, reviewsRes, pricingRes]) => {
+      const rezervari =
+        bookingsRes.status === "fulfilled"
+          ? String(bookingsRes.value.total)
+          : "—";
+
+      let rating = "—";
+      if (
+        reviewsRes.status === "fulfilled" &&
+        reviewsRes.value.data.length > 0
+      ) {
+        const avg =
+          reviewsRes.value.data.reduce(
+            (s: number, r: { rating: number }) => s + r.rating,
+            0,
+          ) / reviewsRes.value.data.length;
+        rating = avg.toFixed(1);
+      }
+
+      let ocupare = "—";
+      if (pricingRes.status === "fulfilled") {
+        ocupare = pricingRes.value.data.stats.avgOccupancy + "%";
+      }
+
+      setStats({ rezervari, ocupare, rating });
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,9 +99,9 @@ const AdminLogin = () => {
 
           <div className="mt-12 grid grid-cols-3 gap-6 text-center">
             {[
-              { label: "Rezervări", value: "247" },
-              { label: "Ocupare", value: "78%" },
-              { label: "Rating", value: "9.6" },
+              { label: "Rezervări", value: stats.rezervari },
+              { label: "Ocupare", value: stats.ocupare },
+              { label: "Rating", value: stats.rating },
             ].map((stat) => (
               <div
                 key={stat.label}
