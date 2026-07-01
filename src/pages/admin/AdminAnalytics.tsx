@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { apiGet, apiPost } from "@/lib/api";
 
-// ─── Tipuri TypeScript ────────────────────────────────────────────────────────
+// Tipuri TypeScript
 
 interface SentimentData {
   distribution: { positive: number; neutral: number; negative: number };
@@ -79,7 +79,7 @@ interface PricingData {
   avg_price: number;
 }
 
-// ─── Culori grafice (aliniate la tema Belvedere) ──────────────────────────────
+// Culori grafice (aliniate la tema Belvedere)
 const SENTIMENT_COLORS = {
   positive: "hsl(152, 35%, 35%)", // verde Belvedere
   neutral: "hsl(38, 50%, 55%)", // auriu
@@ -100,9 +100,9 @@ const URGENCY_CONFIG = {
   },
 };
 
-// ─── Componenta principală ────────────────────────────────────────────────────
+// Componenta principală
 const AdminAnalytics = () => {
-  // ── TanStack Query: Sentiment ─────────────────────────────────────────────
+  // TanStack Query: Sentiment
   // useMutation pentru că sentiment e POST (trimitem parametri în viitor)
   const {
     data: sentimentResponse,
@@ -122,7 +122,7 @@ const AdminAnalytics = () => {
       }),
   });
 
-  // ── TanStack Query: Smart Pricing ─────────────────────────────────────────
+  // TanStack Query: Smart Pricing
   const {
     data: pricingResponse,
     isLoading: pricingLoading,
@@ -142,7 +142,7 @@ const AdminAnalytics = () => {
   const pricing = pricingResponse?.data;
   const queryClient = useQueryClient();
 
-  // ── Handler: aplică prețul recomandat ────────────────────────────────────
+  // Handler: aplică prețul recomandat
   // În producție: apelează PATCH /api/rooms/:id cu noul preț
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -183,7 +183,7 @@ const AdminAnalytics = () => {
     }
   };
 
-  // ── Date pentru PieChart sentiment ───────────────────────────────────────
+  // Date pentru PieChart sentiment
   const pieData = sentiment
     ? [
         {
@@ -204,7 +204,7 @@ const AdminAnalytics = () => {
       ]
     : [];
 
-  // ── Format dată pentru graficul de ocupare ────────────────────────────────
+  // Format dată pentru graficul de ocupare
   const occupancyChart =
     pricing?.occupancy_chart.map((d) => ({
       ...d,
@@ -216,7 +216,7 @@ const AdminAnalytics = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-heading text-xl">Analiză & Perspective AI</h2>
@@ -230,7 +230,7 @@ const AdminAnalytics = () => {
         </Badge>
       </div>
 
-      {/* ── Tabs principale ────────────────────────────────────────────────── */}
+      {/* Tab-uri principale */}
       <Tabs defaultValue="sentiment">
         <TabsList className="grid grid-cols-2 w-full max-w-sm">
           <TabsTrigger value="sentiment" className="gap-2">
@@ -490,9 +490,7 @@ const AdminAnalytics = () => {
           )}
         </TabsContent>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB 2 — SMART PRICING
-        ════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 2 — SMART PRICING */}
         <TabsContent value="pricing" className="mt-6 space-y-6">
           {pricingLoading && (
             <Card>
@@ -743,7 +741,7 @@ const AdminAnalytics = () => {
         </TabsContent>
       </Tabs>
 
-      {/* ── Modal confirmare aplicare prețuri ─────────────────────────── */}
+      {/* Modal confirmare aplicare prețuri */}
       {confirmOpen && pricing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button

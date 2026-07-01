@@ -21,7 +21,7 @@ const emailServices = require("../services/email");
 const TEST_CLIENT_EMAIL = "ardeleanvalentin490@yahoo.com";
 const ADMIN_EMAIL = "ardeleanvalentin737@yahoo.com";
 
-// ─── Helper: today's date in Romania timezone (UTC+2/+3) ─────────────────────
+// Helper: today's date in Romania timezone (UTC+2/+3)
 // Always use Romanian time so seed dates match cron job expectations.
 // new Date() is UTC on most servers — toLocaleDateString with timeZone fixes it.
 function todayRO() {
@@ -36,7 +36,7 @@ function todayRO() {
   return new Date(`${get("year")}-${get("month")}-${get("day")}T00:00:00.000Z`);
 }
 
-// ─── Helper: format date → "YYYY-MM-DD" ──────────────────────────────────────
+// Helper: format date -> "YYYY-MM-DD"
 function fmtISO(val) {
   if (!val) return "";
   if (val instanceof Date) {
@@ -48,14 +48,14 @@ function fmtISO(val) {
   return String(val).substring(0, 10);
 }
 
-// ─── Helper: date relative to today (Romania time) ───────────────────────────
+// Helper: date relative to today (Romania time)
 function relDate(days) {
   const d = todayRO();
   d.setUTCDate(d.getUTCDate() + days);
   return fmtISO(d);
 }
 
-// ─── Helper: get first active room from DB ────────────────────────────────────
+// Helper: get first active room from DB
 async function getActiveRoomId() {
   const { rows } = await query(
     `SELECT id FROM rooms WHERE status = 'active' ORDER BY sort_order LIMIT 1`,
@@ -64,7 +64,7 @@ async function getActiveRoomId() {
   return rows[0].id;
 }
 
-// ─── Helper: send structured response ────────────────────────────────────────
+// Helper: send structured response
 function ok(res, data) {
   res.json({ success: true, ...data });
 }
@@ -73,9 +73,9 @@ function err(res, e) {
   res.status(500).json({ success: false, error: e.message });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 //  INDEX
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 
 router.get("/", (req, res) => {
   ok(res, {
@@ -152,9 +152,9 @@ router.get("/", (req, res) => {
   });
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 //  A. SEED
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 
 /**
  * @swagger
@@ -582,9 +582,9 @@ router.get("/seed/jobs", async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 //  B. CLEANUP
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 
 /**
  * @swagger
@@ -930,9 +930,9 @@ router.get("/cleanup/all", async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 //  C. INDIVIDUAL EMAIL TRIGGERS
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 
 const MOCK_BASE = {
   guestName: "John Doe",
@@ -967,7 +967,7 @@ async function sendBilingual(fn, label) {
   return { label, results, clientEmail: TEST_CLIENT_EMAIL };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-confirmed-full:
@@ -1003,7 +1003,7 @@ router.get("/trigger/booking-confirmed-full", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-confirmed-advance:
@@ -1040,7 +1040,7 @@ router.get("/trigger/booking-confirmed-advance", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-transfer:
@@ -1076,7 +1076,7 @@ router.get("/trigger/booking-transfer", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-transfer-b2b:
@@ -1118,7 +1118,7 @@ router.get("/trigger/booking-transfer-b2b", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-cancelled:
@@ -1144,7 +1144,7 @@ router.get("/trigger/booking-cancelled", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-expired:
@@ -1169,7 +1169,7 @@ router.get("/trigger/booking-expired", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-reminder:
@@ -1194,7 +1194,7 @@ router.get("/trigger/booking-reminder", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-review-request:
@@ -1228,7 +1228,7 @@ router.get("/trigger/booking-review-request", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/booking-review-confirm:
@@ -1262,7 +1262,7 @@ router.get("/trigger/booking-review-confirm", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/account-welcome:
@@ -1287,7 +1287,7 @@ router.get("/trigger/account-welcome", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/account-password:
@@ -1316,7 +1316,7 @@ router.get("/trigger/account-password", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/account-deleted:
@@ -1345,7 +1345,7 @@ router.get("/trigger/account-deleted", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/contact-confirm:
@@ -1374,7 +1374,7 @@ router.get("/trigger/contact-confirm", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/admin-new-booking:
@@ -1408,7 +1408,7 @@ router.get("/trigger/admin-new-booking", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/admin-cancellation:
@@ -1436,7 +1436,7 @@ router.get("/trigger/admin-cancellation", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/admin-review:
@@ -1470,7 +1470,7 @@ router.get("/trigger/admin-review", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/admin-contact:
@@ -1502,7 +1502,7 @@ router.get("/trigger/admin-contact", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 /**
  * @swagger
  * /api/test-jobs/trigger/admin-expired:
@@ -1548,9 +1548,9 @@ router.get("/trigger/admin-expired", async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 //  D. CRON JOB TRIGGERS
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 
 /**
  * @swagger
@@ -1844,9 +1844,9 @@ router.get("/run/job-expire", async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 //  E. PREVIEW (no side effects)
-// ═══════════════════════════════════════════════════════════════════════════════
+//
 
 /**
  * @swagger

@@ -16,7 +16,7 @@ const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
 
-// ─── Configurare Azure OpenAI ─────────────────────────────────────────────────
+// Configurare Azure OpenAI
 const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
 const AZURE_KEY = process.env.AZURE_OPENAI_KEY;
 const AZURE_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o-2";
@@ -50,7 +50,7 @@ async function callAzureOpenAI(messages, maxTokens = 800) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-// ─── DATE MOCK ────────────────────────────────────────────────────────────────
+// DATE MOCK
 // În producție, aceste date vin din PostgreSQL via query()
 // Structura este identică — mock-ul facilitează testarea fără DB populat
 
@@ -138,7 +138,7 @@ const MOCK_OCCUPANCY = [
   { date: "2026-04-19", occupancy_rate: 65, bookings: 3, revenue: 750 },
 ];
 
-// ─── ENDPOINT 1: POST /api/analytics/sentiment ───────────────────────────────
+// ENDPOINT 1: POST /api/analytics/sentiment
 /**
  * Analizează recenziile oaspeților cu ajutorul LLM-ului.
  *
@@ -151,7 +151,7 @@ const MOCK_OCCUPANCY = [
  */
 router.post("/sentiment", async (req, res) => {
   try {
-    // ── Pasul 1: Date din DB (cu fallback la mock) ──────────────────────────
+    // Pasul 1: Date din DB (cu fallback la mock)
     let reviews;
     try {
       const result = await query(
@@ -165,7 +165,7 @@ router.post("/sentiment", async (req, res) => {
       reviews = MOCK_REVIEWS; // fallback dacă tabelul nu există încă
     }
 
-    // ── Pasul 2: Statistici simple (nu necesită AI) ─────────────────────────
+    // Pasul 2: Statistici simple (nu necesită AI)
     const distribution = {
       positive: reviews.filter((r) => r.rating >= 4).length,
       neutral: reviews.filter((r) => r.rating === 3).length,
@@ -175,7 +175,7 @@ router.post("/sentiment", async (req, res) => {
       reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     ).toFixed(1);
 
-    // ── Pasul 3: Construire prompt pentru LLM ──────────────────────────────
+    // Pasul 3: Construire prompt pentru LLM
     // Trimitem textele recenziilor și cerem un JSON structurat
     const reviewTexts = reviews
       .map((r) => `[${r.rating}/5] ${r.text}`)
@@ -204,7 +204,7 @@ Returnează EXACT acest format JSON (fără markdown, calculează scorul real, n
   "trend": "în creștere|stabil|în scădere"
 }`;
 
-    // ── Pasul 4: Apel Azure OpenAI ─────────────────────────────────────────
+    // Pasul 4: Apel Azure OpenAI
     // TODO (producție): înlocuiește mock-ul de mai jos cu apelul real
     let aiInsights;
 
@@ -235,7 +235,7 @@ Returnează EXACT acest format JSON (fără markdown, calculează scorul real, n
       };
     }
 
-    // ── Pasul 5: Răspuns structurat către frontend ──────────────────────────
+    // Pasul 5: Răspuns structurat către frontend
     res.json({
       success: true,
       ai_powered: azureReady,
@@ -253,7 +253,7 @@ Returnează EXACT acest format JSON (fără markdown, calculează scorul real, n
   }
 });
 
-// ─── ENDPOINT 2: GET /api/analytics/smart-pricing ────────────────────────────
+// ENDPOINT 2: GET /api/analytics/smart-pricing
 /**
  * Generează recomandări de prețuri bazate pe gradul de ocupare.
  *
@@ -266,7 +266,7 @@ Returnează EXACT acest format JSON (fără markdown, calculează scorul real, n
  */
 router.get("/smart-pricing", async (req, res) => {
   try {
-    // ── Pasul 1: Date ocupare din DB ────────────────────────────────────────
+    // Pasul 1: Date ocupare din DB
     let occupancyData;
     try {
       const result = await query(`
@@ -290,7 +290,7 @@ router.get("/smart-pricing", async (req, res) => {
       occupancyData = MOCK_OCCUPANCY;
     }
 
-    // ── Pasul 1b: Date camere din DB ────────────────────────────────────────
+    // Pasul 1b: Date camere din DB
     let rooms = [];
     try {
       const priceResult = await query(
@@ -303,7 +303,7 @@ router.get("/smart-pricing", async (req, res) => {
       rooms = [];
     }
 
-    // ── Pasul 2: Statistici agregate ────────────────────────────────────────
+    // Pasul 2: Statistici agregate
     const avgOccupancy = Math.round(
       occupancyData.reduce((s, d) => s + Number.parseInt(d.occupancy_rate), 0) /
         occupancyData.length,
@@ -322,7 +322,7 @@ router.get("/smart-pricing", async (req, res) => {
           )
         : 250;
 
-    // ── Pasul 3: Prompt pentru LLM ──────────────────────────────────────────
+    // Pasul 3: Prompt pentru LLM
     const prompt = `
 Ești un consultant de revenue management pentru o pensiune boutique din România (${rooms.length} camere, preț mediu ${avgPrice} RON/noapte).
 
@@ -342,7 +342,7 @@ Returnează DOAR un obiect JSON valid (fără markdown):
   "tips": ["sfat 1", "sfat 2"]
 }`;
 
-    // ── Pasul 4: Apel Azure OpenAI ─────────────────────────────────────────
+    // Pasul 4: Apel Azure OpenAI
     let aiRecommendation;
 
     if (azureReady) {
@@ -371,7 +371,7 @@ Returnează DOAR un obiect JSON valid (fără markdown):
       };
     }
 
-    // ── Pasul 5: Răspuns către frontend ─────────────────────────────────────
+    // Pasul 5: Răspuns către frontend
     res.json({
       success: true,
       ai_powered: azureReady,
@@ -389,7 +389,7 @@ Returnează DOAR un obiect JSON valid (fără markdown):
   }
 });
 
-// ─── Helper: sezon curent ─────────────────────────────────────────────────────
+// Helper: sezon curent
 function getCurrentSeason() {
   const m = new Date().getMonth() + 1;
   if (m >= 12 || m <= 2) return "Iarnă (sezon înalt)";

@@ -21,7 +21,7 @@ const { pool, testConnection } = require("../config/db");
 // Câmpurile care trebuie transformate în bilingve
 // Format: { oldKey, groupName, sortOrder, labelRo, labelEn, defaultEn }
 const BILINGUAL_FIELDS = [
-  // ── Content Home ─────────────────────────────────────────────────────────
+  // Content Home
   {
     oldKey: "home_story_title",
     group: "content_home",
@@ -49,7 +49,7 @@ const BILINGUAL_FIELDS = [
       "Every detail, from the hand-carved wooden balconies to the locally sourced breakfast, reflects the soul of Maramureș.",
   },
 
-  // ── Content About ────────────────────────────────────────────────────────
+  // Content About
   {
     oldKey: "about_story_title",
     group: "content_about",
@@ -86,7 +86,7 @@ const BILINGUAL_FIELDS = [
       "The nearest neighbors are 500–700 m away, making the guesthouse a perfect retreat from city bustle, in an exceptional natural setting.",
   },
 
-  // ── Facilities ───────────────────────────────────────────────────────────
+  // Facilities
   {
     oldKey: "facility_jacuzzi_title",
     group: "facilities",
@@ -263,7 +263,7 @@ async function migrate() {
 
       const { value: roValue, type } = existing.rows[0];
 
-      // 2. Redenumim cheia veche → _ro
+      // 2. Redenumim cheia veche -> _ro
       await client.query(
         `UPDATE site_settings
          SET key = $1, label = $2, sort_order = $3

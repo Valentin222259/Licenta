@@ -6,13 +6,13 @@ const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
 
-// ─── Helper: alege valoarea corectă în funcție de limbă ──────────────────────
+// Helper: alege valoarea corectă în funcție de limbă
 function pick(roVal, enVal, lang) {
   if (lang === "en" && enVal && enVal.trim() !== "") return enVal;
   return roVal;
 }
 
-// ─── Helper: detectează limba din request ────────────────────────────────────
+// Helper: detectează limba din request
 function detectLang(req) {
   // 1. Query param explicit: ?lang=en
   if (req.query.lang === "en" || req.query.lang === "ro") return req.query.lang;
@@ -22,7 +22,7 @@ function detectLang(req) {
   return "ro";
 }
 
-// ─── Helper: construiește obiect cameră localizat ─────────────────────────────
+// Helper: construiește obiect cameră localizat
 function localizeRoom(room, lang) {
   return {
     ...room,
@@ -43,7 +43,7 @@ function localizeRoom(room, lang) {
   };
 }
 
-// ─── GET /api/rooms ──────────────────────────────────────────────────────────
+// GET /api/rooms
 router.get("/", async (req, res) => {
   try {
     const lang = detectLang(req);
@@ -70,7 +70,7 @@ ORDER BY r.sort_order ASC, r.created_at ASC
   }
 });
 
-// ─── GET /api/rooms/admin ────────────────────────────────────────────────────
+// GET /api/rooms/admin
 router.get("/admin", async (req, res) => {
   try {
     const { rows } = await query(`
@@ -100,7 +100,7 @@ router.get("/admin", async (req, res) => {
   }
 });
 
-// ─── GET /api/rooms/:slug ────────────────────────────────────────────────────
+// GET /api/rooms/:slug
 router.get("/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
@@ -151,7 +151,7 @@ router.get("/:slug", async (req, res) => {
   }
 });
 
-// ─── POST /api/rooms ─────────────────────────────────────────────────────────
+// POST /api/rooms
 router.post("/", async (req, res) => {
   try {
     const {
@@ -217,7 +217,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── PUT /api/rooms/:id ──────────────────────────────────────────────────────
+// PUT /api/rooms/:id
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -283,7 +283,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/rooms/:id ───────────────────────────────────────────────────
+// DELETE /api/rooms/:id
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -308,7 +308,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// ─── POST /api/pricing/apply ─────────────────────────────────────────────────
+// POST /api/pricing/apply
 router.post("/pricing/apply", async (req, res) => {
   try {
     const multiplier = parseFloat(req.body.multiplier);
@@ -346,7 +346,7 @@ router.post("/pricing/apply", async (req, res) => {
   }
 });
 
-// ─── PUT /api/rooms/:id/base-price ───────────────────────────────────────────
+// PUT /api/rooms/:id/base-price
 router.put("/:id/base-price", async (req, res) => {
   try {
     const { id } = req.params;
@@ -376,7 +376,7 @@ router.put("/:id/base-price", async (req, res) => {
   }
 });
 
-// ─── POST /api/rooms/pricing/reset ───────────────────────────────────────────
+// POST /api/rooms/pricing/reset
 router.post("/pricing/reset", async (req, res) => {
   try {
     const { rowCount } = await query(

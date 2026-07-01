@@ -22,7 +22,7 @@ const s3Client = new S3Client({
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-// ─── Upload fișier în S3 ─────────────────────────────────────────────────────
+// Upload fișier în S3
 async function uploadToS3(buffer, originalName, mimeType, folder = "misc") {
   const ext = originalName.split(".").pop();
   const key = `${folder}/${uuidv4()}.${ext}`;
@@ -40,20 +40,20 @@ async function uploadToS3(buffer, originalName, mimeType, folder = "misc") {
   return { url, key };
 }
 
-// ─── Șterge fișier din S3 ────────────────────────────────────────────────────
+// Șterge fișier din S3
 async function deleteFromS3(key) {
   await s3Client.send(
     new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }),
   );
 }
 
-// ─── URL semnat (acces temporar la fișiere private) ──────────────────────────
+// URL semnat (acces temporar la fișiere private)
 async function getPresignedUrl(key, expiresIn = 3600) {
   const command = new PutObjectCommand({ Bucket: BUCKET_NAME, Key: key });
   return getSignedUrl(s3Client, command, { expiresIn });
 }
 
-// ─── Verifică configurarea S3 la pornire ─────────────────────────────────────
+// Verifică configurarea S3 la pornire
 function checkS3Config() {
   if (!process.env.AWS_ACCESS_KEY_ID || !process.env.S3_BUCKET_NAME) {
     console.warn(

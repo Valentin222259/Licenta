@@ -14,7 +14,6 @@ async function fix() {
   try {
     await client.query("BEGIN");
 
-    // Fix Camera 1 și Camera 4 — Comfort → Confort
     const fixes = [
       { slug: "camera-1-comfort", name: "Camera 1 — Confort" },
       { slug: "camera-4-comfort", name: "Camera 4 — Confort" },

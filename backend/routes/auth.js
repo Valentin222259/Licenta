@@ -11,7 +11,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const JWT_SECRET =
   process.env.JWT_SECRET || "belvedere-jwt-secret-2025-upt-licenta";
 
-// ─── POST /api/auth/login ────────────────────────────────────────────────────
+// POST /api/auth/login
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -73,7 +73,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ─── POST /api/auth/google ───────────────────────────────────────────────────
+// POST /api/auth/google
 router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
@@ -126,7 +126,7 @@ router.post("/google", async (req, res) => {
   }
 });
 
-// ─── POST /api/auth/register ─────────────────────────────────────────────────
+// POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
     // 1. AM ADĂUGAT 'lang' AICI:
@@ -167,7 +167,7 @@ router.post("/register", async (req, res) => {
 
     const user = rows[0];
 
-    // ── Email bun venit (non-blocking) ────────────────────────────────────
+    // Email bun venit (non-blocking)
     // 2. AM ADĂUGAT 'lang' AICI:
     sendWelcomeEmail(user.email, user.name, lang).catch((err) =>
       console.error(
@@ -198,7 +198,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// ─── GET /api/auth/me ─────────────────────────────────────────────────────────
+// GET /api/auth/me
 router.get("/me", async (req, res) => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
@@ -222,7 +222,7 @@ router.get("/me", async (req, res) => {
   }
 });
 
-// ─── POST /api/auth/change-password ──────────────────────────────────────────
+// POST /api/auth/change-password
 router.post("/change-password", async (req, res) => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
@@ -303,7 +303,7 @@ router.post("/change-password", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/auth/account ────────────────────────────────────────────────
+// DELETE /api/auth/account
 router.delete("/account", async (req, res) => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {

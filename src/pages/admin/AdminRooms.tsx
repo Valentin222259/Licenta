@@ -18,7 +18,7 @@ const AdminRooms = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Modal editare preț ──────────────────────────────────────────────────
+  // Modal editare preț
   const [priceModal, setPriceModal] = useState<{
     room: Room;
     value: string;
@@ -173,7 +173,7 @@ const AdminRooms = () => {
         ))}
       </div>
 
-      {/* ── Modal editare preț de bază ─────────────────────────────────── */}
+      {/* Modal editare preț de bază */}
       {priceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button

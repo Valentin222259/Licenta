@@ -144,7 +144,7 @@ const Booking = () => {
     return errors;
   }, [form.checkIn, form.checkOut, today, t]);
 
-  // ─── Fetch disponibilitate ciubăr când se schimbă intervalul ──────────────
+  // Fetch disponibilitate ciubăr când se schimbă intervalul
   useEffect(() => {
     if (
       !form.checkIn ||
@@ -163,7 +163,7 @@ const Booking = () => {
     setExtras((prev) => ({ ...prev, jacuzzi_dates: [] }));
   }, [form.checkIn, form.checkOut, dateErrors.checkIn, dateErrors.checkOut]);
 
-  // ─── Zile din intervalul rezervării ───────────────────────────────────────
+  // Zile din intervalul rezervării
   const bookingDays = useMemo(() => {
     if (
       !form.checkIn ||
@@ -355,7 +355,7 @@ const Booking = () => {
           onSubmit={handleSubmit}
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
-          {/* ─── Coloana stângă ─────────────────────────────────────────── */}
+          {/* Coloana stângă */}
           <div className="lg:col-span-2 space-y-5">
             <h2 className="font-heading text-xl mb-2">
               {t("booking.guestInfo")}
@@ -471,14 +471,14 @@ const Booking = () => {
               </p>
             </div>
 
-            {/* ─── EXTRAS ─────────────────────────────────────────────────── */}
+            {/* EXTRAS */}
             <div>
               <h2 className="font-heading text-xl mb-3">
                 {t("booking.extras")}
               </h2>
 
               <div className="space-y-3">
-                {/* ── Mic dejun ─────────────────────────────────────────── */}
+                {/* Mic dejun */}
                 <div
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                     totalBreakfastMenus > 0
@@ -565,7 +565,7 @@ const Booking = () => {
                   </div>
                 </div>
 
-                {/* ── Cină ──────────────────────────────────────────────── */}
+                {/* Cină */}
                 <div
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                     totalDinnerMenus > 0
@@ -655,7 +655,7 @@ const Booking = () => {
                   </div>
                 </div>
 
-                {/* ── Paturi suplimentare ────────────────────────────────── */}
+                {/* Paturi suplimentare */}
                 <div
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                     extras.extra_beds > 0
@@ -711,7 +711,7 @@ const Booking = () => {
                   </div>
                 </div>
 
-                {/* ── Ciubăr / Jacuzzi ──────────────────────────────────── */}
+                {/* Ciubăr / Jacuzzi */}
                 <div
                   className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                     extras.jacuzzi_dates.length > 0
@@ -832,7 +832,7 @@ const Booking = () => {
               />
             </div>
 
-            {/* ─── Metodă de plată ─────────────────────────────────────── */}
+            {/* Metodă de plată */}
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground mb-3 block">
                 {t("booking.paymentMethod")}
@@ -953,7 +953,7 @@ const Booking = () => {
               </div>
             </div>
 
-            {/* ─── Factură B2B ─────────────────────────────────────────── */}
+            {/* Factură B2B */}
             <div className="pt-1">
               <label
                 className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${needsInvoice ? "border-primary bg-primary/5" : "border-border bg-muted/20 hover:border-primary/30"}`}
@@ -1042,7 +1042,7 @@ const Booking = () => {
             </div>
           </div>
 
-          {/* ─── Sidebar sumar ───────────────────────────────────────────── */}
+          {/* Sidebar sumar */}
           {room && (
             <div className="bg-card border border-border rounded-lg p-6 h-fit lg:sticky lg:top-24">
               <h2 className="font-heading text-lg mb-4">

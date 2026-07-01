@@ -9,7 +9,7 @@ const {
 } = require("../config/s3");
 const { query } = require("../config/db");
 
-// ─── Multer: memoryStorage (NU salvăm pe disc) ───────────────────────────────
+// Multer: memoryStorage (NU salvăm pe disc)
 // Buffer-ul merge direct în S3. Zero fișiere temporare.
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -22,7 +22,7 @@ const upload = multer({
   },
 });
 
-// ─── GET /api/images ─────────────────────────────────────────────────────────
+// GET /api/images
 // Returnează imaginile filtrate după categorie și/sau cameră
 // Query params: ?category=room&room_id=uuid
 router.get("/", async (req, res) => {
@@ -62,7 +62,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ─── POST /api/images/room/:roomId ───────────────────────────────────────────
+// POST /api/images/room/:roomId
 // Upload imagine pentru o cameră specifică → S3 → URL salvat în DB
 router.post("/room/:roomId", upload.single("image"), async (req, res) => {
   try {
@@ -136,7 +136,7 @@ router.post("/room/:roomId", upload.single("image"), async (req, res) => {
   }
 });
 
-// ─── POST /api/images/hero ───────────────────────────────────────────────────
+// POST /api/images/hero
 // Upload imagine hero (banner principal de pe homepage)
 router.post("/hero", upload.single("image"), async (req, res) => {
   try {
@@ -172,7 +172,7 @@ router.post("/hero", upload.single("image"), async (req, res) => {
   }
 });
 
-// ─── POST /api/images/facility ───────────────────────────────────────────────
+// POST /api/images/facility
 // Upload imagine facilitate (jacuzzi, biciclete, etc.)
 router.post("/facility", upload.single("image"), async (req, res) => {
   try {
@@ -241,7 +241,7 @@ router.post("/about", upload.single("image"), async (req, res) => {
   }
 });
 
-// ─── PATCH /api/images/:id/primary ──────────────────────────────────────────
+// PATCH /api/images/:id/primary
 // Setează o imagine ca primară pentru camera ei
 router.patch("/:id/primary", async (req, res) => {
   try {
@@ -286,7 +286,7 @@ router.patch("/:id/primary", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/images/:id ──────────────────────────────────────────────────
+// DELETE /api/images/:id
 // Șterge imaginea din S3 ȘI din DB
 router.delete("/:id", async (req, res) => {
   try {

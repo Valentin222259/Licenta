@@ -24,13 +24,13 @@ const {
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 
-// ─── POST /api/contact ────────────────────────────────────────────────────────
+// POST /api/contact
 router.post("/", async (req, res) => {
   try {
     // 1. AM ADĂUGAT 'lang' AICI:
     const { name, email, phone, subject, message, lang } = req.body;
 
-    // ── Validare câmpuri obligatorii ──────────────────────────────────────
+    // Validare câmpuri obligatorii
     if (!name?.trim() || !email?.trim() || !message?.trim()) {
       return res.status(400).json({
         success: false,
@@ -81,7 +81,7 @@ router.post("/", async (req, res) => {
 
     console.log(`📬 Mesaj contact primit de la ${name} (${email})`);
 
-    // ── Răspuns succes ────────────────────────────────────────────────────
+    // Răspuns succes
     res.json({
       success: true,
       message: "Mesajul a fost trimis. Vă vom contacta în cel mai scurt timp!",

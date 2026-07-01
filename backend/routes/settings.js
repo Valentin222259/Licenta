@@ -79,7 +79,7 @@ router.get("/seed", async (req, res) => {
   }
 });
 
-// ─── GET /api/settings ───────────────────────────────────────────────────────
+// GET /api/settings
 // Returnează toate setările ca obiect { key: value }
 // Folosit de frontend pentru a afișa conținut dinamic
 router.get("/", async (req, res) => {
@@ -104,7 +104,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ─── GET /api/settings/group/:group ─────────────────────────────────────────
+// GET /api/settings/group/:group
 // Returnează setările unui grup specific
 router.get("/group/:group", async (req, res) => {
   try {
@@ -146,7 +146,7 @@ router.get("/seed-general", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/settings/:key ────────────────────────────────────────────────
+// PATCH /api/settings/:key
 // Actualizează o singură setare — admin only
 router.patch("/:key", async (req, res) => {
   try {
@@ -181,7 +181,7 @@ router.patch("/:key", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/settings ─────────────────────────────────────────────────────
+// PATCH /api/settings
 // Actualizează mai multe setări simultan — admin only
 // Body: { key1: value1, key2: value2, ... }
 router.patch("/", async (req, res) => {

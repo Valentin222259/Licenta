@@ -70,7 +70,7 @@ async function generateContentWithRetry(prompt, imagePart, maxRetries = 3) {
   throw lastError;
 }
 
-// ─── POST /api/extract ───────────────────────────────────────────────────────
+// POST /api/extract
 // Primește: form-data cu câmpul "file" (imagine buletin)
 // Returnează: JSON cu datele extrase din cartea de identitate
 router.post("/", upload.single("file"), async (req, res) => {

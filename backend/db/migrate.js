@@ -1,13 +1,13 @@
 require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const { pool, testConnection } = require("../config/db");
 
-// ─── Schema completă pentru Pensiunea Belvedere ─────────────────────────────
+// Schema completă pentru Pensiunea Belvedere
 
 const migrations = [
-  // ── 1. Extensii PostgreSQL ─────────────────────────────────────────────────
+  // 1. Extensii PostgreSQL
   `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`,
 
-  // ── 2. Tabel users ─────────────────────────────────────────────────────────
+  // 2. Tabel users
   `CREATE TABLE IF NOT EXISTS users (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name        VARCHAR(150)  NOT NULL,
@@ -20,7 +20,7 @@ const migrations = [
     updated_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
   )`,
 
-  // ── 3. Tabel rooms ─────────────────────────────────────────────────────────
+  // 3. Tabel rooms
   `CREATE TABLE IF NOT EXISTS rooms (
     id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     slug              VARCHAR(100) NOT NULL UNIQUE,   -- ex: camera-1-comfort
@@ -37,7 +37,7 @@ const migrations = [
     updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
 
-  // ── 4. Tabel images ─────────────────────────────────────────────────────────
+  // 4. Tabel images
   // Stochează URL-urile din S3, nu fișierele în DB
   `CREATE TABLE IF NOT EXISTS images (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -52,7 +52,7 @@ const migrations = [
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
 
-  // ── 5. Tabel bookings ──────────────────────────────────────────────────────
+  // 5. Tabel bookings
   `CREATE TABLE IF NOT EXISTS bookings (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     booking_ref     VARCHAR(30) UNIQUE,               -- ex: BLV-2025-001
@@ -81,7 +81,7 @@ const migrations = [
     CONSTRAINT valid_dates CHECK (check_out > check_in)
   )`,
 
-  // ── 6. Tabel guest_ids ─────────────────────────────────────────────────────
+  // 6. Tabel guest_ids
   // Stocare date buletin (conform OG 97/2005)
   `CREATE TABLE IF NOT EXISTS guest_ids (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -103,7 +103,7 @@ const migrations = [
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
-  // ── 7. Tabel reviews ──────────────────────────────────────────────────────
+  // 7. Tabel reviews
   `CREATE TABLE IF NOT EXISTS reviews (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     booking_id  UUID REFERENCES bookings(id) ON DELETE SET NULL,
@@ -115,7 +115,7 @@ const migrations = [
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
 
-  // ── 8. Indecși pentru performanță ──────────────────────────────────────────
+  // 8. Indecși pentru performanță
   `CREATE INDEX IF NOT EXISTS idx_bookings_room_id    ON bookings(room_id)`,
   `CREATE INDEX IF NOT EXISTS idx_bookings_user_id    ON bookings(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_bookings_check_in   ON bookings(check_in)`,
@@ -132,7 +132,7 @@ const migrations = [
  END $$`,
 ];
 
-// ─── Rulează migrările ──────────────────────────────────────────────────────
+// Rulează migrările
 async function migrate() {
   console.log("🚀 Pornesc migrările...\n");
 

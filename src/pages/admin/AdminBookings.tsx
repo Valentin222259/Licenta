@@ -344,7 +344,7 @@ async function exportGuestPDF(
   );
 }
 
-// ─── ScannerBuletin ──────────────────────────────────────────────────────────
+// ScannerBuletin
 const ScannerBuletin = ({
   bookingId,
   guestName,
@@ -583,7 +583,7 @@ const ScannerBuletin = ({
   );
 };
 
-// ─── Calendar disponibilitate ─────────────────────────────────────────────────
+// Calendar disponibilitate
 type OccupiedInterval = { check_in: string; check_out: string; type?: string };
 
 const MONTHS_RO = [
@@ -875,7 +875,7 @@ const AvailabilityCalendar = ({
   );
 };
 
-// ─── BlockedPeriodsList ───────────────────────────────────────────────────────
+// BlockedPeriodsList
 type BlockedPeriod = {
   id: string;
   room_id: string | null;
@@ -1032,7 +1032,7 @@ const BlockedPeriodsList = ({
   );
 };
 
-// ─── Modal Rezervare Manuală ──────────────────────────────────────────────────
+// Modal Rezervare Manuală
 type BookingType = "phone" | "maintenance" | "holiday";
 type ModalTab = "booking" | "blocked";
 
@@ -1553,7 +1553,7 @@ const ManualBookingModal = ({
   );
 };
 
-// ─── StatusBadge ──────────────────────────────────────────────────────────────
+// StatusBadge
 const StatusBadge = ({
   status,
   size = "sm",
@@ -1573,7 +1573,7 @@ const StatusBadge = ({
   );
 };
 
-// ─── AdminBookings ────────────────────────────────────────────────────────────
+// AdminBookings
 const AdminBookings = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [bookings, setBookings] = useState<Booking[]>([]);

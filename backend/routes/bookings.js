@@ -59,7 +59,7 @@ async function isRoomAvailable(
   return parseInt(blocked.rows[0].count) === 0;
 }
 
-// ─── GET /api/bookings ────────────────────────────────────────────────────────
+// GET /api/bookings
 router.get("/", async (req, res) => {
   try {
     const { status, room_id, from, to, limit = 50, offset = 0 } = req.query;
@@ -118,7 +118,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ─── GET /api/bookings/availability ──────────────────────────────────────────
+// GET /api/bookings/availability
 router.get("/availability", async (req, res) => {
   try {
     // Rezervări confirmate/pending
@@ -169,7 +169,7 @@ router.get("/availability", async (req, res) => {
   }
 });
 
-// ─── GET /api/bookings/my ─────────────────────────────────────────────────────
+// GET /api/bookings/my
 router.get("/my", async (req, res) => {
   try {
     const { email } = req.query;
@@ -198,7 +198,7 @@ router.get("/my", async (req, res) => {
   }
 });
 
-// ─── GET /api/bookings/:id ────────────────────────────────────────────────────
+// GET /api/bookings/:id
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -233,7 +233,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ─── POST /api/bookings ───────────────────────────────────────────────────────
+// POST /api/bookings
 router.post("/", async (req, res) => {
   try {
     const {
@@ -521,7 +521,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── PUT /api/bookings/:id/status ────────────────────────────────────────────
+// PUT /api/bookings/:id/status
 router.put("/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
@@ -656,7 +656,7 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
-// ─── PUT /api/bookings/:id/guest ──────────────────────────────────────────────
+// PUT /api/bookings/:id/guest
 router.put("/:id/guest", async (req, res) => {
   try {
     const { id } = req.params;
@@ -688,7 +688,7 @@ router.put("/:id/guest", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/bookings/:id/status ──────────────────────────────────────────
+// PATCH /api/bookings/:id/status
 router.patch("/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
@@ -742,7 +742,7 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
-// ─── POST /api/bookings/:id/guest-id ─────────────────────────────────────────
+// POST /api/bookings/:id/guest-id
 router.post("/:id/guest-id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -809,7 +809,7 @@ router.post("/:id/guest-id", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/bookings/:id ─────────────────────────────────────────────────
+// DELETE /api/bookings/:id
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;

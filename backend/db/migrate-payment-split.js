@@ -13,28 +13,28 @@ require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const { pool, testConnection } = require("../config/db");
 
 const migrations = [
-  // ── Coloana payment_split ──────────────────────────────────────────────────
+  // Coloana payment_split
   // "full"    = clientul a plătit sau va plăti 100% online
   // "advance" = clientul a plătit 30% online, restul la recepție
   `ALTER TABLE bookings
    ADD COLUMN IF NOT EXISTS payment_split VARCHAR(20) DEFAULT 'full'
    CHECK (payment_split IN ('full', 'advance'))`,
 
-  // ── Coloana stripe_amount ──────────────────────────────────────────────────
+  // Coloana stripe_amount
   // Suma în RON trimisă efectiv la Stripe.
   // NULL = plata nu s-a făcut prin Stripe (transfer bancar, recepție)
-  // Exemplu: total=500, avans 30% → stripe_amount=150
+  // Exemplu: total=500, avans 30% -> stripe_amount=150
   `ALTER TABLE bookings
    ADD COLUMN IF NOT EXISTS stripe_amount INTEGER DEFAULT NULL`,
 
-  // ── Coloana remaining_amount ───────────────────────────────────────────────
+  // Coloana remaining_amount
   // Restanța de plătit la recepție la check-in.
   // 0 = totul a fost plătit online
-  // Exemplu: total=500, avans 30% → remaining_amount=350
+  // Exemplu: total=500, avans 30% -> remaining_amount=350
   `ALTER TABLE bookings
    ADD COLUMN IF NOT EXISTS remaining_amount INTEGER DEFAULT 0`,
 
-  // ── Index pentru rapoarte rapide ───────────────────────────────────────────
+  // Index pentru rapoarte rapide
   `CREATE INDEX IF NOT EXISTS idx_bookings_payment_split
    ON bookings(payment_split)`,
 ];

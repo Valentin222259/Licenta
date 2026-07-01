@@ -8,7 +8,7 @@ const {
   translateRoomName,
 } = require("../services/email");
 
-// ─── Helper: formatează data PostgreSQL → "YYYY-MM-DD" ───────────────────────
+// Helper: formatează data PostgreSQL → "YYYY-MM-DD"
 function fmtISO(val) {
   if (!val) return "";
   if (val instanceof Date) {
@@ -20,7 +20,7 @@ function fmtISO(val) {
   return String(val).substring(0, 10);
 }
 
-// ─── Inițializare Stripe ──────────────────────────────────────────────────────
+// Inițializare Stripe
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -97,7 +97,7 @@ router.post("/create-checkout", async (req, res) => {
       productName = `${isEN ? "Accommodation" : "Cazare"} — ${translatedRoomName}`;
       productDescription = `Check-in: ${checkInStr} · Check-out: ${checkOutStr} · ${booking.nights} ${nightsLabel}`;
     }
-    // ── Metadata Stripe — inclusiv datele B2B ─────────────────────────────────
+    // Metadata Stripe — inclusiv datele B2B
     // Stripe metadata: valori string, max 500 chars/valoare, max 50 chei
     const stripeMetadata = {
       booking_id: booking.id,
@@ -166,7 +166,7 @@ router.post("/create-checkout", async (req, res) => {
   }
 });
 
-// ─── POST /api/payments/webhook ───────────────────────────────────────────────
+// POST /api/payments/webhook
 router.post(
   "/webhook",
   express.raw({ type: "application/json" }),
@@ -319,7 +319,7 @@ router.post(
   },
 );
 
-// ─── GET /api/payments/verify/:sessionId ─────────────────────────────────────
+// GET /api/payments/verify/:sessionId
 router.get("/verify/:sessionId", async (req, res) => {
   if (!stripe)
     return res

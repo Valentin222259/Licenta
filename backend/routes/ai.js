@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
 
-// ─── Inițializare Azure OpenAI ────────────────────────────────────────────────
+// Inițializare Azure OpenAI
 const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
 const AZURE_KEY = process.env.AZURE_OPENAI_KEY;
 const AZURE_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o-2";
@@ -19,7 +19,7 @@ if (AZURE_ENDPOINT && AZURE_KEY) {
   );
 }
 
-// ─── Helper: apel Azure OpenAI ───────────────────────────────────────────────
+// Helper: apel Azure OpenAI
 async function callAzure(messages, maxTokens = 1000) {
   if (!azureReady) throw new Error("Azure OpenAI nu este configurat");
 
@@ -47,7 +47,7 @@ async function callAzure(messages, maxTokens = 1000) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-// ─── Helper: retry cu backoff ────────────────────────────────────────────────
+// Helper: retry cu backoff
 async function callAzureWithRetry(messages, maxTokens = 1000, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -68,7 +68,7 @@ async function callAzureWithRetry(messages, maxTokens = 1000, maxRetries = 3) {
   }
 }
 
-// ─── GET /api/ai/smart-pricing ────────────────────────────────────────────────
+// GET /api/ai/smart-pricing
 router.get("/smart-pricing", async (req, res) => {
   try {
     const statsResult = await query(`
@@ -215,7 +215,7 @@ Returnează EXACT acest JSON (fără nimic altceva):
   }
 });
 
-// ─── POST /api/ai/sentiment ───────────────────────────────────────────────────
+// POST /api/ai/sentiment
 router.post("/sentiment", async (req, res) => {
   try {
     const reviewsResult = await query(`
@@ -320,7 +320,7 @@ Returnează EXACT această structură JSON (înlocuiește valorile exemplu cu an
   }
 });
 
-// ─── POST /api/ai/generate-description ───────────────────────────────────────
+// POST /api/ai/generate-description
 router.post("/generate-description", async (req, res) => {
   if (!azureReady) {
     return res
@@ -364,7 +364,7 @@ Ton cald, montan, invitant. Returnează DOAR textul, fără titlu, fără ghilim
   }
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 function getCurrentSeason() {
   const m = new Date().getMonth() + 1;
   if (m >= 12 || m <= 2) return "iarna (sezon inalt - schi, saniute)";
@@ -409,7 +409,7 @@ function generateStaticPricing(rooms) {
   });
 }
 
-// ─── POST /api/ai/chat ────────────────────────────────────────────────────────
+// POST /api/ai/chat
 /**
  * Endpoint principal pentru chatbot-ul pensiunii Belvedere.
  *
@@ -435,7 +435,7 @@ router.post("/chat", async (req, res) => {
       lang = "ro", // limba detectată de frontend
     } = req.body;
 
-    // ── Pasul 1: Validare input ────────────────────────────────────────────
+    // Pasul 1: Validare input
     if (!Array.isArray(messages) || messages.length === 0) {
       return res
         .status(400)
@@ -445,7 +445,7 @@ router.post("/chat", async (req, res) => {
     // Limităm istoricul la ultimele 20 mesaje pentru a controla costul de tokeni
     const recentHistory = messages.slice(-20);
 
-    // ── Pasul 2: Context live din DB ──────────────────────────────────────
+    // Pasul 2: Context live din DB
     // Încărcăm datele actuale pentru ca AI-ul să răspundă cu informații reale
     let dbContext = "";
     try {
@@ -497,7 +497,7 @@ ${roomsResult.rows.map((r) => `  - ${r.name}: ${r.price} RON/noapte, capacitate 
       );
     }
 
-    // ── Pasul 3: System Prompt ─────────────────────────────────────────────
+    // Pasul 3: System Prompt
     /**
      * System prompt-ul definește PERSONALITATEA și LIMITELE chatbot-ului.
      * Este trimis la fiecare request ca mesaj cu role: "system".
@@ -508,7 +508,7 @@ ${roomsResult.rows.map((r) => `  - ${r.name}: ${r.price} RON/noapte, capacitate 
       ? buildAdminSystemPrompt(dbContext, lang)
       : buildGuestSystemPrompt(dbContext, lang);
 
-    // ── Pasul 4: Apel Azure OpenAI ─────────────────────────────────────────
+    // Pasul 4: Apel Azure OpenAI
     /**
      * Structura mesajelor trimise la Azure OpenAI:
      *  [system_prompt, ...istoricConversatie]
@@ -524,7 +524,7 @@ ${roomsResult.rows.map((r) => `  - ${r.name}: ${r.price} RON/noapte, capacitate 
       // ✅ Apel real la Azure OpenAI
       replyText = await callAzureWithRetry(
         [{ role: "system", content: systemPrompt }, ...recentHistory],
-        400, // max tokeni pentru răspuns — chatbot-ul trebuie să fie concis
+        400, // max tokens pentru răspuns — chatbot-ul trebuie să fie concis
       );
     } else {
       // 🔧 Mock response — pentru development fără cheie Azure
@@ -534,7 +534,7 @@ ${roomsResult.rows.map((r) => `  - ${r.name}: ${r.price} RON/noapte, capacitate 
           : "Hello! I'm the virtual assistant of Belvedere Guesthouse. How can I help you?";
     }
 
-    // ── Pasul 5: Detectare intenție → Quick Actions ────────────────────────
+    // Pasul 5: Detectare intenție → Quick Actions
     /**
      * Analizăm ultimul mesaj al utilizatorului pentru a sugera
      * butoane de acțiune rapidă relevante contextului conversației.
@@ -552,7 +552,7 @@ ${roomsResult.rows.map((r) => `  - ${r.name}: ${r.price} RON/noapte, capacitate 
       lang,
     );
 
-    // ── Pasul 6: Răspuns către frontend ───────────────────────────────────
+    // Pasul 6: Răspuns către frontend
     res.json({
       success: true,
       reply: replyText.trim(),
@@ -567,7 +567,7 @@ ${roomsResult.rows.map((r) => `  - ${r.name}: ${r.price} RON/noapte, capacitate 
   }
 });
 
-// ─── Helper: System Prompt pentru oaspeți ─────────────────────────────────────
+// Helper: System Prompt pentru oaspeți
 function buildGuestSystemPrompt(dbContext, lang) {
   const isRo = lang === "ro";
   return `${isRo ? "Ești asistentul virtual" : "You are the virtual assistant"} al Pensiunii Maramureș Belvedere${isRo ? ", o pensiune boutique din Petrova, Maramureș, România" : ", a boutique guesthouse in Petrova, Maramureș, Romania"}.
@@ -602,7 +602,7 @@ ${isRo ? "LIMITE IMPORTANTE" : "IMPORTANT LIMITS"}:
 - ${isRo ? "Dacă nu știi ceva, spune sincer și oferă datele de contact" : "If you don't know something, say so honestly and provide contact info"}`;
 }
 
-// ─── Helper: System Prompt pentru admin ──────────────────────────────────────
+// Helper: System Prompt pentru admin
 function buildAdminSystemPrompt(dbContext, lang) {
   return `Ești un asistent inteligent pentru administratorul Pensiunii Maramureș Belvedere.
 
@@ -622,7 +622,7 @@ LIMITE:
 - Dacă datele nu sunt disponibile, spui că trebuie verificate în panoul admin`;
 }
 
-// ─── Helper: Detectare intenție → Quick Actions ───────────────────────────────
+// Helper: Detectare intenție -> Quick Actions
 /**
  * Analizează mesajul utilizatorului și răspunsul bot-ului pentru a sugera
  * butoane de navigare rapide relevante contextului curent al conversației.

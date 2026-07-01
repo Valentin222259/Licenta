@@ -97,9 +97,7 @@
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   PhoneInput cu steaguri — adaugă la FINALUL src/index.css
-   ═══════════════════════════════════════════════════════════════ */
+/* PhoneInput cu steaguri — adaugă la FINALUL src/index.css */
 
 .phone-input-wrapper {
   display: flex;

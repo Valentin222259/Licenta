@@ -39,7 +39,7 @@ async function query(text, params) {
   }
 }
 
-// ─── Helper: testează conexiunea la pornire ──────────────────────────────────
+// Helper: testează conexiunea la pornire
 async function testConnection() {
   try {
     await pool.query("SELECT 1");

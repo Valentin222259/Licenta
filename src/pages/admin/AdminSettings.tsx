@@ -69,7 +69,7 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // ── Încarcă setările din DB ──────────────────────────────────────────────
+  // Încarcă setările din DB
   useEffect(() => {
     apiGet<{ success: boolean; rows: SettingsRow[] }>("/api/settings")
       .then((res) => {
@@ -92,7 +92,7 @@ const AdminSettings = () => {
   const update = (key: string, val: string) =>
     setValues((prev) => ({ ...prev, [key]: val }));
 
-  // ── Salvare batch ────────────────────────────────────────────────────────
+  // Salvare batch
   const save = async () => {
     setSaving(true);
     try {
@@ -116,7 +116,7 @@ const AdminSettings = () => {
     }
   };
 
-  // ── Câmp generic bazat pe type ────────────────────────────────────────────
+  // Câmp generic bazat pe type
   const Field = ({ row }: { row: SettingsRow }) => {
     const val = values[row.key] ?? row.value;
     const cls =
@@ -202,7 +202,7 @@ const AdminSettings = () => {
         </Button>
       </div>
 
-      {/* ── 1. PREȚURI ──────────────────────────────────────────────────────── */}
+      {/* 1. PREȚURI */}
       <Section title="Prețuri Servicii Suplimentare" icon={DollarSign}>
         <p className="text-xs text-muted-foreground mb-3">
           Aceste prețuri sunt afișate clienților în formularul de rezervare și
@@ -222,15 +222,21 @@ const AdminSettings = () => {
             </p>
             <p>
               ☕ Mic dejun: {values.price_breakfast} × 2 pers × 3 nopți ={" "}
-              <strong>{Number.parseInt(values.price_breakfast || "0") * 6} RON</strong>
+              <strong>
+                {Number.parseInt(values.price_breakfast || "0") * 6} RON
+              </strong>
             </p>
             <p>
               🍽️ Cină: {values.price_dinner} × 2 pers × 3 nopți ={" "}
-              <strong>{Number.parseInt(values.price_dinner || "0") * 6} RON</strong>
+              <strong>
+                {Number.parseInt(values.price_dinner || "0") * 6} RON
+              </strong>
             </p>
             <p>
               🛏️ 1 pat suplimentar × 3 nopți ={" "}
-              <strong>{Number.parseInt(values.price_extra_bed || "0") * 3} RON</strong>
+              <strong>
+                {Number.parseInt(values.price_extra_bed || "0") * 3} RON
+              </strong>
             </p>
             <p>
               🌊 Ciubăr (1 sesiune): <strong>{values.price_jacuzzi} RON</strong>
@@ -239,7 +245,7 @@ const AdminSettings = () => {
         )}
       </Section>
 
-      {/* ── 2. CONȚINUT HOME — Povestea Noastră ─────────────────────────────── */}
+      {/* 2. CONȚINUT HOME — Povestea Noastră */}
       <Section
         title='Conținut Home — "Povestea Noastră"'
         icon={FileText}
@@ -256,7 +262,7 @@ const AdminSettings = () => {
           ))}
       </Section>
 
-      {/* ── 3. CONȚINUT ABOUT — Povestea Pensiunii ──────────────────────────── */}
+      {/* 3. CONȚINUT ABOUT — Povestea Pensiunii */}
       <Section
         title='Conținut About — "Povestea Pensiunii"'
         icon={FileText}
@@ -273,7 +279,7 @@ const AdminSettings = () => {
           ))}
       </Section>
 
-      {/* ── 4. FACILITĂȚI — titluri & descrieri ─────────────────────────────── */}
+      {/* 4. FACILITĂȚI — titluri & descrieri */}
       <Section
         title="Facilități — Titluri & Descrieri"
         icon={Waves}
@@ -314,7 +320,7 @@ const AdminSettings = () => {
         </div>
       </Section>
 
-      {/* ── 5. Informații Pensiune (existente) ──────────────────────────────── */}
+      {/* 5. Informații Pensiune (existente) */}
       <Section
         title="Informații Generale Pensiune"
         icon={FileText}

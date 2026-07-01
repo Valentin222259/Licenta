@@ -16,7 +16,7 @@ function fmtDate(val) {
   return String(val).substring(0, 10);
 }
 
-// ─── GET /api/blocked ──────────────────────────────────────────────────────
+// GET /api/blocked
 // Returnează toate perioadele blocate active (viitoare + curente)
 // Folosit de: admin (lista) + calendar client (disponibilitate)
 router.get("/", async (req, res) => {
@@ -67,7 +67,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ─── GET /api/blocked/all-rooms ───────────────────────────────────────────
+// GET /api/blocked/all-rooms
 // Returnează perioadele blocate pentru toate camerele (pentru calendar client)
 // Include atât blocked_periods cât și bookings confirmed/pending
 router.get("/availability/:room_id", async (req, res) => {
@@ -113,7 +113,7 @@ router.get("/availability/:room_id", async (req, res) => {
   }
 });
 
-// ─── POST /api/blocked ────────────────────────────────────────────────────
+// POST /api/blocked
 // Crează o perioadă blocată
 // Body: { room_id?, reason, reason_note?, start_date, end_date, all_rooms }
 router.post("/", async (req, res) => {
@@ -197,7 +197,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/blocked/:id ──────────────────────────────────────────────
+// DELETE /api/blocked/:id
 // Deblochează o perioadă (șterge rândul)
 router.delete("/:id", async (req, res) => {
   try {

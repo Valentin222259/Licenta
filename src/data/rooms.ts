@@ -22,7 +22,7 @@ export interface Room {
 }
 
 export const rooms: Room[] = [
-  // ─── ETAJ 1 ────────────────────────────────────────────────────────────────
+  // ETAJ 1
 
   {
     id: "camera-1",
@@ -158,7 +158,7 @@ export const rooms: Room[] = [
     ],
   },
 
-  // ─── ETAJ 2 ────────────────────────────────────────────────────────────────
+  // ETAJ 2
 
   {
     id: "camera-5",

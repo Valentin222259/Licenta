@@ -6,7 +6,7 @@ const { query } = require("../config/db");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 
-// ─── GET /api/reviews ─────────────────────────────────────────────────────────
+// GET /api/reviews
 router.get("/", async (req, res) => {
   try {
     const { rows } = await query(
@@ -25,7 +25,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ─── GET /api/reviews/pending ─────────────────────────────────────────────────
+// GET /api/reviews/pending
 router.get("/pending", async (req, res) => {
   try {
     const { rows } = await query(
@@ -43,7 +43,7 @@ router.get("/pending", async (req, res) => {
   }
 });
 
-// ─── GET /api/reviews/check/:bookingId ───────────────────────────────────────
+// GET /api/reviews/check/:bookingId
 router.get("/check/:bookingId", async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -57,7 +57,7 @@ router.get("/check/:bookingId", async (req, res) => {
   }
 });
 
-// ─── POST /api/reviews ────────────────────────────────────────────────────────
+// POST /api/reviews
 router.post("/", async (req, res) => {
   try {
     const { booking_id, guest_name, guest_email, rating, text } = req.body;
@@ -215,7 +215,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/reviews/:id/approve ──────────────────────────────────────────
+// PATCH /api/reviews/:id/approve
 router.patch("/:id/approve", async (req, res) => {
   try {
     const { id } = req.params;
@@ -227,7 +227,7 @@ router.patch("/:id/approve", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/reviews/:id/hide ─────────────────────────────────────────────
+// PATCH /api/reviews/:id/hide
 router.patch("/:id/hide", async (req, res) => {
   try {
     const { id } = req.params;
@@ -239,7 +239,7 @@ router.patch("/:id/hide", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/reviews/:id ──────────────────────────────────────────────────
+// DELETE /api/reviews/:id
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -251,7 +251,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// ─── GET /api/reviews/test-email/:bookingId — doar development ───────────────
+// GET /api/reviews/test-email/:bookingId — doar development
 if (process.env.NODE_ENV !== "production") {
   router.get("/test-email/:bookingId", async (req, res) => {
     try {

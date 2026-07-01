@@ -1,18 +1,18 @@
-// ─────────────────────────────────────────────────────────────────────────────
+//
 //  server.js — Pensiunea Maramureș Belvedere
 //  Extins din actomat-node-backend (păstrăm logica Gemini originală)
 //  Adăugat: PostgreSQL (RDS), Amazon S3, rute camere și rezervări
-// ─────────────────────────────────────────────────────────────────────────────
+//
 
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-// ─── Configurări ─────────────────────────────────────────────────────────────
+// Configurări
 const { testConnection } = require("./config/db");
 const { checkS3Config } = require("./config/s3");
 
-// ─── Rute ────────────────────────────────────────────────────────────────────
+// Rute
 const extractRouter = require("./routes/extract");
 const roomsRouter = require("./routes/rooms");
 const bookingsRouter = require("./routes/bookings");
@@ -34,7 +34,7 @@ const swaggerSpec = require("./config/swagger");
 const settingsRouter = require("./routes/settings");
 const jacuzziRouter = require("./routes/jacuzzi");
 
-// ─── CORS ────────────────────────────────────────────────────────────────────
+// CORS
 // Citim originile permise din .env (separate cu virgulă)
 // Ex: FRONTEND_URL=http://localhost:5173,https://main.d1234.amplifyapp.com
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
@@ -70,13 +70,13 @@ app.use(
   }),
 );
 
-// ─── Middleware global ───────────────────────────────────────────────────────
+// Middleware global
 // IMPORTANT: webhook raw ÎNAINTE de express.json()
 app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
-// ─── Logging simplu (development) ───────────────────────────────────────────
+// Logging simplu (development)
 if (process.env.NODE_ENV !== "production") {
   app.use((req, res, next) => {
     console.log(`${req.method} ${req.path}`);
@@ -84,11 +84,11 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 //  RUTE
-// ─────────────────────────────────────────────────────────────────────────────
+//
 
-// ── Health check ─────────────────────────────────────────────────────────────
+// Health check
 // Elastic Beanstalk face health check pe /health (sau /)
 app.get("/health", (req, res) => {
   res.json({
@@ -104,7 +104,7 @@ app.get("/", (req, res) => {
   res.json({ message: "Belvedere API functioneaza" });
 });
 
-// ── API routes ────────────────────────────────────────────────────────────────
+// API routes
 // /api/extract  — scanare buletin cu Gemini AI (logica originală din actomat)
 app.use("/api/extract", extractRouter);
 
@@ -137,9 +137,9 @@ if (process.env.NODE_ENV !== "production") {
   app.use("/api/test-jobs", require("./routes/testJobs"));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 //  GESTIONARE ERORI
-// ─────────────────────────────────────────────────────────────────────────────
+//
 
 // 404 — rută inexistentă
 app.use((req, res) => {
@@ -177,9 +177,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+//
 //  PORNIRE SERVER
-// ─────────────────────────────────────────────────────────────────────────────
+//
 
 const PORT = process.env.PORT || 3001;
 
@@ -191,7 +191,7 @@ async function startServer() {
 
   await testConnection();
   checkS3Config();
-  await verifyConnection(); // ← adaugă asta
+  await verifyConnection(); // <- adaugă asta
 
   app.listen(PORT, () => {
     console.log(`\nServer pornit pe http://localhost:${PORT}`);

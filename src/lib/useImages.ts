@@ -13,7 +13,7 @@ export interface SiteImage {
   room_id?: string | null;
 }
 
-// ─── Hook imagini după categorie ─────────────────────────────────────────────
+// Hook imagini după categorie
 export function useImages(category: string, roomId?: string) {
   const [images, setImages] = useState<SiteImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,17 +34,17 @@ export function useImages(category: string, roomId?: string) {
   return { images, primary, loading };
 }
 
-// ─── Hook hero images ─────────────────────────────────────────────────────────
+// Hook hero images
 export function useHeroImages() {
   return useImages("hero");
 }
 
-// ─── Hook facility images ─────────────────────────────────────────────────────
+// Hook facility images
 export function useFacilityImages() {
   return useImages("facility");
 }
 
-// ─── Hook about images ────────────────────────────────────────────────────────
+// Hook about images
 export function useAboutImages() {
   return useImages("about");
 }

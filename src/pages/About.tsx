@@ -59,7 +59,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* ── Povestea ── */}
+      {/* Povestea */}
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -144,7 +144,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* ── Facilități ── */}
+      {/* Facilități  */}
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-5xl">
           <h2 className="font-heading text-3xl text-center mb-4">

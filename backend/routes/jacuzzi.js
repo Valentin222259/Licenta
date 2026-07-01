@@ -2,18 +2,16 @@ const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
 
-// ─── GET /api/jacuzzi/availability?from=YYYY-MM-DD&to=YYYY-MM-DD ─────────────
+// GET /api/jacuzzi/availability?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Returnează datele ocupate din intervalul dat
 router.get("/availability", async (req, res) => {
   try {
     const { from, to } = req.query;
     if (!from || !to)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Parametrii from și to sunt obligatorii",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Parametrii from și to sunt obligatorii",
+      });
 
     const { rows } = await query(
       `SELECT date::text FROM jacuzzi_bookings
@@ -32,18 +30,16 @@ router.get("/availability", async (req, res) => {
   }
 });
 
-// ─── POST /api/jacuzzi/reserve ────────────────────────────────────────────────
+// POST /api/jacuzzi/reserve
 // Rezervă sesiunile de ciubăr pentru un booking (apelat după crearea rezervării)
 router.post("/reserve", async (req, res) => {
   try {
     const { booking_id, dates } = req.body;
     if (!booking_id || !Array.isArray(dates) || dates.length === 0)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "booking_id și dates sunt obligatorii",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "booking_id și dates sunt obligatorii",
+      });
 
     // Verificăm că toate datele sunt libere
     const { rows: occupied } = await query(

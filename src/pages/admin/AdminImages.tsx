@@ -29,7 +29,7 @@ import {
   CalendarRange,
 } from "lucide-react";
 
-// ─── Tipuri ──────────────────────────────────────────────────────────────────
+// Tipuri
 type Category = "rooms" | "hero" | "facility" | "about";
 
 interface GenericImage {
@@ -61,7 +61,7 @@ const FACILITIES = [
 const apiFetch = (path: string, options?: RequestInit) =>
   fetch(`/api${path}`, options);
 
-// ─── Config tab-uri ───────────────────────────────────────────────────────────
+// Config tab-uri
 const TABS: {
   key: Category;
   label: string;
@@ -94,7 +94,7 @@ const TABS: {
   },
 ];
 
-// ─── SingleImageUploader ──────────────────────────────────────────────────────
+// SingleImageUploader
 const SingleImageUploader = ({
   fetchPath,
   uploadPath,
@@ -275,7 +275,7 @@ const SingleImageUploader = ({
   );
 };
 
-// ─── FacilitiesTab ────────────────────────────────────────────────────────────
+// FacilitiesTab
 const FacilitiesTab = () => {
   const [images, setImages] = useState<(GenericImage | null)[]>(
     Array(FACILITIES.length).fill(null),
@@ -494,7 +494,7 @@ const FacilitiesTab = () => {
   );
 };
 
-// ─── DropZone ─────────────────────────────────────────────────────────────────
+// DropZone
 const DropZone = ({
   onFiles,
   uploading,
@@ -559,7 +559,7 @@ const DropZone = ({
   );
 };
 
-// ─── ImageGrid ─────────────────────────────────────────────────────────────────
+// ImageGrid
 const ImageGrid = ({
   images,
   loading,
@@ -651,7 +651,7 @@ const ImageGrid = ({
   );
 };
 
-// ─── Tab Camere ───────────────────────────────────────────────────────────────
+// Tab Camere
 const RoomsTab = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -792,7 +792,7 @@ const RoomsTab = () => {
   );
 };
 
-// ─── Componentă principală ────────────────────────────────────────────────────
+// Componentă principală
 const AdminImages = () => {
   const [activeTab, setActiveTab] = useState<Category>("rooms");
   const currentTab = TABS.find((t) => t.key === activeTab)!;

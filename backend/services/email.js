@@ -3,7 +3,7 @@
 require("dotenv").config();
 const nodemailer = require("nodemailer");
 
-// ─── Detectare provider SMTP ──────────────────────────────────────────────────
+// Detectare provider SMTP
 function detectEmailService(email = "") {
   if (email.includes("@yahoo.")) return "yahoo";
   if (email.includes("@gmail.")) return "gmail";
@@ -47,7 +47,7 @@ console.log(
   `📧 Email service: ${EMAIL_SERVICE} (${EMAIL_USER || "neconfigurat"})`,
 );
 
-// ─── Branding & tokens ────────────────────────────────────────────────────────
+// Branding & tokens
 const B = {
   name: "Maramureș Belvedere",
   green: "#1e4d2b", // verde pădure — header gradient start
@@ -76,16 +76,16 @@ const B = {
   site: (process.env.FRONTEND_URL || "http://localhost:5173").split(",")[0],
 };
 
-// ─── Format dată ──────────────────────────────────────────────────────────────
+// Format dată
 function fmtDate(s) {
   if (!s) return "—";
   const [y, m, d] = String(s).substring(0, 10).split("-");
   return `${d}/${m}/${y}`;
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+//
 //  HELPERS DE LAYOUT
-// ═════════════════════════════════════════════════════════════════════════════
+//
 
 /** Wrapper complet HTML — header gradient + footer */
 function layout(body, preview = "", lang = "ro") {
@@ -433,9 +433,9 @@ function buildExtrasHtml(extras, lang = "ro") {
 </div>`;
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+//
 //  FUNCȚII PRINCIPALE
-// ═════════════════════════════════════════════════════════════════════════════
+//
 
 // 1. Confirmare rezervare → CLIENT
 async function sendClientBookingConfirmation(clientEmail, d, lang = "ro") {
@@ -580,7 +580,7 @@ ${btn(tx.manageBooking, `${B.site}/account`)}
   );
 }
 
-// 2. Alertă rezervare nouă → ADMIN
+// 2. Alertă rezervare nouă -> ADMIN
 async function sendAdminNewBookingAlert(adminEmail, d) {
   const pmLabel =
     {
@@ -680,7 +680,7 @@ ${btn("Accesare Panou de Administrare", `${B.site}/admin/bookings`)}
   console.log(`📧 [ADMIN] Alertă rezervare → ${adminEmail} (${d.bookingRef})`);
 }
 
-// 3. Anulare rezervare → CLIENT (cu motiv detaliat)
+// 3. Anulare rezervare -> CLIENT (cu motiv detaliat)
 async function sendBookingCancellation(clientEmail, d, lang = "ro") {
   const tx = t(lang).cancellation;
 
@@ -782,7 +782,7 @@ ${btn(tx.newBooking, `${B.site}/rooms`)}`;
   );
 }
 
-// 4. Notificare anulare → ADMIN (simplă, fără motiv lung)
+// 4. Notificare anulare -> ADMIN (simplă, fără motiv lung)
 async function sendAdminCancellationAlert(adminEmail, d) {
   const body = `
 ${title("📋", "Notificare Anulare Rezervare", d.bookingRef)}
@@ -834,7 +834,7 @@ ${btn("Accesare Panou de Administrare", `${B.site}/admin/bookings`)}
   );
 }
 
-// 5. Instrucțiuni transfer bancar → CLIENT
+// 5. Instrucțiuni transfer bancar -> CLIENT
 async function sendBankTransferInstructions(clientEmail, d, lang = "ro") {
   const tx = t(lang).bankTransfer;
 
@@ -947,7 +947,7 @@ ${btn(lang === "en" ? "Manage Your Booking" : "Gestionați Rezervarea", `${B.sit
   );
 }
 
-// 6. Rezervare expirată (neplata avansului/transferului) → CLIENT
+// 6. Rezervare expirată (neplata avansului/transferului) -> CLIENT
 async function sendBookingExpired(clientEmail, d, lang = "ro") {
   // CURĂȚĂM LIMBA: forțăm litere mici și tăiem spațiile
   const safeLang = String(lang || "ro")
@@ -1082,7 +1082,7 @@ ${btn(tx.newBooking, `${B.site}/booking`)}
   );
 }
 
-// 7. Reminder check-in → CLIENT
+// 7. Reminder check-in -> CLIENT
 async function sendCheckInReminder(clientEmail, d, lang = "ro") {
   const tx = t(lang).checkinReminder;
 
@@ -1150,7 +1150,7 @@ ${btn(lang === "en" ? "Manage Your Reservation" : "Detalii Rezervare", `${B.site
   console.log(`📧 [CLIENT] Reminder check-in (${lang}) → ${clientEmail}`);
 }
 
-// 8. Solicitare recenzie → CLIENT
+// 8. Solicitare recenzie -> CLIENT
 async function sendReviewRequest(clientEmail, d, lang = "ro") {
   const tx = t(lang).reviewRequest;
   const { guestName, checkIn, checkOut, bookingRef } = d;
@@ -1191,7 +1191,7 @@ ${btn(tx.leaveReview, `${B.site}/reviews?ref=${bookingRef}&email=${encodeURIComp
   console.log(`📧 [CLIENT] Solicitare recenzie (${lang}) → ${clientEmail}`);
 }
 
-// 9. Confirmare recenzie → CLIENT
+// 9. Confirmare recenzie -> CLIENT
 async function sendClientReviewConfirmation(clientEmail, d, lang = "ro") {
   const safeLang = String(lang || "ro")
     .trim()
@@ -1256,7 +1256,7 @@ ${btn(l.btn, `${B.site}/booking`)}`;
   console.log(`📧 [CLIENT] Confirmare recenzie (${safeLang}) → ${clientEmail}`);
 }
 
-// 10. Alertă recenzie nouă → ADMIN
+// 10. Alertă recenzie nouă -> ADMIN
 async function sendAdminNewReviewAlert(adminEmail, d) {
   const { guestName, guestEmail, rating, text, roomName, autoApproved } = d;
   const stars = [1, 2, 3, 4, 5]
@@ -1330,7 +1330,7 @@ ${!autoApproved ? btn("Aprobare Recenzie", `${B.site}/admin/reviews`) : ""}`;
   console.log(`📧 [ADMIN] Recenzie nouă → ${adminEmail}`);
 }
 
-// 11. Bun venit → CLIENT
+// 11. Bun venit -> CLIENT
 async function sendWelcomeEmail(userEmail, name, lang = "ro") {
   const safeLang = String(lang || "ro")
     .trim()
@@ -1405,7 +1405,7 @@ ${btn(l.btn, `${B.site}/rooms`)}`;
   console.log(`📧 [CLIENT] Welcome (${safeLang}) → ${userEmail}`);
 }
 
-// 12. Schimbare parolă → CLIENT
+// 12. Schimbare parolă -> CLIENT
 async function sendPasswordChangedEmail(userEmail, name, lang = "ro") {
   const safeLang = String(lang || "ro")
     .trim()
@@ -1453,7 +1453,7 @@ ${btn(l.btn, `${B.site}/account`)}`;
   console.log(`📧 [CLIENT] Schimbare parolă (${safeLang}) → ${userEmail}`);
 }
 
-// 13. Ștergere cont → CLIENT
+// 13. Ștergere cont -> CLIENT
 async function sendAccountDeletedEmail(userEmail, name, lang = "ro") {
   const safeLang = String(lang || "ro")
     .trim()
@@ -1502,7 +1502,7 @@ ${btn(l.btn, B.site)}`;
   console.log(`📧 [CLIENT] Ștergere cont (${safeLang}) → ${userEmail}`);
 }
 
-// 14. Mesaj contact → ADMIN
+// 14. Mesaj contact -> ADMIN
 async function sendAdminContactMessage(adminEmail, c) {
   const body = `
 ${title("✉️", "Mesaj Nou de Contact", "Solicitare recepționată via website")}
@@ -1553,7 +1553,7 @@ ${btn(`Răspunde către ${c.name}`, `mailto:${c.email}`)}
   console.log(`📧 [ADMIN] Mesaj contact → ${adminEmail}`);
 }
 
-// 15. Confirmare contact → CLIENT
+// 15. Confirmare contact -> CLIENT
 async function sendClientContactConfirmation(clientEmail, name, lang = "ro") {
   const safeLang = String(lang || "ro")
     .trim()
@@ -1603,7 +1603,7 @@ ${btn(l.btn, `${B.site}/rooms`)}`;
   console.log(`📧 [CLIENT] Confirmare contact (${safeLang}) → ${clientEmail}`);
 }
 
-// ─── Verificare conexiune SMTP ────────────────────────────────────────────────
+// Verificare conexiune SMTP
 async function verifyConnection() {
   if (!EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn("⚠️  Email dezactivat — EMAIL_USER sau EMAIL_PASS lipsesc");
