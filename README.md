@@ -145,6 +145,8 @@ The production build was deployed on AWS:
 - **Database** → AWS RDS (PostgreSQL)
 - **Storage** → Amazon S3
 
+> **Note:** the production environment has been decommissioned to avoid ongoing cloud costs. The application can be redeployed from this repository at any time.
+
 ## Screenshots
 
 You can add a few screenshots here (booking flow, Smart Pricing, AI ID scan, analytics dashboard):
