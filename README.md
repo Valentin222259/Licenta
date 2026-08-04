@@ -84,7 +84,7 @@ cd Licenta
 ```bash
 cd backend
 npm install
-cp .env.example .env   # then fill in the values below
+# create a backend/.env file with the values below
 npm run dev            # or: npm start
 ```
 
@@ -117,12 +117,14 @@ AWS_REGION=eu-central-1
 S3_BUCKET_NAME=your_bucket
 ```
 
-### 3. Frontend
+### 3. Frontend (repository root)
+
+The frontend lives at the **root** of the repository; the backend is the `backend/` subfolder.
 
 ```bash
-cd frontend
+# from the repository root (the Licenta folder)
 npm install
-cp .env.example .env   # set the API base URL and any public keys
+# create a .env file in the root with the values below
 npm run dev
 ```
 
