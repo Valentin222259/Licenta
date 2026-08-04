@@ -44,6 +44,7 @@ export interface Booking {
   special_requests: string | null;
   created_at: string;
   payment_split?: "full" | "advance" | null;
+  guest_data?: Record<string, string> | null;
   stripe_amount?: number | null;
   remaining_amount?: number | null;
   extras_json?: Record<string, any> | string | null;

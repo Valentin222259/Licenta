@@ -349,11 +349,13 @@ const ScannerBuletin = ({
   bookingId,
   guestName,
   bookingRef,
+  initialData,
   onClose,
 }: {
   bookingId: string;
   guestName: string;
   bookingRef: string;
+  initialData?: UniversalGuestData | null;
   onClose: () => void;
 }) => {
   const [formData, setFormData] = useState<UniversalGuestData>({});
@@ -2118,6 +2120,7 @@ const AdminBookings = () => {
                 bookingId={selected.id}
                 guestName={selected.guest_name}
                 bookingRef={selected.booking_ref}
+                initialData={selected.guest_data}
                 onClose={async () => {
                   setScannerOpen(false);
                   await fetchBookings();
@@ -2189,6 +2192,47 @@ const AdminBookings = () => {
                     </p>
                   </div>
                 )}
+                {selected.guest_data &&
+                  Object.values(selected.guest_data).some((v) => v?.trim()) && (
+                    <div className="py-3">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                        Act de identitate
+                      </span>
+                      <div className="divide-y divide-border">
+                        {GUEST_FIELDS.filter((f) =>
+                          selected.guest_data?.[f.key]?.trim(),
+                        ).map((f) => {
+                          const value = selected.guest_data![f.key];
+                          const isLong = f.key === "address";
+
+                          return isLong ? (
+                            // Domiciliu pe verticală, lățime completă
+                            <div key={f.key} className="py-2">
+                              <span className="text-xs font-medium text-muted-foreground block mb-1">
+                                {f.label}
+                              </span>
+                              <span className="text-sm font-medium text-foreground break-words leading-snug">
+                                {value}
+                              </span>
+                            </div>
+                          ) : (
+                            // Restul pe orizontală
+                            <div
+                              key={f.key}
+                              className="flex items-center justify-between py-2 gap-4"
+                            >
+                              <span className="text-xs font-medium text-muted-foreground shrink-0">
+                                {f.label}
+                              </span>
+                              <span className="text-sm font-medium text-foreground text-right break-words">
+                                {value}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
               </div>
               <div className="px-6 py-5 space-y-3 shrink-0 border-t border-border">
                 {(selected.status === "confirmed" ||
